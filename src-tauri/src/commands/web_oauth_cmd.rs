@@ -18,8 +18,8 @@ pub async fn web_oauth_initiate(provider: String) -> Result<WebOAuthInitResponse
     println!("\n========== web_oauth_initiate START ==========");
     println!("Provider: {}", provider);
     
-    if provider != "Google" && provider != "Github" {
-        return Err(format!("Unsupported provider: {}. Use 'Google' or 'Github'", provider));
+    if provider != "Google" && provider != "Github" && provider != "BuilderId" {
+        return Err(format!("Unsupported provider: {}. Use 'Google', 'Github', or 'BuilderId'", provider));
     }
 
     let web_provider = WebOAuthProvider::new(&provider);
@@ -86,15 +86,13 @@ pub async fn web_oauth_complete(
         &init_result.state,
     ).await?;
 
-    let csrf_token = auth_result.csrf_token.as_ref()
+    // 验证 csrf_token 存在
+    auth_result.csrf_token.as_ref()
         .ok_or("No csrf_token from ExchangeToken")?;
-    let refresh_token = &auth_result.refresh_token;
 
     let portal_client = crate::providers::web_oauth::KiroWebPortalClient::new();
     let user_info = portal_client.get_user_info(
         &auth_result.access_token,
-        csrf_token,
-        refresh_token,
         &init_result.idp,
     ).await?;
 
@@ -105,8 +103,6 @@ pub async fn web_oauth_complete(
 
     let usage = portal_client.get_user_usage_and_limits(
         &auth_result.access_token,
-        csrf_token,
-        refresh_token,
         &init_result.idp,
     ).await?;
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
@@ -116,7 +112,14 @@ pub async fn web_oauth_complete(
     let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email) {
         // 更新现有账号
         existing.access_token = Some(auth_result.access_token.clone());
-        existing.refresh_token = Some(auth_result.refresh_token.clone());
+        // 根据 provider 存到不同字段
+        if provider == "BuilderId" {
+            existing.session_token = Some(auth_result.refresh_token.clone());
+            existing.refresh_token = None;
+        } else {
+            existing.refresh_token = Some(auth_result.refresh_token.clone());
+            existing.session_token = None;
+        }
         existing.provider = Some(provider.clone());
         existing.user_id = user_id;
         existing.expires_at = Some(auth_result.expires_at.clone());
@@ -129,7 +132,12 @@ pub async fn web_oauth_complete(
         // 新建账号
         let mut account = Account::new(email.clone(), format!("Kiro {} (Web OAuth)", provider));
         account.access_token = Some(auth_result.access_token.clone());
-        account.refresh_token = Some(auth_result.refresh_token.clone());
+        // 根据 provider 存到不同字段
+        if provider == "BuilderId" {
+            account.session_token = Some(auth_result.refresh_token.clone());
+        } else {
+            account.refresh_token = Some(auth_result.refresh_token.clone());
+        }
         account.provider = Some(provider.clone());
         account.user_id = user_id;
         account.expires_at = Some(auth_result.expires_at.clone());
@@ -172,11 +180,15 @@ pub async fn web_oauth_refresh(
     let csrf_token = account.csrf_token.as_ref().ok_or("No csrf_token found")?;
     let provider = account.provider.as_ref().ok_or("No provider found")?;
     
-    let refresh_token = account.refresh_token.as_ref().ok_or("No refresh_token found")?;
+    // 根据 provider 从不同字段读取
+    let token = if provider == "BuilderId" {
+        account.session_token.as_ref().ok_or("No session_token found")?
+    } else {
+        account.refresh_token.as_ref().ok_or("No refresh_token found")?
+    };
+    
     let web_provider = WebOAuthProvider::new(provider);
-    let auth_result = web_provider.refresh_token_impl(access_token, csrf_token, refresh_token).await?;
-
-    let new_csrf = auth_result.csrf_token.clone();
+    let auth_result = web_provider.refresh_token_impl(access_token, csrf_token, token).await?;
     
     let portal_client = crate::providers::web_oauth::KiroWebPortalClient::new();
     let idp = match provider.as_str() {
@@ -185,8 +197,6 @@ pub async fn web_oauth_refresh(
     };
     let usage = portal_client.get_user_usage_and_limits(
         &auth_result.access_token,
-        new_csrf.as_deref().unwrap_or(""),
-        refresh_token,
         idp,
     ).await.ok();
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
@@ -194,7 +204,14 @@ pub async fn web_oauth_refresh(
     let mut store = state.store.lock().unwrap();
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         a.access_token = Some(auth_result.access_token);
-        a.refresh_token = Some(auth_result.refresh_token);
+        // 根据 provider 存到不同字段
+        if provider == "BuilderId" {
+            a.session_token = Some(auth_result.refresh_token);
+            a.refresh_token = None;
+        } else {
+            a.refresh_token = Some(auth_result.refresh_token);
+            a.session_token = None;
+        }
         a.csrf_token = auth_result.csrf_token;
         a.expires_at = Some(auth_result.expires_at);
         a.usage_data = Some(usage_data);
@@ -239,8 +256,8 @@ pub async fn web_oauth_login(
     println!("\n========== web_oauth_login START ==========");
     println!("Provider: {}", provider);
     
-    if provider != "Google" && provider != "Github" {
-        return Err(format!("Unsupported provider: {}. Use 'Google' or 'Github'", provider));
+    if provider != "Google" && provider != "Github" && provider != "BuilderId" {
+        return Err(format!("Unsupported provider: {}. Use 'Google', 'Github', or 'BuilderId'", provider));
     }
 
     let web_provider = WebOAuthProvider::new(&provider);

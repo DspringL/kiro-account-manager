@@ -3,10 +3,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Loader, ClipboardPaste, Globe, Sparkles, ArrowRight, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
+import { useDialog } from '../contexts/DialogContext'
 import { useI18n } from '../i18n.jsx'
 
 function WebOAuthLogin({ onLogin }) {
   const { theme, colors } = useTheme()
+  const { showError } = useDialog()
   const { t } = useI18n()
   const isDark = theme === 'dark'
   const [step, setStep] = useState('idle') // idle, webview, completing
@@ -32,9 +34,22 @@ function WebOAuthLogin({ onLogin }) {
         await invoke('web_oauth_complete', { callbackUrl: event.payload })
       } catch (e) {
         console.error('Auto complete failed:', e)
-        setError(typeof e === 'string' ? e : e.message || t('login.failed'))
-        setCallbackUrl(event.payload)
-        setStep('webview')
+        const errorMsg = typeof e === 'string' ? e : e.message || t('login.failed')
+        // 如果是账号被封禁，用弹窗显示并回到 idle 状态
+        if (errorMsg.includes('BANNED')) {
+          setStep('idle')
+          setLoadingProvider(null)
+          setCallbackUrl('')
+          setWindowLabel(null)
+          setError('')
+          // 显示错误弹窗
+          showError(t('detail.accountBanned'), errorMsg.replace('BANNED: ', ''))
+        } else {
+          // 其他错误允许手动重试
+          setError(errorMsg)
+          setCallbackUrl(event.payload)
+          setStep('webview')
+        }
       }
     })
 
@@ -42,7 +57,7 @@ function WebOAuthLogin({ onLogin }) {
       unlistenSuccess.then(fn => fn())
       unlistenCallback.then(fn => fn())
     }
-  }, [onLogin])
+  }, [onLogin, showError, t])
 
   const handleLogin = async (provider) => {
     setLoadingProvider(provider)
@@ -128,6 +143,13 @@ function WebOAuthLogin({ onLogin }) {
       ),
       gradient: 'from-gray-700 to-gray-900',
       hoverBorder: 'hover:border-gray-500',
+    },
+    {
+      id: 'BuilderId',
+      name: 'AWS Builder ID',
+      icon: <span className="text-[#ff9900] font-bold text-xl">aws</span>,
+      gradient: 'from-[#FF9900] to-[#FF6600]',
+      hoverBorder: 'hover:border-[#FF9900]',
     },
   ]
 

@@ -113,6 +113,20 @@
 3. Login with Google, GitHub, or BuilderId
 4. Manage your Kiro accounts with ease!
 
+## ❓ FAQ
+
+**Q: Login failed?**
+A: Check your network connection, try using a proxy or switch login method.
+
+**Q: Token expired?**
+A: Click the refresh button, or enable auto-refresh feature.
+
+**Q: How to backup accounts?**
+A: Use the export feature to save account data as JSON file.
+
+**Q: Failed to reset system machine code?**
+A: Windows requires admin privileges to modify registry. Right-click the app and select "Run as administrator".
+
 ## 💬 Feedback
 
 - 🐛 [Submit Issue](https://github.com/hj01857655/kiro-account-manager/issues)

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { getQuota, getUsed } from '../../../utils/accountStats'
 
 export function useAccounts() {
   const [accounts, setAccounts] = useState([])
@@ -11,8 +10,12 @@ export function useAccounts() {
   const [refreshingId, setRefreshingId] = useState(null)
   const [switchingId, setSwitchingId] = useState(null)
 
+  // 判断账号是否即将过期（5分钟内）
   const isExpiringSoon = useCallback((account) => {
-    if (!account.expiresAt) return true
+    // 跳过已封禁账号
+    if (account.status === '已封禁' || account.status === '封禁') return false
+    // 没有过期时间的不刷新
+    if (!account.expiresAt) return false
     const expiresAt = new Date(account.expiresAt.replace(/\//g, '-'))
     return expiresAt.getTime() - Date.now() < 5 * 60 * 1000
   }, [])
@@ -27,7 +30,9 @@ export function useAccounts() {
 
   const autoRefreshAll = useCallback(async (accountList, forceAll = false) => {
     if (autoRefreshing || accountList.length === 0) return
-    const accountsToRefresh = forceAll ? accountList : accountList.filter(isExpiringSoon)
+    // 过滤掉封禁账号，forceAll 时刷新所有非封禁账号
+    const validAccounts = accountList.filter(acc => acc.status !== '已封禁' && acc.status !== '封禁')
+    const accountsToRefresh = forceAll ? validAccounts : validAccounts.filter(isExpiringSoon)
     if (accountsToRefresh.length === 0) return
 
     setAutoRefreshing(true)
@@ -111,8 +116,10 @@ export function useAccounts() {
   // 这里只保留 setSwitchingId 供组件使用
 
   // 初始化和事件监听
+  // 注意：自动刷新定时器已移至 App.jsx 统一管理，避免重复刷新
   useEffect(() => {
     loadAccounts()
+    
     const unlistenLoginSuccess = listen('login-success', () => loadAccounts())
     const unlistenKiroLoginData = listen('kiro-login-data', async (event) => {
       try {
@@ -134,18 +141,11 @@ export function useAccounts() {
       }
     })
 
-    const interval = setInterval(async () => {
-      if (document.hidden) return
-      const data = await invoke('get_accounts')
-      if (data.length > 0) autoRefreshAll(data)
-    }, 5 * 60 * 1000)
-
     return () => {
       unlistenLoginSuccess.then(fn => fn())
       unlistenKiroLoginData.then(fn => fn())
-      clearInterval(interval)
     }
-  }, [loadAccounts, autoRefreshAll])
+  }, [loadAccounts])
 
   return {
     accounts,

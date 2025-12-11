@@ -24,25 +24,42 @@ function App() {
   const { colors } = useTheme()
   const refreshTimerRef = useRef(null)
 
+  // 判断账号是否需要刷新（已过期或5分钟内过期）
+  const isExpiringSoon = (acc) => {
+    // 跳过已封禁账号
+    if (acc.status === '已封禁' || acc.status === '封禁') {
+      console.log(`[AutoRefresh] 跳过封禁账号: ${acc.email}`)
+      return false
+    }
+    // 没有过期时间的不刷新
+    if (!acc.expiresAt) {
+      console.log(`[AutoRefresh] 跳过无过期时间: ${acc.email}`)
+      return false
+    }
+    const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
+    const timeLeft = expiresAt.getTime() - Date.now()
+    const needRefresh = timeLeft < 5 * 60 * 1000
+    if (needRefresh) {
+      console.log(`[AutoRefresh] 需要刷新: ${acc.email}, 剩余 ${Math.round(timeLeft / 1000)}秒`)
+    }
+    return needRefresh
+  }
+
   // 启动时只刷新 token（不获取 usage，快速启动）
+  // 启动时强制刷新，不检查 autoRefresh 设置
   const refreshExpiredTokensOnly = async () => {
     try {
       const settings = await invoke('get_app_settings').catch(() => ({}))
-      if (!settings.autoRefresh) return
+      // autoRefresh 默认为 true（null/undefined 视为 true）
+      const autoRefreshEnabled = settings.autoRefresh !== false
+      console.log('[AutoRefresh] 设置:', { autoRefresh: autoRefreshEnabled, interval: settings.autoRefreshInterval })
       
       const accounts = await invoke('get_accounts')
+      console.log('[AutoRefresh] 账号数量:', accounts?.length || 0)
       if (!accounts || accounts.length === 0) return
       
-      const now = new Date()
-      const refreshThreshold = 5 * 60 * 1000 // 提前 5 分钟
-      
-      const expiredAccounts = accounts.filter(acc => {
-        // 跳过已封禁账号
-        if (acc.status === '已封禁' || acc.status === '封禁') return false
-        if (!acc.expiresAt) return false
-        const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
-        return (expiresAt.getTime() - now.getTime()) < refreshThreshold
-      })
+      const expiredAccounts = accounts.filter(isExpiringSoon)
+      console.log('[AutoRefresh] 需要刷新的账号:', expiredAccounts.length)
       
       if (expiredAccounts.length === 0) {
         console.log('[AutoRefresh] 没有需要刷新的 token')
@@ -69,25 +86,36 @@ function App() {
     }
   }
 
-  // 定时刷新：只刷新 token
+  // 检查并恢复锁定的模型
+  const checkAndRestoreLockedModel = async () => {
+    try {
+      const appSettings = await invoke('get_app_settings').catch(() => ({}))
+      if (!appSettings.lockModel || !appSettings.lockedModel) return
+      
+      const kiroSettings = await invoke('get_kiro_settings').catch(() => ({}))
+      const currentModel = kiroSettings.modelSelection
+      
+      if (currentModel && currentModel !== appSettings.lockedModel) {
+        console.log(`[ModelLock] 检测到模型被修改: ${currentModel} -> 恢复为: ${appSettings.lockedModel}`)
+        await invoke('set_kiro_model', { model: appSettings.lockedModel })
+        console.log('[ModelLock] 模型已恢复')
+      }
+    } catch (e) {
+      console.error('[ModelLock] 检查模型失败:', e)
+    }
+  }
+
+  // 定时刷新：只刷新 token（复用 isExpiringSoon 判断）
   const checkAndRefreshExpiringTokens = async () => {
     try {
       const settings = await invoke('get_app_settings').catch(() => ({}))
-      if (!settings.autoRefresh) return
+      // autoRefresh 默认为 true（null/undefined 视为 true）
+      if (settings.autoRefresh === false) return
       
       const accounts = await invoke('get_accounts')
       if (!accounts || accounts.length === 0) return
       
-      const now = new Date()
-      const refreshThreshold = 5 * 60 * 1000
-      
-      const expiredAccounts = accounts.filter(acc => {
-        // 跳过已封禁账号
-        if (acc.status === '已封禁' || acc.status === '封禁') return false
-        if (!acc.expiresAt) return false
-        const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
-        return (expiresAt.getTime() - now.getTime()) < refreshThreshold
-      })
+      const expiredAccounts = accounts.filter(isExpiringSoon)
       
       if (expiredAccounts.length === 0) {
         console.log('[AutoRefresh] 没有需要刷新的 token')
@@ -130,6 +158,21 @@ function App() {
     refreshTimerRef.current = setInterval(checkAndRefreshExpiringTokens, intervalMs)
   }
 
+  // 模型锁定检查定时器
+  const modelLockTimerRef = useRef(null)
+  
+  const startModelLockTimer = async () => {
+    if (modelLockTimerRef.current) {
+      clearInterval(modelLockTimerRef.current)
+    }
+    
+    // 启动时立即检查一次
+    checkAndRestoreLockedModel()
+    
+    // 每 30 秒检查一次
+    modelLockTimerRef.current = setInterval(checkAndRestoreLockedModel, 30 * 1000)
+  }
+
   useEffect(() => {
     checkAuth()
     
@@ -156,11 +199,24 @@ function App() {
     // 启动自动刷新定时器
     startAutoRefreshTimer()
     
+    // 启动模型锁定检查定时器
+    startModelLockTimer()
+    
+    // 监听设置变化，重启模型锁定检查
+    const unlistenAppSettings = listen('app-settings-changed', () => {
+      console.log('[ModelLock] 设置已变化，重新检查模型')
+      checkAndRestoreLockedModel()
+    })
+    
     return () => { 
       unlisten.then(fn => fn())
       unlistenSettings.then(fn => fn())
+      unlistenAppSettings.then(fn => fn())
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current)
+      }
+      if (modelLockTimerRef.current) {
+        clearInterval(modelLockTimerRef.current)
       }
     }
   }, [])

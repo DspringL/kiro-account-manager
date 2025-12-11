@@ -110,6 +110,7 @@ function Home() {
   const [localToken, setLocalToken] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshingAccount, setRefreshingAccount] = useState(false)
 
   useEffect(() => { loadData() }, [])
 
@@ -133,6 +134,21 @@ function Home() {
     setRefreshing(true)
     await loadData()
     setTimeout(() => setRefreshing(false), 500)
+  }
+
+  // 刷新当前账号的 token 和 usage
+  const handleRefreshCurrentAccount = async () => {
+    if (!currentAccount || refreshingAccount) return
+    setRefreshingAccount(true)
+    try {
+      await invoke('sync_account', { id: currentAccount.id })
+      await loadData()
+    } catch (e) {
+      console.error('刷新账号失败:', e)
+      showError('刷新失败', String(e))
+    } finally {
+      setRefreshingAccount(false)
+    }
   }
 
   const stats = calcAccountStats(tokens)
@@ -330,7 +346,7 @@ function Home() {
           
           return (
             <div className={`card-glow ${colors.card} rounded-2xl shadow-sm border ${colors.cardBorder} overflow-hidden animate-scale-in delay-500`}>
-              {/* 头部：用户信息 + 订阅徽章 */}
+              {/* 头部：用户信息 + 订阅徽章 + 刷新按钮 */}
               <div className={`px-5 py-4 border-b ${colors.cardBorder} flex items-center gap-4`}>
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md ${
                   currentAccount.provider === 'Google' ? 'bg-gradient-to-br from-red-500 to-orange-500' :
@@ -354,6 +370,14 @@ function Home() {
                   </div>
                   <div className={`text-xs ${colors.textMuted} mt-0.5`}>{currentAccount.provider} · {daysUntilReset} {t('home.daysUntilReset')}</div>
                 </div>
+                <button 
+                  onClick={handleRefreshCurrentAccount}
+                  disabled={refreshingAccount}
+                  className={`btn-icon p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-xl disabled:opacity-50 transition-all`}
+                  title={t('home.refreshAccount')}
+                >
+                  <RefreshCw size={16} className={`${colors.textMuted} ${refreshingAccount ? 'animate-spin' : ''}`} />
+                </button>
               </div>
               
               <div className="p-5">

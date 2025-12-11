@@ -114,9 +114,25 @@
 | 数据 | 路径 |
 |------|------|
 | 账号数据 | `%APPDATA%\.kiro-account-manager\accounts.json` |
-| 应用设置 | `%APPDATA%\.kiro-account-manager\settings.json` |
+| 应用设置 | `%APPDATA%\.kiro-account-manager\app-settings.json` |
+| 机器码备份 | `%APPDATA%\.kiro-account-manager\machine-guid-backup.json` |
 | MCP 配置 | `~/.kiro/settings/mcp.json` |
 | Powers 注册表 | `~/.kiro/powers/registry.json` |
+| Steering 规则 | `~/.kiro/steering/*.md` |
+
+## ❓ 常见问题
+
+**Q: 登录失败怎么办？**
+A: 检查网络连接，尝试使用代理或切换登录方式。
+
+**Q: Token 过期了怎么办？**
+A: 点击刷新按钮，或开启自动刷新功能。
+
+**Q: 如何备份账号？**
+A: 使用导出功能，将账号数据保存为 JSON 文件。
+
+**Q: 重置系统机器码失败怎么办？**
+A: Windows 修改注册表需要管理员权限，请右键应用选择"以管理员身份运行"。
 
 ## 💬 交流反馈
 

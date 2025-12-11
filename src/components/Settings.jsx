@@ -121,6 +121,7 @@ function Settings() {
       // 如果锁定模型，保存到应用设置
       if (lockModel) {
         await saveAppSettings({ locked_model: model })
+        await emit('app-settings-changed')
       }
     } catch (err) {
       await showError(t('settings.saveFailed'), t('settings.saveFailed') + ': ' + err)
@@ -132,18 +133,20 @@ function Settings() {
   const handleLockModelChange = async (checked) => {
     setLockModel(checked)
     await saveAppSettings({ lock_model: checked, locked_model: checked ? aiModel : null })
+    await emit('app-settings-changed')
   }
 
   const handleAutoRefreshChange = async (checked) => {
     setAutoRefresh(checked)
     await saveAppSettings({ autoRefresh: checked }, true)
+    await emit('app-settings-changed')
   }
 
   const handleAutoRefreshIntervalChange = async (value) => {
     const interval = parseInt(value) || 50
     setAutoRefreshInterval(interval)
     await saveAppSettings({ autoRefreshInterval: interval }, true)
-    await saveAppSettings({ autoRefreshInterval: interval })
+    await emit('app-settings-changed')
   }
 
   const handleAutoChangeMachineIdChange = async (checked) => {
