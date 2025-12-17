@@ -48,6 +48,7 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
     let provider_str = account.provider.as_deref().unwrap_or("Google");
     let refresh_token_str = account.refresh_token.as_ref().ok_or("No refresh token")?;
     
+    #[cfg(debug_assertions)]
     println!("[sync_account] Refreshing {} account", provider_str);
     
     // 根据 provider 选择刷新接口
@@ -139,7 +140,8 @@ pub async fn refresh_account_token(state: State<'_, AppState>, id: String) -> Re
     let provider_str = account.provider.as_deref().unwrap_or("Google");
     let refresh_token_str = account.refresh_token.as_ref().ok_or("No refresh token")?;
     
-    println!("[refresh_token] Refreshing {} token only", provider_str);
+    #[cfg(debug_assertions)]
+    println!("[refresh_token] Refreshing {} token", provider_str);
     
     let (new_access_token, new_refresh_token, expires_in) = 
         if provider_str == "BuilderId" {
@@ -175,6 +177,7 @@ pub async fn refresh_account_token(state: State<'_, AppState>, id: String) -> Re
         
         let result = a.clone();
         store.save_to_file();
+        #[cfg(debug_assertions)]
         println!("[refresh_token] {} token refreshed", provider_str);
         return Ok(result);
     }
@@ -279,7 +282,8 @@ pub async fn add_account_by_social(
     refresh_token: String,
     provider: Option<String>,
 ) -> Result<Account, String> {
-    println!("Adding account by refresh (desktop API)");
+    #[cfg(debug_assertions)]
+    println!("[add_account] Adding account by refresh (desktop API)");
     
     let refresh_result = refresh_token_desktop(&refresh_token).await?;
     let access_token = refresh_result.access_token;

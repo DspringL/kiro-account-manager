@@ -31,10 +31,15 @@ function MCPPanel() {
   }, [loadConfig])
 
   const handleToggle = async (name, disabled) => {
+    // 保存旧状态用于回滚
+    const oldDisabled = servers[name]?.disabled
+    // 乐观更新 UI
+    setServers(prev => ({ ...prev, [name]: { ...prev[name], disabled } }))
     try {
       await invoke('toggle_mcp_server', { name, disabled })
-      setServers(prev => ({ ...prev, [name]: { ...prev[name], disabled } }))
     } catch (e) {
+      // 失败时回滚状态
+      setServers(prev => ({ ...prev, [name]: { ...prev[name], disabled: oldDisabled } }))
       console.error('切换状态失败:', e)
     }
   }

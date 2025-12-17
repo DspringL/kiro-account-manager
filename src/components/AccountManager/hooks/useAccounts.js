@@ -13,11 +13,17 @@ export function useAccounts() {
   // 判断账号是否即将过期（5分钟内）
   const isExpiringSoon = useCallback((account) => {
     // 跳过已封禁账号
-    if (account.status === 'banned' || account.status === '已封禁' || account.status === '封禁') return false
+    if (account.status === 'banned') return false
     // 没有过期时间的不刷新
     if (!account.expiresAt) return false
-    const expiresAt = new Date(account.expiresAt.replace(/\//g, '-'))
-    return expiresAt.getTime() - Date.now() < 5 * 60 * 1000
+    try {
+      const expiresAt = new Date(account.expiresAt.replace(/\//g, '-'))
+      // 检查日期是否有效
+      if (isNaN(expiresAt.getTime())) return false
+      return expiresAt.getTime() - Date.now() < 5 * 60 * 1000
+    } catch {
+      return false
+    }
   }, [])
 
   const loadAccounts = useCallback(async () => {
@@ -31,7 +37,7 @@ export function useAccounts() {
   const autoRefreshAll = useCallback(async (accountList, forceAll = false) => {
     if (autoRefreshing || accountList.length === 0) return
     // 过滤掉封禁账号，forceAll 时刷新所有非封禁账号
-    const validAccounts = accountList.filter(acc => acc.status !== 'banned' && acc.status !== '已封禁' && acc.status !== '封禁')
+    const validAccounts = accountList.filter(acc => acc.status !== 'banned')
     const accountsToRefresh = forceAll ? validAccounts : validAccounts.filter(isExpiringSoon)
     if (accountsToRefresh.length === 0) return
 

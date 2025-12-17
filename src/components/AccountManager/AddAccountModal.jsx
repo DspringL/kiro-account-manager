@@ -40,9 +40,11 @@ function AddAccountModal({ onClose, onSuccess }) {
       return
     }
     
-    // 校验 token 格式（所有 refreshToken 都以 aor 开头）
-    if (!refreshToken.startsWith('aor')) {
-      setAddError(addType === 'social' ? t('addAccount.errorSocialFormat') : t('addAccount.errorIdcFormat'))
+    // 校验 token 格式
+    // Social (Google/GitHub) 的 refreshToken 以 aor 开头
+    // BuilderId (IdC) 的 refreshToken 是 AWS SSO OIDC 返回的，格式不同
+    if (addType === 'social' && !refreshToken.startsWith('aor')) {
+      setAddError(t('addAccount.errorSocialFormat'))
       return
     }
     

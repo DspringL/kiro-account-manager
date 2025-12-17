@@ -25,7 +25,7 @@ function App() {
   // 判断账号是否需要刷新（已过期或5分钟内过期）
   const isExpiringSoon = (acc) => {
     // 跳过已封禁账号
-    if (acc.status === 'banned' || acc.status === '已封禁' || acc.status === '封禁') {
+    if (acc.status === 'banned') {
       console.log(`[AutoRefresh] 跳过封禁账号: ${acc.email}`)
       return false
     }
@@ -34,13 +34,22 @@ function App() {
       console.log(`[AutoRefresh] 跳过无过期时间: ${acc.email}`)
       return false
     }
-    const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
-    const timeLeft = expiresAt.getTime() - Date.now()
-    const needRefresh = timeLeft < 5 * 60 * 1000
-    if (needRefresh) {
-      console.log(`[AutoRefresh] 需要刷新: ${acc.email}, 剩余 ${Math.round(timeLeft / 1000)}秒`)
+    try {
+      const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
+      // 检查日期是否有效
+      if (isNaN(expiresAt.getTime())) {
+        console.log(`[AutoRefresh] 跳过无效日期: ${acc.email}`)
+        return false
+      }
+      const timeLeft = expiresAt.getTime() - Date.now()
+      const needRefresh = timeLeft < 5 * 60 * 1000
+      if (needRefresh) {
+        console.log(`[AutoRefresh] 需要刷新: ${acc.email}, 剩余 ${Math.round(timeLeft / 1000)}秒`)
+      }
+      return needRefresh
+    } catch {
+      return false
     }
-    return needRefresh
   }
 
   // 启动时只刷新 token（不获取 usage，快速启动）

@@ -81,7 +81,8 @@ impl AWSSSOClient {
             "refreshToken": refresh_token
         });
 
-        println!("\n[AWS SSO] Refresh Token");
+        #[cfg(debug_assertions)]
+        println!("[AWS SSO] Refresh Token");
 
         let resp = self.client
             .post(&url)
@@ -101,7 +102,8 @@ impl AWSSSOClient {
             return Err(format!("Token refresh failed ({}): {}", status, text));
         }
 
-        println!("Token refreshed successfully");
+        #[cfg(debug_assertions)]
+        println!("[AWS SSO] Token refreshed successfully");
 
         serde_json::from_str(&text)
             .map_err(|e| format!("Failed to parse token response: {}", e))
@@ -125,7 +127,8 @@ impl AWSSSOClient {
             "issuerUrl": issuer_url
         });
 
-        println!("\n[AWS SSO] Register Device Client (region: {})", self.region);
+        #[cfg(debug_assertions)]
+        println!("[AWS SSO] Register Device Client (region: {})", self.region);
 
         let resp = self.client
             .post(&url)
@@ -142,7 +145,8 @@ impl AWSSSOClient {
             return Err(format!("Device client registration failed ({}): {}", status, text));
         }
 
-        println!("Device client registered successfully");
+        #[cfg(debug_assertions)]
+        println!("[AWS SSO] Device client registered successfully");
         serde_json::from_str(&text)
             .map_err(|e| format!("Failed to parse client registration: {}", e))
     }
@@ -162,7 +166,8 @@ impl AWSSSOClient {
             "startUrl": start_url
         });
 
-        println!("\n[AWS SSO] Start Device Authorization");
+        #[cfg(debug_assertions)]
+        println!("[AWS SSO] Start Device Authorization");
 
         let resp = self.client
             .post(&url)
@@ -179,7 +184,8 @@ impl AWSSSOClient {
             return Err(format!("Device authorization failed ({}): {}", status, text));
         }
 
-        println!("Device authorization started");
+        #[cfg(debug_assertions)]
+        println!("[AWS SSO] Device authorization started");
         serde_json::from_str(&text)
             .map_err(|e| format!("Failed to parse device authorization: {}", e))
     }

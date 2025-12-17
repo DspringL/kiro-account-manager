@@ -1,29 +1,33 @@
 // 账号统计计算工具函数
 
-// 从 account 获取 quota（兼容旧数据和新 usageData）
-// API 返回 camelCase，后端 serde 序列化也是 camelCase
-// 兼容 usageBreakdownList（数组）和 usageBreakdown（单个对象）
+// 从 account 获取 breakdown（API 返回 camelCase）
 const getBreakdown = (a) => {
-  return a.usageData?.usageBreakdownList?.[0] || a.usageData?.usageBreakdown || null
+  return a.usageData?.usageBreakdownList?.[0] || null
 }
+
+// 获取总配额（主配额 + 试用 + 奖励）
 const getQuota = (a) => {
   const breakdown = getBreakdown(a)
-  const main = breakdown?.usageLimit ?? breakdown?.usage_limit ?? a.quota ?? 50
-  // 兼容 camelCase 和 snake_case
-  const freeTrialInfo = breakdown?.freeTrialInfo || breakdown?.free_trial_info
-  const freeTrial = freeTrialInfo?.usageLimit ?? freeTrialInfo?.usage_limit ?? 0
-  const bonuses = breakdown?.bonuses || []
-  const bonus = bonuses.reduce((sum, b) => sum + (b.usageLimit || b.usage_limit || 0), 0)
+  if (!breakdown) return a.quota ?? 50
+  
+  const main = breakdown.usageLimit ?? 50
+  const freeTrial = breakdown.freeTrialInfo?.usageLimit ?? 0
+  // bonuses 可能是 null/undefined，确保是数组
+  const bonuses = Array.isArray(breakdown.bonuses) ? breakdown.bonuses : []
+  const bonus = bonuses.reduce((sum, b) => sum + (b.usageLimit ?? 0), 0)
   return main + freeTrial + bonus
 }
+
+// 获取已使用量（主配额 + 试用 + 奖励）
 const getUsed = (a) => {
   const breakdown = getBreakdown(a)
-  const main = breakdown?.currentUsage ?? breakdown?.current_usage ?? a.used ?? 0
-  // 兼容 camelCase 和 snake_case
-  const freeTrialInfo = breakdown?.freeTrialInfo || breakdown?.free_trial_info
-  const freeTrial = freeTrialInfo?.currentUsage ?? freeTrialInfo?.current_usage ?? 0
-  const bonuses = breakdown?.bonuses || []
-  const bonus = bonuses.reduce((sum, b) => sum + (b.currentUsage || b.current_usage || 0), 0)
+  if (!breakdown) return a.used ?? 0
+  
+  const main = breakdown.currentUsage ?? 0
+  const freeTrial = breakdown.freeTrialInfo?.currentUsage ?? 0
+  // bonuses 可能是 null/undefined，确保是数组
+  const bonuses = Array.isArray(breakdown.bonuses) ? breakdown.bonuses : []
+  const bonus = bonuses.reduce((sum, b) => sum + (b.currentUsage ?? 0), 0)
   return main + freeTrial + bonus
 }
 const getSubType = (a) => a.usageData?.subscriptionInfo?.type ?? a.subscriptionType ?? ''

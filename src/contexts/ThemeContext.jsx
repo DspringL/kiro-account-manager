@@ -104,13 +104,11 @@ export function ThemeProvider({ children }) {
     }).catch(() => setLoaded(true))
   }, [])
 
-  // 保存设置到文件
+  // 保存设置到文件（使用增量更新，只传需要修改的字段）
   const setTheme = (newTheme) => {
     setThemeState(newTheme)
-    invoke('get_app_settings').then(settings => {
-      invoke('save_app_settings', { settings: { ...settings, theme: newTheme } })
-    }).catch(() => {
-      invoke('save_app_settings', { settings: { theme: newTheme } })
+    invoke('save_app_settings', { settings: { theme: newTheme } }).catch(err => {
+      console.error('保存主题设置失败:', err)
     })
   }
 

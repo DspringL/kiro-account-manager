@@ -28,8 +28,9 @@ function AccountCard({
   const breakdown = account.usageData?.usageBreakdownList?.[0]
   const percent = getUsagePercent(used, quota)
   const isExpired = account.expiresAt && new Date(account.expiresAt.replace(/\//g, '-')) < new Date()
-  const isBanned = account.status === 'banned' || account.status === '封禁' || account.status === '已封禁'
-  const isNormal = account.status === 'active' || account.status === '正常' || account.status === '有效'
+  // 统一状态判断：后端只设置 'active' 或 'banned'，兼容旧数据的中文状态
+  const isBanned = account.status === 'banned'
+  const isNormal = account.status === 'active'
 
   // 状态光环颜色
   const glowColor = isCurrentAccount

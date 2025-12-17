@@ -128,14 +128,20 @@ impl AccountStore {
     pub fn import_from_json(&mut self, json: &str) -> Result<usize, String> {
         match serde_json::from_str::<Vec<Account>>(json) {
             Ok(imported) => {
-                let count = imported.len();
+                let mut added = 0;
                 for account in imported {
-                    if !self.accounts.iter().any(|a| a.id == account.id) {
+                    // 按 id 或 email+provider 去重，避免重复导入
+                    let exists = self.accounts.iter().any(|a| {
+                        a.id == account.id || 
+                        (a.email == account.email && a.provider == account.provider)
+                    });
+                    if !exists {
                         self.accounts.push(account);
+                        added += 1;
                     }
                 }
                 self.save_to_file();
-                Ok(count)
+                Ok(added)
             }
             Err(e) => Err(e.to_string()),
         }

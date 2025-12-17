@@ -67,9 +67,8 @@ impl AuthProvider for SocialProvider {
         let code_verifier = auth_social::generate_code_verifier_social();
         let code_challenge = auth_social::generate_code_challenge_social(&code_verifier);
 
-        println!("\n[Social] Starting {} authentication...", provider);
-        println!("Redirect URI: {}", redirect_uri);
-        println!("State: {}", state);
+        #[cfg(debug_assertions)]
+        println!("[Social] Starting {} authentication", provider);
 
         // Step 3: 注册回调等待器
         let waiter = register_waiter(&state);
@@ -79,16 +78,19 @@ impl AuthProvider for SocialProvider {
         client.login(provider, &redirect_uri, &code_challenge, &state).await?;
 
         // Step 5: 等待 deep link 回调
-        println!("[Social] Waiting for deep link callback...");
+        #[cfg(debug_assertions)]
+        println!("[Social] Waiting for deep link callback");
         let callback = tokio::task::spawn_blocking(move || waiter.wait_for_callback())
             .await
             .map_err(|e| format!("Failed to join callback waiter: {}", e))?
             .map_err(|e| format!("OAuth callback failed: {}", e))?;
         
-        println!("[Social] Callback received, state: {}", callback.state);
+        #[cfg(debug_assertions)]
+        println!("[Social] Callback received");
 
         // Step 6: 交换 token
-        println!("[Social] Exchanging code for tokens...");
+        #[cfg(debug_assertions)]
+        println!("[Social] Exchanging code for tokens");
         let token_response: SocialTokenResponse = client
             .create_token(&callback.code, &code_verifier, &redirect_uri, None)
             .await?;
@@ -96,12 +98,8 @@ impl AuthProvider for SocialProvider {
         // Step 7: 构建 AuthResult
         let expires_at = chrono::Local::now() + chrono::Duration::seconds(token_response.expires_in);
 
-        println!("[Social] {} login successful! {}", provider, serde_json::to_string_pretty(&serde_json::json!({
-            "expiresIn": token_response.expires_in,
-            "expiresAt": expires_at.format("%Y/%m/%d %H:%M:%S").to_string(),
-            "hasIdToken": token_response.id_token.is_some(),
-            "hasProfileArn": token_response.profile_arn.is_some(),
-        })).unwrap_or_default());
+        #[cfg(debug_assertions)]
+        println!("[Social] {} login successful", provider);
 
         Ok(AuthResult {
             access_token: token_response.access_token,

@@ -153,18 +153,9 @@ pub async fn refresh_token_desktop(refresh_token: &str) -> Result<DesktopRefresh
                 let status = response.status();
                 let text = response.text().await.unwrap_or_default();
                 
-                println!("\n[Desktop] RefreshToken Response:");
-                println!("Status: {}", status);
-                // 格式化打印 JSON
-                match serde_json::from_str::<serde_json::Value>(&text) {
-                    Ok(json) => {
-                        match serde_json::to_string_pretty(&json) {
-                            Ok(pretty) => println!("{}", pretty),
-                            Err(_) => println!("{}", text),
-                        }
-                    }
-                    Err(_) => println!("{}", text),
-                }
+                // 只在调试时输出状态码，不输出敏感的 token 内容
+                #[cfg(debug_assertions)]
+                println!("[Desktop] RefreshToken Status: {}", status);
                 
                 if !status.is_success() {
                     if status.as_u16() == 401 {
@@ -221,19 +212,9 @@ pub async fn get_usage_limits_desktop(access_token: &str) -> Result<DesktopUsage
                 let status = response.status();
                 let text = response.text().await.unwrap_or_default();
                 
-                println!("\n[Social] GET USAGE LIMITS RESPONSE");
-                println!("Status: {}", status);
-                // 格式化打印 JSON
-                match serde_json::from_str::<serde_json::Value>(&text) {
-                    Ok(json) => {
-                        match serde_json::to_string_pretty(&json) {
-                            Ok(pretty) => println!("{}", pretty),
-                            Err(_) => println!("{}", text),
-                        }
-                    }
-                    Err(_) => println!("{}", text),
-                }
-                println!();
+                // 只在调试时输出状态码，不输出敏感内容
+                #[cfg(debug_assertions)]
+                println!("[Social] GetUsageLimits Status: {}", status);
                 
                 if !status.is_success() {
                     // 403 Forbidden = TEMPORARILY_SUSPENDED = 账号被封禁

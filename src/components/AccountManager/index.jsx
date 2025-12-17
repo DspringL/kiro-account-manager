@@ -170,11 +170,11 @@ function AccountManager() {
       // 更新当前账号标识
       invoke('get_kiro_local_token').then(setLocalToken).catch(() => setLocalToken(null))
       
-      // 从 usage_data 获取配额信息
+      // 从 usage_data 获取配额信息（统一使用 camelCase）
       const usageData = account.usageData
-      const breakdown = usageData?.usage_breakdown_list?.[0] || usageData?.usageBreakdownList?.[0]
-      const used = breakdown?.current_usage ?? breakdown?.currentUsage ?? 0
-      const limit = breakdown?.usage_limit ?? breakdown?.usageLimit ?? 50
+      const breakdown = usageData?.usageBreakdownList?.[0]
+      const used = breakdown?.currentUsage ?? 0
+      const limit = breakdown?.usageLimit ?? 50
       const remaining = limit - used
       const provider = account.provider || 'Unknown'
       setSwitchDialog({
