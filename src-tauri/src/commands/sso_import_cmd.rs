@@ -330,8 +330,8 @@ pub async fn import_from_sso_token(
     // 添加到账号列表
     let mut store = state.store.lock().map_err(|e| format!("锁定存储失败: {}", e))?;
     
-    // 检查是否已存在
-    if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email) {
+    // 按 email + provider 去重（SSO 导入都是 BuilderId）
+    if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email && a.provider.as_deref() == Some("BuilderId")) {
         existing.access_token = Some(token_data.access_token);
         existing.refresh_token = Some(token_data.refresh_token);
         existing.client_id = Some(client_id);

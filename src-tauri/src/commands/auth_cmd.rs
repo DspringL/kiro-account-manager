@@ -225,10 +225,10 @@ pub async fn handle_kiro_social_callback(
 
     let mut store = state.store.lock().unwrap();
     
-    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email) {
+    // 按 email + provider 去重
+    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email && a.provider.as_deref() == Some(&pending.provider)) {
         existing.access_token = Some(token_response.access_token.clone());
         existing.refresh_token = Some(token_response.refresh_token.clone());
-        existing.provider = Some(pending.provider.clone());
         existing.user_id = user_id;
         existing.usage_data = Some(usage_data);
         existing.status = "active".to_string();
@@ -297,10 +297,10 @@ pub async fn add_kiro_account(
     
     let mut store = state.store.lock().unwrap();
     
-    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == final_email) {
+    // 按 email + provider 去重
+    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == final_email && a.provider.as_deref() == Some(&idp)) {
         existing.access_token = Some(access_token);
         existing.refresh_token = Some(refresh_token);
-        existing.provider = Some(idp);
         existing.user_id = user_id;
         existing.csrf_token = Some(csrf_token);
         existing.usage_data = Some(usage_data);

@@ -120,7 +120,8 @@ pub async fn web_oauth_complete(
 
     let mut store = state.store.lock().unwrap();
     
-    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email) {
+    // 按 email + provider 去重
+    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email && a.provider.as_deref() == Some(&provider)) {
         // 更新现有账号
         existing.access_token = Some(auth_result.access_token.clone());
         // 根据 provider 存到不同字段

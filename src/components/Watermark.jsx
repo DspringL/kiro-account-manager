@@ -1,8 +1,10 @@
 // 硬件指纹水印组件 - 随机位置
 import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useI18n } from '../i18n'
 
 export default function Watermark() {
+  const { t } = useI18n()
   const [fingerprint, setFingerprint] = useState('')
   const [position, setPosition] = useState({ x: 0, y: 0 })
 
@@ -21,7 +23,7 @@ export default function Watermark() {
       .then(fp => setFingerprint(fp))
       .catch(err => {
         console.error('获取硬件指纹失败:', err)
-        setFingerprint('未知')
+        setFingerprint(t('common.unknown'))
       })
     
     // 初始随机位置
