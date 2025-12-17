@@ -107,7 +107,7 @@ function Sidebar({ activeMenu, onMenuChange }) {
         {/* 主题切换 */}
         <div className="relative">
           <button
-            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            onClick={() => { setShowThemeMenu(!showThemeMenu); setShowLangMenu(false) }}
             className={`flex items-center gap-1.5 px-2 py-1.5 ${colors.sidebarCard} rounded-lg text-xs ${colors.sidebarMuted} hover:text-white transition-all hover:scale-105`}
           >
             <ThemeIcon size={14} />
@@ -116,15 +116,15 @@ function Sidebar({ activeMenu, onMenuChange }) {
           {showThemeMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowThemeMenu(false)} />
-              <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[100px] z-50 animate-scale-in">
+              <div className={`absolute bottom-full left-0 mb-2 ${colors.card} rounded-xl shadow-xl border ${colors.cardBorder} py-1 min-w-[100px] z-50 animate-scale-in`}>
                 {Object.entries(themes).map(([key, themeConfig]) => {
                   const TIcon = themeIcons[key] || Sun
                   return (
                     <button
                       key={key}
                       onClick={() => { setTheme(key); setShowThemeMenu(false) }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                        theme === key ? 'text-blue-600 font-medium' : 'text-gray-700 dark:text-gray-300'
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${colors.menuHover} transition-colors ${
+                        theme === key ? `${colors.primary} font-medium` : colors.text
                       }`}
                     >
                       <TIcon size={14} />
@@ -140,7 +140,7 @@ function Sidebar({ activeMenu, onMenuChange }) {
         {/* 语言切换 */}
         <div className="relative">
           <button
-            onClick={() => setShowLangMenu(!showLangMenu)}
+            onClick={() => { setShowLangMenu(!showLangMenu); setShowThemeMenu(false) }}
             disabled={langLoading}
             className={`flex items-center gap-1.5 px-2 py-1.5 ${colors.sidebarCard} rounded-lg text-xs ${colors.sidebarMuted} hover:text-white transition-all hover:scale-105 disabled:opacity-50`}
           >
@@ -151,13 +151,13 @@ function Sidebar({ activeMenu, onMenuChange }) {
           {showLangMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)} />
-              <div className="absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 min-w-[120px] z-50 animate-scale-in">
+              <div className={`absolute bottom-full left-0 mb-2 ${colors.card} rounded-xl shadow-xl border ${colors.cardBorder} py-1 min-w-[120px] z-50 animate-scale-in`}>
                 {Object.entries(locales).map(([key, name]) => (
                   <button
                     key={key}
                     onClick={() => { setLocale(key); setShowLangMenu(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                      locale === key ? 'text-blue-600 font-medium' : 'text-gray-700 dark:text-gray-300'
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm ${colors.menuHover} transition-colors ${
+                      locale === key ? `${colors.primary} font-medium` : colors.text
                     }`}
                   >
                     {name}

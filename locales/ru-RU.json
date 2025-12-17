@@ -172,7 +172,7 @@
   "accounts.import": "Импорт",
   "accounts.export": "Экспорт",
   "accounts.refresh": "Обновить",
-  "accounts.refreshAll": "Обновить все",
+  "accounts.refreshAll": "Синхронизировать",
   "accounts.delete": "Удалить",
   "accounts.switch": "Переключить",
   "accounts.edit": "Редактировать",
@@ -267,10 +267,8 @@
   "kiroConfig.title": "Управление правилами",
   "kiroConfig.subtitle": "Управление MCP сервисами, Powers и правилами Steering для Kiro IDE",
   "kiroConfig.mcp": "MCP сервисы",
-  "kiroConfig.powers": "Powers",
   "kiroConfig.steering": "Правила Steering",
   "kiroConfig.mcpDesc": "Управление конфигурацией MCP сервисов",
-  "kiroConfig.powersDesc": "Управление установленными Powers",
 
   "mcp.title": "MCP сервисы",
   "mcp.add": "Добавить сервис",
@@ -293,14 +291,6 @@
   "mcp.saveFailed": "Ошибка сохранения",
   "mcp.templates": "Шаблоны",
   "mcp.useTemplate": "Использовать шаблон",
-
-  "powers.title": "Powers",
-  "powers.installed": "Установлено",
-  "powers.uninstall": "Удалить",
-  "powers.noPowers": "Powers не установлены",
-  "powers.confirmUninstall": "Удалить этот Power?",
-  "powers.uninstallSuccess": "Удалено",
-  "powers.uninstallFailed": "Ошибка удаления",
 
   "common.save": "Сохранить",
   "common.cancel": "Отмена",
@@ -489,11 +479,6 @@
   "mcpManager.errorNoName": "Введите имя сервиса",
   "mcpManager.errorNoCommand": "Введите команду",
 
-  "powersManager.subtitle": "Просмотр установленных Kiro Powers (только чтение)",
-  "powersManager.installed": "установлено",
-  "powersManager.noPowers": "Нет установленных Powers",
-  "powersManager.installInKiro": "Установите Powers в Kiro IDE",
-
   "common.saving": "Сохранение...",
 
   "pagination.perPage": "На странице",
@@ -569,5 +554,16 @@
   "callback.loginFailed": "Ошибка входа",
   "callback.processingTitle": "Обработка...",
   "callback.autoCloseHint": "Окно закроется автоматически или закройте вручную",
-  "callback.closeWindow": "Закрыть окно"
+  "callback.closeWindow": "Закрыть окно",
+
+  "tags.title": "Теги",
+  "tags.filter": "Фильтр по тегу",
+  "tags.all": "Все теги",
+  "tags.noTags": "Без тегов",
+  "tags.addTag": "Добавить тег",
+  "tags.newTagPlaceholder": "Введите новый тег...",
+  "tags.manage": "Управление тегами",
+  "tags.edit": "Редактировать теги",
+  "tags.selectTags": "Выбрать теги",
+  "tags.createNew": "Создать новый тег"
 }

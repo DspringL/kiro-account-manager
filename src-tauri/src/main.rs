@@ -29,7 +29,7 @@ use browser::detect_installed_browsers;
 use commands::account_cmd::{
     get_accounts, delete_account, delete_accounts, update_account, sync_account,
     refresh_account_token, verify_account, add_account_by_social, add_local_kiro_account,
-    add_account_by_idc, import_accounts, export_accounts
+    add_account_by_idc, import_accounts, export_accounts, get_all_tags, update_account_tags
 };
 use commands::app_settings_cmd::*;
 use commands::auth_cmd::*;
@@ -99,6 +99,8 @@ fn main() {
             add_account_by_idc,
             import_accounts,
             export_accounts,
+            get_all_tags,
+            update_account_tags,
             // Auth 命令
             get_current_user,
             logout,

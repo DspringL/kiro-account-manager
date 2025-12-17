@@ -166,7 +166,7 @@
   "accounts.import": "Import",
   "accounts.export": "Export",
   "accounts.refresh": "Refresh",
-  "accounts.refreshAll": "Refresh All",
+  "accounts.refreshAll": "Sync Data",
   "accounts.delete": "Delete",
   "accounts.switch": "Switch",
   "accounts.edit": "Edit",
@@ -261,10 +261,8 @@
   "kiroConfig.title": "Rules Management",
   "kiroConfig.subtitle": "Manage Kiro IDE MCP services, Powers and Steering rules",
   "kiroConfig.mcp": "MCP Services",
-  "kiroConfig.powers": "Powers",
   "kiroConfig.steering": "Steering Rules",
   "kiroConfig.mcpDesc": "Manage MCP service configurations",
-  "kiroConfig.powersDesc": "Manage installed Powers",
 
   "mcp.title": "MCP Services",
   "mcp.add": "Add Service",
@@ -287,14 +285,6 @@
   "mcp.saveFailed": "Save failed",
   "mcp.templates": "Templates",
   "mcp.useTemplate": "Use Template",
-
-  "powers.title": "Powers",
-  "powers.installed": "Installed",
-  "powers.uninstall": "Uninstall",
-  "powers.noPowers": "No Powers installed",
-  "powers.confirmUninstall": "Uninstall this Power?",
-  "powers.uninstallSuccess": "Uninstalled",
-  "powers.uninstallFailed": "Uninstall failed",
 
   "common.save": "Save",
   "common.cancel": "Cancel",
@@ -483,11 +473,6 @@
   "mcpManager.errorNoName": "Please enter service name",
   "mcpManager.errorNoCommand": "Please enter command",
 
-  "powersManager.subtitle": "View installed Kiro Powers (read-only)",
-  "powersManager.installed": "installed",
-  "powersManager.noPowers": "No Powers installed",
-  "powersManager.installInKiro": "Install Powers in Kiro IDE",
-
   "common.saving": "Saving...",
 
   "pagination.perPage": "Per page",
@@ -563,5 +548,16 @@
   "callback.loginFailed": "Login Failed",
   "callback.processingTitle": "Processing...",
   "callback.autoCloseHint": "This window will close automatically, or you can close it manually",
-  "callback.closeWindow": "Close Window"
+  "callback.closeWindow": "Close Window",
+
+  "tags.title": "Tags",
+  "tags.filter": "Filter by tag",
+  "tags.all": "All Tags",
+  "tags.noTags": "No Tags",
+  "tags.addTag": "Add Tag",
+  "tags.newTagPlaceholder": "Enter new tag...",
+  "tags.manage": "Manage Tags",
+  "tags.edit": "Edit Tags",
+  "tags.selectTags": "Select Tags",
+  "tags.createNew": "Create New Tag"
 }

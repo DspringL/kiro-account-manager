@@ -20,9 +20,11 @@ export const themes = {
     textMuted: 'text-gray-500',
     input: 'bg-white border-gray-200',
     inputFocus: 'focus:ring-blue-500/20 focus:border-blue-500',
-    // 次要按钮样式
     btnSecondary: 'bg-gray-100 hover:bg-gray-200 border-gray-300',
     iconColor: '#1a1a1a',
+    // 下拉菜单样式
+    menuHover: 'hover:bg-gray-100',
+    primary: 'text-blue-600',
   },
   dark: {
     nameKey: 'theme.dark',
@@ -40,9 +42,11 @@ export const themes = {
     textMuted: 'text-gray-400',
     input: 'bg-[#252540] border-gray-700',
     inputFocus: 'focus:ring-blue-500/30 focus:border-blue-500',
-    // 次要按钮样式
     btnSecondary: 'bg-[#1a1a1a] hover:bg-[#252525] border-[#333]',
     iconColor: 'white',
+    // 下拉菜单样式
+    menuHover: 'hover:bg-white/10',
+    primary: 'text-blue-400',
   },
   purple: {
     nameKey: 'theme.purple',
@@ -62,9 +66,11 @@ export const themes = {
     inputFocus: 'focus:ring-purple-500/30 focus:border-purple-500',
     accent: 'text-purple-600',
     accentBg: 'bg-purple-500',
-    // 登录按钮样式
     loginBtn: 'bg-purple-100 hover:bg-purple-200 border-purple-300',
     loginBtnIcon: '#6d28d9',
+    // 下拉菜单样式
+    menuHover: 'hover:bg-purple-100',
+    primary: 'text-purple-600',
   },
   green: {
     nameKey: 'theme.green',
@@ -84,9 +90,11 @@ export const themes = {
     inputFocus: 'focus:ring-emerald-500/30 focus:border-emerald-500',
     accent: 'text-emerald-600',
     accentBg: 'bg-emerald-500',
-    // 登录按钮样式
     loginBtn: 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300',
     loginBtnIcon: '#047857',
+    // 下拉菜单样式
+    menuHover: 'hover:bg-emerald-100',
+    primary: 'text-emerald-600',
   },
 }
 

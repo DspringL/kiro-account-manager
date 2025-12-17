@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, emit } from '@tauri-apps/api/event'
 import Sidebar from './components/Sidebar'
 import Home from './components/Home'
 import AccountManager from './components/AccountManager/index'
@@ -15,6 +15,7 @@ import Watermark from './components/Watermark'
 
 import { useApp } from './hooks/useApp'
 import { useAppSettings } from './contexts/AppSettingsContext'
+import { AccountProvider } from './contexts/AccountContext'
 
 function App() {
   const [user, setUser] = useState(null)
@@ -92,6 +93,8 @@ function App() {
       )
       
       console.log('[AutoRefresh] token 刷新完成')
+      // 通知 AccountContext 刷新缓存
+      emit('accounts-updated')
     } catch (e) {
       console.error('[AutoRefresh] 刷新失败:', e)
     }
@@ -149,6 +152,8 @@ function App() {
       )
       
       console.log('[AutoRefresh] token 刷新完成')
+      // 通知 AccountContext 刷新缓存
+      emit('accounts-updated')
     } catch (e) {
       console.error('[AutoRefresh] 刷新失败:', e)
     }
@@ -285,20 +290,22 @@ function App() {
   }
 
   return (
-    <div className={`flex h-screen ${colors.main}`}>
-      <Sidebar 
-        activeMenu={activeMenu} 
-        onMenuChange={setActiveMenu}
-        user={user}
-        onLogout={handleLogout}
-      />
-      <main className="flex-1 overflow-hidden">
-        {renderContent()}
-      </main>
-      
-      <UpdateChecker />
-      <Watermark />
-    </div>
+    <AccountProvider>
+      <div className={`flex h-screen ${colors.main}`}>
+        <Sidebar 
+          activeMenu={activeMenu} 
+          onMenuChange={setActiveMenu}
+          user={user}
+          onLogout={handleLogout}
+        />
+        <main className="flex-1 overflow-hidden">
+          {renderContent()}
+        </main>
+        
+        <UpdateChecker />
+        <Watermark />
+      </div>
+    </AccountProvider>
   )
 }
 

@@ -563,3 +563,25 @@ pub fn update_account(
         Err("账号不存在".to_string())
     }
 }
+
+/// 获取所有标签（去重）
+#[tauri::command]
+pub fn get_all_tags(state: State<AppState>) -> Vec<String> {
+    state.store.lock().unwrap().get_all_tags()
+}
+
+/// 更新账号标签
+#[tauri::command]
+pub fn update_account_tags(
+    state: State<AppState>,
+    id: String,
+    tags: Vec<String>,
+) -> Result<Account, String> {
+    let mut store = state.store.lock().unwrap();
+    if store.update_tags(&id, tags) {
+        store.accounts.iter().find(|a| a.id == id).cloned()
+            .ok_or_else(|| "账号不存在".to_string())
+    } else {
+        Err("账号不存在".to_string())
+    }
+}

@@ -1,4 +1,4 @@
-import { Search, Download, Upload, RefreshCw, Trash2, Plus, Sparkles } from 'lucide-react'
+import { Search, Download, Upload, RefreshCw, Trash2, Plus, Sparkles, Tag } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 
 function AccountHeader({
@@ -13,6 +13,9 @@ function AccountHeader({
   autoRefreshing,
   lastRefreshTime,
   refreshProgress,
+  allTags = [],
+  selectedTag,
+  onTagFilter,
 }) {
   const { t, theme, colors } = useApp()
   const isDark = theme === 'dark'
@@ -49,6 +52,28 @@ function AccountHeader({
               className={`pl-9 pr-4 py-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'} border-0 rounded-xl text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text} transition-all focus:w-56`}
             />
           </div>
+          {/* 标签筛选 */}
+          {allTags.length > 0 && (
+            <div className="relative">
+              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
+              <select
+                value={selectedTag || ''}
+                onChange={(e) => onTagFilter(e.target.value || null)}
+                className={`pl-8 pr-8 py-2 ${colors.input} ${colors.inputFocus} border rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.text} appearance-none cursor-pointer`}
+              >
+                <option value="">{t('tags.all')}</option>
+                {allTags.map(tag => (
+                  <option key={tag} value={tag}>{tag}</option>
+                ))}
+              </select>
+              {/* 下拉箭头 */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          )}
           {selectedCount > 0 && (
             <button 
               onClick={onBatchDelete} 
@@ -82,10 +107,11 @@ function AccountHeader({
           <button 
             onClick={onRefreshAll} 
             disabled={autoRefreshing} 
-            className={`btn-icon p-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50 transition-all`} 
+            className={`btn-icon px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50 transition-all flex items-center gap-1.5`} 
             title={t('accounts.refreshAll')}
           >
-            <RefreshCw size={18} className={`${colors.textMuted} ${autoRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw size={16} className={`${colors.textMuted} ${autoRefreshing ? 'animate-spin' : ''}`} />
+            <span className={`text-sm ${colors.textMuted}`}>{t('accounts.refreshAll')}</span>
           </button>
         </div>
       </div>

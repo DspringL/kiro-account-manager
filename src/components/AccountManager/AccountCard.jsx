@@ -100,7 +100,7 @@ const AccountCard = memo(function AccountCard({
         </div>
 
         {/* 订阅类型和登录方式 */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium ${
             (subType.includes('PRO+') || subPlan.includes('PRO+'))
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
@@ -119,6 +119,20 @@ const AccountCard = memo(function AccountCard({
             </span>
           )}
         </div>
+
+        {/* 标签 */}
+        {account.tags && account.tags.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            {account.tags.map(tag => (
+              <span 
+                key={tag} 
+                className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-600'}`}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* 配额进度 */}
         <div className={`p-3 rounded-xl mb-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, emit } from '@tauri-apps/api/event'
 
 export function useAccounts() {
   const [accounts, setAccounts] = useState([])
@@ -52,12 +52,12 @@ export function useAccounts() {
       setRefreshProgress(prev => ({ ...prev, currentEmail: account.email }))
       let success = false, message = ''
       try {
-        // 只刷新 token，不获取 usage
-        const updated = await invoke('refresh_account_token', { id: account.id })
+        // 完整同步：刷新 token + 获取 usage
+        const updated = await invoke('sync_account', { id: account.id })
         const idx = updatedAccounts.findIndex(a => a.id === account.id)
         if (idx !== -1) updatedAccounts[idx] = updated
         success = true
-        message = 'Token 已刷新'
+        message = '同步成功'
       } catch (e) {
         message = String(e).slice(0, 30)
       }
@@ -68,6 +68,8 @@ export function useAccounts() {
 
     setAccounts(updatedAccounts)
     setLastRefreshTime(new Date().toLocaleTimeString())
+    // 通知其他组件数据已更新
+    emit('accounts-updated')
     setTimeout(() => {
       setAutoRefreshing(false)
       setRefreshProgress({ current: 0, total: 0, currentEmail: '', results: [] })
@@ -127,6 +129,8 @@ export function useAccounts() {
     loadAccounts()
     
     const unlistenLoginSuccess = listen('login-success', () => loadAccounts())
+    // 监听账号数据更新事件（来自 App.jsx 自动刷新或其他地方）
+    const unlistenAccountsUpdated = listen('accounts-updated', () => loadAccounts())
     const unlistenKiroLoginData = listen('kiro-login-data', async (event) => {
       try {
         const data = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
@@ -149,6 +153,7 @@ export function useAccounts() {
 
     return () => {
       unlistenLoginSuccess.then(fn => fn())
+      unlistenAccountsUpdated.then(fn => fn())
       unlistenKiroLoginData.then(fn => fn())
     }
   }, [loadAccounts])

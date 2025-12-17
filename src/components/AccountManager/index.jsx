@@ -27,6 +27,7 @@ function AccountManager() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
+  const [selectedTag, setSelectedTag] = useState(null)
   
   // 切换账号弹窗状态
   const [switchDialog, setSwitchDialog] = useState(null) // { type, title, message, account }
@@ -52,12 +53,34 @@ function AccountManager() {
     handleExport,
   } = useAccounts()
 
+  // 获取所有标签
+  const allTags = useMemo(() => {
+    const tags = new Set()
+    accounts.forEach(a => {
+      if (a.tags) a.tags.forEach(t => tags.add(t))
+    })
+    return Array.from(tags).sort()
+  }, [accounts])
+
+  // 当选中的标签不存在时，重置筛选
+  useEffect(() => {
+    if (selectedTag && !allTags.includes(selectedTag)) {
+      setSelectedTag(null)
+    }
+  }, [allTags, selectedTag])
+
   const filteredAccounts = useMemo(() =>
-    accounts.filter(a =>
-      a.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.label.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [accounts, searchTerm]
+    accounts.filter(a => {
+      const term = searchTerm.toLowerCase()
+      // 搜索过滤：邮箱、备注、标签
+      const matchSearch = a.email.toLowerCase().includes(term) ||
+        a.label.toLowerCase().includes(term) ||
+        (a.tags && a.tags.some(tag => tag.toLowerCase().includes(term)))
+      // 标签过滤
+      const matchTag = !selectedTag || (a.tags && a.tags.includes(selectedTag))
+      return matchSearch && matchTag
+    }),
+    [accounts, searchTerm, selectedTag]
   )
 
   const totalPages = Math.ceil(filteredAccounts.length / pageSize) || 1
@@ -67,6 +90,7 @@ function AccountManager() {
   )
 
   const handleSearchChange = useCallback((term) => { setSearchTerm(term); setCurrentPage(1) }, [])
+  const handleTagFilter = useCallback((tag) => { setSelectedTag(tag); setCurrentPage(1) }, [])
   const handlePageSizeChange = useCallback((size) => { setPageSize(size); setCurrentPage(1) }, [])
   const handleSelectAll = useCallback((checked) => { setSelectedIds(checked ? filteredAccounts.map(a => a.id) : []) }, [filteredAccounts])
   const handleSelectOne = useCallback((id, checked) => { setSelectedIds(prev => checked ? [...prev, id] : prev.filter(i => i !== id)) }, [])
@@ -211,6 +235,9 @@ function AccountManager() {
         autoRefreshing={autoRefreshing}
         lastRefreshTime={lastRefreshTime}
         refreshProgress={refreshProgress}
+        allTags={allTags}
+        selectedTag={selectedTag}
+        onTagFilter={handleTagFilter}
       />
       <div className="flex-1 overflow-auto">
       <AccountTable

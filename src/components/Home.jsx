@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { invoke } from '@tauri-apps/api/core'
+import { useState } from 'react'
 import { RefreshCw, Users, Zap, Shield, Clock, TrendingUp, Sparkles } from 'lucide-react'
 import { useApp } from '../hooks/useApp'
 import { useDialog } from '../contexts/DialogContext'
-import { calcAccountStats, getQuota, getUsed } from '../utils/accountStats'
+import { useAccount } from '../contexts/AccountContext'
 
 // 骨架屏组件
 function Skeleton({ className }) {
@@ -104,43 +103,27 @@ function StatCard({ icon: Icon, iconBg, value, label, delay, isDark }) {
 function Home() {
   const { t, theme, colors } = useApp()
   const { showError } = useDialog()
-  const [tokens, setTokens] = useState([])
-  const [localToken, setLocalToken] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const { 
+    accounts: tokens, 
+    localToken, 
+    loading, 
+    refreshing, 
+    stats, 
+    currentAccount,
+    currentQuotaInfo,
+    refresh,
+    refreshAccount 
+  } = useAccount()
   const [refreshingAccount, setRefreshingAccount] = useState(false)
 
-  useEffect(() => { loadData() }, [])
-
-  const loadData = async () => {
-    setLoading(true)
-    try {
-      const [tokensData, localData] = await Promise.all([
-        invoke('get_accounts'),
-        invoke('get_kiro_local_token').catch(() => null)
-      ])
-      setTokens(tokensData)
-      setLocalToken(localData)
-    } catch (e) { 
-      console.error('Failed to load data:', e)
-      showError(t('home.loadFailed'), t('home.loadDataFailed') + ': ' + e)
-    }
-    setLoading(false)
-  }
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await loadData()
-    setTimeout(() => setRefreshing(false), 500)
-  }
+  const handleRefresh = () => refresh()
 
   // 刷新当前账号的 token 和 usage
   const handleRefreshCurrentAccount = async () => {
     if (!currentAccount || refreshingAccount) return
     setRefreshingAccount(true)
     try {
-      await invoke('sync_account', { id: currentAccount.id })
-      await loadData()
+      await refreshAccount(currentAccount.id)
     } catch (e) {
       console.error('Refresh account failed:', e)
       showError(t('common.refreshFailed'), String(e))
@@ -149,19 +132,7 @@ function Home() {
     }
   }
 
-  const stats = calcAccountStats(tokens)
-  
-  // 找到与当前登录账号匹配的账号（按优先级：refreshToken > accessToken）
-  // 注意：不能用 provider 匹配，因为可能有多个同 provider 的账号
-  const currentAccount = localToken 
-    ? tokens.find(t => 
-        (localToken.refreshToken && t.refreshToken === localToken.refreshToken) ||
-        (localToken.accessToken && t.accessToken === localToken.accessToken)
-      )
-    : null
-  const currentQuota = currentAccount ? getQuota(currentAccount) : 0
-  const currentUsed = currentAccount ? getUsed(currentAccount) : 0
-  const currentPercent = currentQuota > 0 ? Math.round((currentUsed / currentQuota) * 100) : 0
+  const { quota: currentQuota, used: currentUsed, percent: currentPercent } = currentQuotaInfo
   const isDark = theme === 'dark'
 
   if (loading) {

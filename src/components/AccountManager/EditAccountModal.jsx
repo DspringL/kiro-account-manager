@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { X, Key, Copy, Check, Shield, ChevronDown, ChevronUp, Clock } from 'lucide-react'
+import { X, Key, Copy, Check, Shield, ChevronDown, ChevronUp, Clock, Tag, Plus } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
 
@@ -17,14 +17,41 @@ function EditAccountModal({ account, onClose, onSuccess }) {
     clientId: account.clientId || '',
     clientSecret: account.clientSecret || '',
   })
+  const [tags, setTags] = useState(account.tags || [])
+  const [allTags, setAllTags] = useState([])
+  const [newTag, setNewTag] = useState('')
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(null)
   const [showTokens, setShowTokens] = useState(true)
+
+  // 加载所有标签
+  useEffect(() => {
+    invoke('get_all_tags').then(setAllTags).catch(() => {})
+  }, [])
 
   const handleCopy = (text, field) => {
     navigator.clipboard.writeText(text)
     setCopied(field)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+  const handleAddTag = () => {
+    // 去除首尾空格，限制长度 20 字符
+    const trimmed = newTag.trim().slice(0, 20)
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags([...tags, trimmed])
+      setNewTag('')
+    }
+  }
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(t => t !== tagToRemove))
+  }
+
+  const handleSelectExistingTag = (tag) => {
+    if (!tags.includes(tag)) {
+      setTags([...tags, tag])
+    }
   }
 
   const handleSave = async () => {
@@ -42,6 +69,8 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         params.clientSecret = form.clientSecret || null
       }
       await invoke('update_account', params)
+      // 保存标签
+      await invoke('update_account_tags', { id: account.id, tags })
       onSuccess?.()
       onClose()
     } catch (e) {
@@ -87,6 +116,72 @@ function EditAccountModal({ account, onClose, onSuccess }) {
               placeholder={t('editAccount.labelPlaceholder')}
               className={`w-full px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${colors.input} ${colors.text}`}
             />
+          </div>
+
+          {/* 标签管理 */}
+          <div>
+            <label className={`block text-sm font-medium ${colors.textMuted} mb-2 flex items-center gap-1.5`}>
+              <Tag size={14} />
+              {t('tags.title')}
+            </label>
+            {/* 已选标签 */}
+            <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
+              {tags.map(tag => (
+                <span 
+                  key={tag} 
+                  className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-100 text-purple-600'}`}
+                >
+                  {tag}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveTag(tag)} 
+                    className="hover:text-red-500"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+              {tags.length === 0 && (
+                <span className={`text-xs ${colors.textMuted}`}>{t('tags.noTags')}</span>
+              )}
+            </div>
+            {/* 添加新标签 */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                placeholder={t('tags.newTagPlaceholder')}
+                className={`flex-1 px-3 py-1.5 border ${colors.cardBorder} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.input} ${colors.text}`}
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                disabled={!newTag.trim()}
+                className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 disabled:opacity-50 flex items-center gap-1"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            {/* 已有标签快速选择 */}
+            {allTags.filter(t => !tags.includes(t)).length > 0 && (
+              <div className="mt-2">
+                <span className={`text-xs ${colors.textMuted}`}>{t('tags.selectTags')}:</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {allTags.filter(t => !tags.includes(t)).map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleSelectExistingTag(tag)}
+                      className={`text-xs px-2 py-0.5 rounded-full border ${isDark ? 'border-gray-600 hover:bg-white/10' : 'border-gray-300 hover:bg-gray-100'} ${colors.text}`}
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Token 凭证 */}

@@ -31,6 +31,9 @@ pub struct Account {
     pub profile_arn: Option<String>,
     // 原始 usage API 响应
     pub usage_data: Option<serde_json::Value>,
+    // 标签/分组
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
 }
 
 
@@ -58,6 +61,7 @@ impl Account {
             id_token: None,
             profile_arn: None,
             usage_data: None,
+            tags: None,
         }
     }
 }
@@ -149,5 +153,29 @@ impl AccountStore {
 
     pub fn export_to_json(&self) -> String {
         serde_json::to_string_pretty(&self.accounts).unwrap_or_default()
+    }
+
+    // 获取所有标签（去重）
+    pub fn get_all_tags(&self) -> Vec<String> {
+        let mut tags: Vec<String> = self.accounts
+            .iter()
+            .filter_map(|a| a.tags.as_ref())
+            .flatten()
+            .cloned()
+            .collect();
+        tags.sort();
+        tags.dedup();
+        tags
+    }
+
+    // 更新账号标签
+    pub fn update_tags(&mut self, id: &str, tags: Vec<String>) -> bool {
+        if let Some(account) = self.accounts.iter_mut().find(|a| a.id == id) {
+            account.tags = if tags.is_empty() { None } else { Some(tags) };
+            self.save_to_file();
+            true
+        } else {
+            false
+        }
     }
 }
