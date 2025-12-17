@@ -422,6 +422,7 @@
   "accountCard.editRemark": "编辑备注",
   "accountCard.delete": "删除",
   "accountCard.tokenExpired": "已过期",
+  "accountCard.rightClickTip": "右键查看更多操作",
 
   "refresh.title": "刷新账号",
   "refresh.progress": "进度",

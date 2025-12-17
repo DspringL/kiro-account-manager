@@ -237,52 +237,16 @@ const AccountCard = memo(function AccountCard({
 
         {/* Token 过期时间 */}
         {account.expiresAt && (
-          <div className={`text-xs ${isExpired ? 'text-red-500' : colors.textMuted} mb-3 flex items-center gap-1`}>
+          <div className={`text-xs ${isExpired ? 'text-red-500' : colors.textMuted} flex items-center gap-1`}>
             <Clock size={12} />
             Token: {account.expiresAt}
             {isExpired && <span className="text-red-500 font-medium ml-1">{t('accountCard.tokenExpired')}</span>}
           </div>
         )}
 
-        {/* 操作按钮 */}
-        <div className="flex items-center justify-center gap-2 pt-2 mt-auto border-t border-gray-200 dark:border-gray-700">
-          <button 
-            onClick={() => onSwitch(account)} 
-            disabled={switchingId === account.id} 
-            className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} disabled:opacity-50`}
-            title={t('accountCard.switchAccount')}
-          >
-            <Repeat size={14} className={`text-blue-500 ${switchingId === account.id ? 'animate-spin' : ''}`} />
-          </button>
-          <button 
-            onClick={() => onRefresh(account.id)} 
-            disabled={refreshingId === account.id} 
-            className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} 
-            title={t('accountCard.refresh')}
-          >
-            <RefreshCw size={14} className={`${colors.textMuted} ${refreshingId === account.id ? 'animate-spin' : ''}`} />
-          </button>
-          <button 
-            onClick={() => onEdit(account)} 
-            className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} 
-            title={t('accountCard.viewDetails')}
-          >
-            <Eye size={14} className={colors.textMuted} />
-          </button>
-          <button 
-            onClick={() => onEditLabel(account)} 
-            className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`} 
-            title={t('accountCard.editRemark')}
-          >
-            <Edit2 size={14} className={colors.textMuted} />
-          </button>
-          <button 
-            onClick={() => onDelete(account.id)} 
-            className={`p-2 rounded-lg transition-all ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'}`} 
-            title={t('accountCard.delete')}
-          >
-            <Trash2 size={14} className="text-red-400" />
-          </button>
+        {/* 右键提示 */}
+        <div className={`text-xs ${colors.textMuted} mt-auto pt-2 text-center opacity-50`}>
+          {t('accountCard.rightClickTip')}
         </div>
       </div>
     </div>

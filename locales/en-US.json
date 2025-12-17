@@ -416,6 +416,7 @@
   "accountCard.editRemark": "Edit Remark",
   "accountCard.delete": "Delete",
   "accountCard.tokenExpired": "Expired",
+  "accountCard.rightClickTip": "Right-click for more",
 
   "refresh.title": "Refresh Accounts",
   "refresh.progress": "Progress",

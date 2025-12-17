@@ -422,6 +422,7 @@
   "accountCard.editRemark": "Редактировать заметку",
   "accountCard.delete": "Удалить",
   "accountCard.tokenExpired": "Истёк",
+  "accountCard.rightClickTip": "ПКМ для действий",
 
   "refresh.title": "Обновление аккаунтов",
   "refresh.progress": "Прогресс",
