@@ -47,15 +47,24 @@ export function AppSettingsProvider({ children }) {
   useEffect(() => {
     loadSettings()
 
-    // 监听设置变更事件
-    const unlisten = listen('app-settings-changed', (event) => {
-      if (event.payload) {
-        setSettings(event.payload)
-      }
-    })
+    let unlisten
+
+    const setupListener = async () => {
+      // 监听设置变更事件
+      unlisten = await listen('app-settings-changed', (event) => {
+        if (event.payload) {
+          setSettings(event.payload)
+        } else {
+          // 如果没有payload，重新加载设置
+          loadSettings()
+        }
+      })
+    }
+
+    setupListener()
 
     return () => {
-      unlisten.then(fn => fn())
+      if (unlisten) unlisten()
     }
   }, [])
 

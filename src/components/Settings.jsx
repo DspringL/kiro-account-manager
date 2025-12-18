@@ -4,10 +4,12 @@ import { emit } from '@tauri-apps/api/event'
 import { Lock, Copy, Sun, Moon, Palette, Check, RefreshCw, Settings as SettingsIcon, Clock, Globe, Search, Shield, Download, Upload, Shuffle, AlertTriangle } from 'lucide-react'
 import { useApp } from '../hooks/useApp'
 import { useDialog } from '../contexts/DialogContext'
+import { useAppSettings } from '../contexts/AppSettingsContext'
 
 function Settings() {
   const { t, theme, colors, setTheme } = useApp()
   const { showConfirm, showError, showSuccess } = useDialog()
+  const { updateSettings: updateAppSettings } = useAppSettings()
   const isDark = theme === 'dark'
   
   const [aiModel, setAiModel] = useState('claude-sonnet-4.5')
@@ -94,9 +96,13 @@ function Settings() {
   const saveAppSettings = async (updates, notifyChange = false) => {
     try {
       await invoke('save_app_settings', { settings: updates })
+      // 同步到AppSettingsContext缓存
+      await updateAppSettings(updates)
       if (notifyChange) {
         await emit('settings-changed')
       }
+      // 同时发送app-settings-changed事件，确保App.jsx的ref同步
+      await emit('app-settings-changed')
     } catch (err) {
       console.error('Failed to save app settings:', err)
       await showError(t('settings.saveFailed'), t('settings.saveFailed') + ': ' + err)
