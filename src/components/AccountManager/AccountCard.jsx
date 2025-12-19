@@ -1,28 +1,57 @@
-import { memo, useState, useEffect, useCallback } from 'react'
+import { memo, useState, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { RefreshCw, Eye, Trash2, Copy, Check, Clock, Repeat, Edit2 } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import { getUsagePercent, getProgressBarColor } from './hooks/useAccountStats'
 import { getQuota, getUsed, getSubType, getSubPlan } from '../../utils/accountStats'
 
-// 右键菜单组件
+// 右键菜单组件（使用 Portal 渲染到 body）
 function ContextMenu({ x, y, onClose, items, isDark }) {
+  const menuRef = useRef(null)
+  const [position, setPosition] = useState({ x, y })
+
+  // 计算菜单位置，确保不超出视口
+  useEffect(() => {
+    if (!menuRef.current) return
+    const menu = menuRef.current
+    const rect = menu.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+    
+    let newX = x
+    let newY = y
+    
+    // 右边超出
+    if (x + rect.width > viewportWidth - 10) {
+      newX = viewportWidth - rect.width - 10
+    }
+    // 下边超出
+    if (y + rect.height > viewportHeight - 10) {
+      newY = viewportHeight - rect.height - 10
+    }
+    
+    setPosition({ x: newX, y: newY })
+  }, [x, y])
+
   useEffect(() => {
     const handleClick = () => onClose()
     const handleScroll = () => onClose()
     document.addEventListener('click', handleClick)
-    document.addEventListener('scroll', handleScroll, true)
+    window.addEventListener('scroll', handleScroll, true)
     return () => {
       document.removeEventListener('click', handleClick)
-      document.removeEventListener('scroll', handleScroll, true)
+      window.removeEventListener('scroll', handleScroll, true)
     }
   }, [onClose])
 
-  return (
+  // 使用 Portal 渲染到 body，避免被父元素的 transform 影响
+  return createPortal(
     <div
-      className={`fixed z-50 min-w-[160px] py-1 rounded-lg shadow-xl border ${
+      ref={menuRef}
+      className={`fixed z-[9999] min-w-[160px] py-1 rounded-lg shadow-xl border ${
         isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
       }`}
-      style={{ left: x, top: y }}
+      style={{ left: position.x, top: position.y }}
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, idx) =>
@@ -44,7 +73,8 @@ function ContextMenu({ x, y, onClose, items, isDark }) {
           </button>
         )
       )}
-    </div>
+    </div>,
+    document.body
   )
 }
 

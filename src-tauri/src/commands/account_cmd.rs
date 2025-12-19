@@ -38,7 +38,10 @@ pub struct VerifyAccountParams {
 
 #[tauri::command]
 pub fn get_accounts(state: State<AppState>) -> Vec<Account> {
-    state.store.lock().unwrap().get_all()
+    let mut store = state.store.lock().unwrap();
+    // 每次获取前重新从文件加载，确保数据最新
+    store.reload();
+    store.get_all()
 }
 
 #[tauri::command]
@@ -321,24 +324,39 @@ pub async fn add_account_by_social(
     let usage_data = serde_json::to_value(&usage_result).unwrap_or(serde_json::Value::Null);
     let is_banned = ban_reason.is_some();
     
-    let email = usage_result.as_ref()
+    let new_email = usage_result.as_ref()
         .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.email.clone())
-        .unwrap_or_else(|| "unknown@kiro.dev".to_string());
+        .and_then(|u| u.email.clone());
     let user_id = usage_result.as_ref()
         .and_then(|u| u.user_info.as_ref())
         .and_then(|u| u.user_id.clone());
     
+    // 先根据 provider 参数或邮箱推断 idp
     let idp = provider.unwrap_or_else(|| {
-        if email.contains("gmail") { "Google".to_string() }
-        else if email.contains("github") { "Github".to_string() }
-        else { "Google".to_string() }
+        if let Some(ref e) = new_email {
+            if e.contains("gmail") { "Google".to_string() }
+            else if e.contains("github") { "Github".to_string() }
+            else { "Google".to_string() }
+        } else {
+            "Google".to_string()
+        }
     });
     
     let mut store = state.store.lock().unwrap();
     
-    // 按 email + provider 去重
-    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email && a.provider.as_deref() == Some(&idp)) {
+    // 查找已存在的账号：优先按邮箱匹配，其次按 refresh_token 匹配
+    let existing_idx = if let Some(ref email) = new_email {
+        store.accounts.iter().position(|a| &a.email == email && a.provider.as_deref() == Some(&idp))
+    } else {
+        // 被封禁时无法获取邮箱，尝试通过 refresh_token 匹配
+        store.accounts.iter().position(|a| {
+            a.provider.as_deref() == Some(&idp) && a.refresh_token.as_ref() == Some(&refresh_token)
+        })
+    };
+    
+    let account = if let Some(idx) = existing_idx {
+        let existing = &mut store.accounts[idx];
+        // 保留原有邮箱，不替换
         existing.access_token = Some(access_token.clone());
         existing.refresh_token = Some(new_refresh_token);
         existing.user_id = user_id;
@@ -346,7 +364,9 @@ pub async fn add_account_by_social(
         existing.status = if is_banned { "banned".to_string() } else { "active".to_string() };
         existing.clone()
     } else {
-        let mut account = Account::new(email.clone(), format!("Kiro {} 账号", idp));
+        // 全新账号
+        let final_email = new_email.unwrap_or_else(|| super::generate_random_email(&idp));
+        let mut account = Account::new(final_email.clone(), format!("Kiro {} 账号", idp));
         account.access_token = Some(access_token.clone());
         account.refresh_token = Some(new_refresh_token);
         account.provider = Some(idp.clone());
@@ -362,8 +382,8 @@ pub async fn add_account_by_social(
     
     let user = User {
         id: uuid::Uuid::new_v4().to_string(),
-        email: email.clone(),
-        name: email.split('@').next().unwrap_or("User").to_string(),
+        email: account.email.clone(),
+        name: account.email.split('@').next().unwrap_or("User").to_string(),
         avatar: None,
         provider: idp,
     };
@@ -465,10 +485,9 @@ pub async fn add_account_by_idc(
     };
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
     
-    let email = usage.as_ref()
+    let new_email = usage.as_ref()
         .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.email.clone())
-        .unwrap_or_else(|| "builderid@kiro.dev".to_string());
+        .and_then(|u| u.email.clone());
     let user_id = usage.as_ref()
         .and_then(|u| u.user_info.as_ref())
         .and_then(|u| u.user_id.clone());
@@ -483,8 +502,19 @@ pub async fn add_account_by_idc(
     
     let mut store = state.store.lock().unwrap();
     
-    // 按 email + provider 去重
-    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email && a.provider.as_deref() == Some("BuilderId")) {
+    // 查找已存在的账号：优先按邮箱匹配，其次按 refresh_token 匹配
+    let existing_idx = if let Some(ref email) = new_email {
+        store.accounts.iter().position(|a| &a.email == email && a.provider.as_deref() == Some("BuilderId"))
+    } else {
+        // 被封禁时无法获取邮箱，尝试通过 refresh_token 匹配
+        store.accounts.iter().position(|a| {
+            a.provider.as_deref() == Some("BuilderId") && a.refresh_token.as_ref() == Some(&refresh_token)
+        })
+    };
+    
+    let account = if let Some(idx) = existing_idx {
+        let existing = &mut store.accounts[idx];
+        // 保留原有邮箱，不替换
         existing.access_token = Some(auth_result.access_token);
         existing.refresh_token = Some(auth_result.refresh_token);
         existing.user_id = user_id;
@@ -499,7 +529,9 @@ pub async fn add_account_by_idc(
         existing.status = if is_banned { "banned".to_string() } else { "active".to_string() };
         existing.clone()
     } else {
-        let mut account = Account::new(email.clone(), "Kiro BuilderId 账号".to_string());
+        // 全新账号
+        let final_email = new_email.unwrap_or_else(|| super::generate_random_email("BuilderId"));
+        let mut account = Account::new(final_email, "Kiro BuilderId 账号".to_string());
         account.access_token = Some(auth_result.access_token);
         account.refresh_token = Some(auth_result.refresh_token);
         account.provider = Some("BuilderId".to_string());

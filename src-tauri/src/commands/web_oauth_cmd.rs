@@ -92,37 +92,53 @@ pub async fn web_oauth_complete(
 
     let portal_client = crate::providers::web_oauth::KiroWebPortalClient::new();
     
-    // 获取配额数据（包含 userInfo）
-    let usage = portal_client.get_user_usage_and_limits(
+    // 获取配额数据（包含 userInfo），检测封禁状态
+    let usage_call = portal_client.get_user_usage_and_limits(
         &auth_result.access_token,
         &init_result.idp,
-    ).await?;
+    ).await;
+    
+    let (usage, is_banned) = match &usage_call {
+        Ok(u) => (Some(u.clone()), false),
+        Err(e) if e.starts_with("BANNED:") => (None, true),
+        Err(e) => return Err(e.clone()),
+    };
     
     // 从 usage.user_info 获取 email 和 user_id
     let provider = &init_result.provider_id;
-    let email = usage.user_info.as_ref()
-        .and_then(|u| u.email.clone())
-        .ok_or("No email in GetUserUsageAndLimits response")?;
-    let user_id = usage.user_info.as_ref()
+    let new_email = usage.as_ref()
+        .and_then(|u| u.user_info.as_ref())
+        .and_then(|u| u.email.clone());
+    let user_id = usage.as_ref()
+        .and_then(|u| u.user_info.as_ref())
         .and_then(|u| u.user_id.clone());
     
     // 检测账号状态（仅用于封禁检测，不保存）
-    if let Ok(user_info) = portal_client.get_user_info(
+    let is_banned = is_banned || portal_client.get_user_info(
         &auth_result.access_token,
         &init_result.idp,
-    ).await {
-        if user_info.status.as_deref() == Some("Suspended") {
-            return Err("账号已被封禁".to_string());
-        }
-    }
+    ).await.map(|info| info.status.as_deref() == Some("Suspended")).unwrap_or(false);
     
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
 
     let mut store = state.store.lock().unwrap();
     
-    // 按 email + provider 去重
-    let account = if let Some(existing) = store.accounts.iter_mut().find(|a| a.email == email && a.provider.as_deref() == Some(provider)) {
-        // 更新现有账号
+    // 查找已有账号：优先用邮箱匹配，否则用 refresh_token 匹配
+    let existing_idx = if let Some(email) = &new_email {
+        store.accounts.iter().position(|a| &a.email == email && a.provider.as_deref() == Some(provider))
+    } else {
+        // 被封禁时无法获取邮箱，尝试用 refresh_token 匹配
+        let rt = &auth_result.refresh_token;
+        store.accounts.iter().position(|a| {
+            a.provider.as_deref() == Some(provider) && 
+            (a.refresh_token.as_ref() == Some(rt) || a.session_token.as_ref() == Some(rt))
+        })
+    };
+    
+    // 更新或新建账号
+    let account = if let Some(idx) = existing_idx {
+        let existing = &mut store.accounts[idx];
+        // 更新现有账号，保留原有邮箱
         existing.access_token = Some(auth_result.access_token.clone());
         // 根据 provider 存到不同字段
         if provider == "BuilderId" {
@@ -132,16 +148,21 @@ pub async fn web_oauth_complete(
             existing.refresh_token = Some(auth_result.refresh_token.clone());
             existing.session_token = None;
         }
-        existing.provider = Some(provider.clone());
+        // 如果获取到了新邮箱，更新它（正常情况）
+        if let Some(email) = &new_email {
+            existing.email = email.clone();
+        }
+        // 不更新 provider，保留原有
         existing.user_id = user_id;
         existing.expires_at = Some(auth_result.expires_at.clone());
         existing.profile_arn = auth_result.profile_arn.clone();
         existing.csrf_token = auth_result.csrf_token.clone();
         existing.usage_data = Some(usage_data);
-        existing.status = "active".to_string();
+        existing.status = if is_banned { "banned".to_string() } else { "active".to_string() };
         existing.clone()
     } else {
-        // 新建账号
+        // 新建账号 - 必须有邮箱
+        let email = new_email.unwrap_or_else(|| super::generate_random_email(provider));
         let mut account = Account::new(email.clone(), format!("Kiro {} (Web OAuth)", provider));
         account.access_token = Some(auth_result.access_token.clone());
         // 根据 provider 存到不同字段
@@ -156,6 +177,7 @@ pub async fn web_oauth_complete(
         account.profile_arn = auth_result.profile_arn.clone();
         account.csrf_token = auth_result.csrf_token.clone();
         account.usage_data = Some(usage_data);
+        account.status = if is_banned { "banned".to_string() } else { "active".to_string() };
         store.accounts.insert(0, account.clone());
         account
     };
@@ -163,8 +185,9 @@ pub async fn web_oauth_complete(
     store.save_to_file();
     drop(store);
 
-    update_auth_state_web(&state, &email, provider, &auth_result.access_token, &auth_result.refresh_token);
-    println!("[WebOAuth] LOGIN SUCCESS: email={}, provider={}", account.email, provider);
+    let final_email = account.email.clone();
+    update_auth_state_web(&state, &final_email, provider, &auth_result.access_token, &auth_result.refresh_token);
+    println!("[WebOAuth] LOGIN SUCCESS: email={}, provider={}", final_email, provider);
 
     let _ = app_handle.emit("login-success", account.id.clone());
     Ok(format!("Web OAuth login completed for {}", provider))
@@ -200,14 +223,38 @@ pub async fn web_oauth_refresh(
     };
     
     let web_provider = WebOAuthProvider::new(provider);
-    let auth_result = web_provider.refresh_token_impl(access_token, csrf_token, token).await?;
+    
+    // 先尝试刷新 token，如果失败检查是否是封禁
+    let auth_result = match web_provider.refresh_token_impl(access_token, csrf_token, token).await {
+        Ok(result) => result,
+        Err(e) if e.starts_with("BANNED:") => {
+            // 封禁时更新状态但保留原有信息
+            let mut store = state.store.lock().unwrap();
+            if let Some(a) = store.accounts.iter_mut().find(|a| a.id == account_id) {
+                a.status = "banned".to_string();
+                let result = a.clone();
+                store.save_to_file();
+                println!("[WebOAuth] Account banned: {}", result.email);
+                return Ok(result);
+            }
+            return Err(e);
+        }
+        Err(e) => return Err(e),
+    };
     
     let portal_client = crate::providers::web_oauth::KiroWebPortalClient::new();
     let idp = provider.as_str();
-    let usage = portal_client.get_user_usage_and_limits(
+    let usage_call = portal_client.get_user_usage_and_limits(
         &auth_result.access_token,
         idp,
-    ).await.ok();
+    ).await;
+    
+    // 检测封禁状态
+    let (usage, is_banned) = match &usage_call {
+        Ok(u) => (Some(u.clone()), false),
+        Err(e) if e.starts_with("BANNED:") => (None, true),
+        Err(_) => (None, false),
+    };
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
 
     let mut store = state.store.lock().unwrap();
@@ -224,7 +271,7 @@ pub async fn web_oauth_refresh(
         a.csrf_token = auth_result.csrf_token;
         a.expires_at = Some(auth_result.expires_at);
         a.usage_data = Some(usage_data);
-        a.status = "active".to_string();
+        a.status = if is_banned { "banned".to_string() } else { "active".to_string() };
         if auth_result.profile_arn.is_some() {
             a.profile_arn = auth_result.profile_arn;
         }

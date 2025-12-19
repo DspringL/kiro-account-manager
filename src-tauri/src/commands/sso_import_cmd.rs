@@ -311,7 +311,7 @@ pub async fn import_from_sso_token(
     let email = usage.as_ref()
         .and_then(|u| u.user_info.as_ref())
         .and_then(|ui| ui.email.clone())
-        .unwrap_or_else(|| "unknown@builderid".to_string());
+        .unwrap_or_else(|| super::generate_random_email("BuilderId"));
     
     let user_id = usage.as_ref()
         .and_then(|u| u.user_info.as_ref())

@@ -109,6 +109,11 @@ impl AccountStore {
         self.accounts.clone()
     }
 
+    /// 重新从文件加载数据（用于外部修改后刷新）
+    pub fn reload(&mut self) {
+        self.accounts = Self::load_from_file(&self.file_path);
+    }
+
     pub fn delete(&mut self, id: &str) -> bool {
         let len_before = self.accounts.len();
         self.accounts.retain(|a| a.id != id);
