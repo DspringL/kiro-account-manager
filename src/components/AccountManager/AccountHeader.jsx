@@ -1,4 +1,5 @@
-import { Search, Download, Upload, RefreshCw, Trash2, Plus, Sparkles, Tag, Filter } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Search, Download, Upload, RefreshCw, Trash2, Plus, Sparkles, Tag, Filter, MoreHorizontal } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 
 function AccountHeader({
@@ -12,7 +13,6 @@ function AccountHeader({
   onRefresh,
   onRefreshAll,
   autoRefreshing,
-  lastRefreshTime,
   refreshProgress,
   allTags = [],
   selectedTag,
@@ -22,136 +22,139 @@ function AccountHeader({
 }) {
   const { t, theme, colors } = useApp()
   const isDark = theme === 'dark'
+  const [showMore, setShowMore] = useState(false)
+  const moreRef = useRef(null)
+
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (moreRef.current && !moreRef.current.contains(e.target)) {
+        setShowMore(false)
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [])
 
   return (
-    <div className={`${colors.card} border-b ${colors.cardBorder} px-6 py-4 relative overflow-hidden`}>
-      {/* 背景装饰 */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-      
-      <div className="flex items-center justify-between relative">
-        <div className="flex items-center gap-6">
-          <div className="animate-slide-in-right">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 animate-float">
-                <Sparkles size={20} className="text-white" />
-              </div>
-              <h1 className={`text-xl font-bold ${colors.text}`}>{t('accounts.title')}</h1>
-            </div>
-            <p className={`text-sm ${colors.textMuted}`}>{t('accounts.subtitle')}</p>
+    <div className={`${colors.card} border-b ${colors.cardBorder} px-6 py-4`}>
+      <div className="flex items-center justify-between">
+        {/* 左侧：标题 */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <Sparkles size={20} className="text-white" />
           </div>
-
+          <div>
+            <h1 className={`text-xl font-bold ${colors.text}`}>{t('accounts.title')}</h1>
+            <p className={`text-xs ${colors.textMuted}`}>{t('accounts.subtitle')}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-3 animate-fade-in delay-400">
-          {lastRefreshTime && !autoRefreshing && (
-            <span className={`text-xs ${colors.textMuted}`}>{lastRefreshTime}</span>
-          )}
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-500" size={16} />
+
+        {/* 右侧：搜索和操作 */}
+        <div className="flex items-center gap-2">
+          {/* 搜索框 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
               placeholder={t('accounts.search')}
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className={`pl-9 pr-4 py-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'} border-0 rounded-xl text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text} transition-all focus:w-56`}
+              className={`pl-9 pr-3 py-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'} border-0 rounded-xl text-sm w-40 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
             />
           </div>
+
           {/* 状态筛选 */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-            <select
-              value={selectedStatus || ''}
-              onChange={(e) => onStatusFilter(e.target.value || null)}
-              className={`pl-8 pr-8 py-2 ${colors.input} ${colors.inputFocus} border rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.text} appearance-none cursor-pointer`}
-            >
-              <option value="">{t('common.all')}</option>
-              <option value="active">{t('accounts.active')}</option>
-              <option value="banned">{t('accounts.banned')}</option>
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-          </div>
+          <select
+            value={selectedStatus || ''}
+            onChange={(e) => onStatusFilter(e.target.value || null)}
+            className={`px-3 py-2 ${colors.input} border rounded-xl text-sm focus:outline-none ${colors.text} cursor-pointer`}
+          >
+            <option value="">{t('common.all')}</option>
+            <option value="active">{t('accounts.active')}</option>
+            <option value="banned">{t('accounts.banned')}</option>
+          </select>
+
           {/* 标签筛选 */}
           {allTags.length > 0 && (
-            <div className="relative">
-              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
-              <select
-                value={selectedTag || ''}
-                onChange={(e) => onTagFilter(e.target.value || null)}
-                className={`pl-8 pr-8 py-2 ${colors.input} ${colors.inputFocus} border rounded-xl text-sm focus:outline-none focus:ring-2 ${colors.text} appearance-none cursor-pointer`}
-              >
-                <option value="">{t('tags.all')}</option>
-                {allTags.map(tag => (
-                  <option key={tag} value={tag}>{tag}</option>
-                ))}
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          )}
-          {selectedCount > 0 && (
-            <button 
-              onClick={onBatchDelete} 
-              className="btn-icon px-3 py-2 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 flex items-center gap-1 animate-scale-in"
+            <select
+              value={selectedTag || ''}
+              onChange={(e) => onTagFilter(e.target.value || null)}
+              className={`px-3 py-2 ${colors.input} border rounded-xl text-sm focus:outline-none ${colors.text} cursor-pointer max-w-[120px]`}
             >
-              <Trash2 size={14} />{t('common.delete')} ({selectedCount})
+              <option value="">{t('tags.all')}</option>
+              {allTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}
+            </select>
+          )}
+
+          {/* 批量删除 */}
+          {selectedCount > 0 && (
+            <button onClick={onBatchDelete} className="px-3 py-2 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 flex items-center gap-1">
+              <Trash2 size={14} />
+              {selectedCount}
             </button>
           )}
-          <button 
-            onClick={onAdd} 
-            className="btn-icon px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-blue-700 flex items-center gap-1.5 shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40"
-          >
-            <Plus size={16} />{t('common.add')}
+
+          {/* 添加按钮 */}
+          <button onClick={onAdd} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-blue-700 flex items-center gap-1.5 shadow-lg shadow-blue-500/25">
+            <Plus size={16} />
+            {t('common.add')}
           </button>
-          <button 
-            onClick={onImport} 
-            className={`btn-icon px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-all flex items-center gap-1.5`} 
-            title={t('accounts.import')}
-          >
-            <Upload size={16} className={colors.textMuted} />
-            <span className={`text-sm ${colors.textMuted}`}>{t('accounts.import')}</span>
-          </button>
-          <button 
-            onClick={onExport} 
-            className={`btn-icon px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-all flex items-center gap-1.5`} 
-            title={t('accounts.export')}
-          >
-            <Download size={16} className={colors.textMuted} />
-            <span className={`text-sm ${colors.textMuted}`}>{t('accounts.export')}</span>
-          </button>
-          <button 
-            onClick={onRefresh} 
-            className={`btn-icon px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-all flex items-center gap-1.5`} 
-            title={t('accounts.refreshList')}
-          >
-            <RefreshCw size={16} className={colors.textMuted} />
-            <span className={`text-sm ${colors.textMuted}`}>{t('accounts.refreshList')}</span>
-          </button>
-          <button 
-            onClick={onRefreshAll} 
-            disabled={autoRefreshing} 
-            className={`btn-icon px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-50 transition-all flex items-center gap-1.5`} 
-            title={t('accounts.refreshAll')}
-          >
-            <RefreshCw size={16} className={`${colors.textMuted} ${autoRefreshing ? 'animate-spin' : ''}`} />
-            <span className={`text-sm ${colors.textMuted}`}>{t('accounts.refreshAll')}</span>
-          </button>
+
+          {/* 更多操作 */}
+          <div ref={moreRef} className="relative">
+            <button
+              onClick={() => setShowMore(!showMore)}
+              className={`p-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+            >
+              <MoreHorizontal size={18} className={colors.textMuted} />
+            </button>
+
+            {showMore && (
+              <div className={`absolute right-0 top-full mt-2 w-40 py-1 ${colors.card} border ${colors.cardBorder} rounded-xl shadow-xl z-50`}>
+                <button
+                  onClick={() => { onImport(); setShowMore(false) }}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text}`}
+                >
+                  <Upload size={14} />
+                  {t('accounts.import')}
+                </button>
+                <button
+                  onClick={() => { onExport(); setShowMore(false) }}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text}`}
+                >
+                  <Download size={14} />
+                  {t('accounts.export')}
+                </button>
+                <div className={`my-1 border-t ${colors.cardBorder}`} />
+                <button
+                  onClick={() => { onRefresh(); setShowMore(false) }}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text}`}
+                >
+                  <RefreshCw size={14} />
+                  {t('accounts.refreshList')}
+                </button>
+                <button
+                  onClick={() => { onRefreshAll(); setShowMore(false) }}
+                  disabled={autoRefreshing}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text} disabled:opacity-50`}
+                >
+                  <RefreshCw size={14} className={autoRefreshing ? 'animate-spin' : ''} />
+                  {t('accounts.refreshAll')}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* 刷新进度条 */}
       {autoRefreshing && refreshProgress.total > 0 && (
-        <div className="mt-3 flex items-center gap-3 animate-fade-in">
+        <div className="mt-3 flex items-center gap-3">
           <div className={`flex-1 h-1.5 ${isDark ? 'bg-white/10' : 'bg-gray-200'} rounded-full overflow-hidden`}>
-            <div 
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300" 
-              style={{ width: `${(refreshProgress.current / refreshProgress.total) * 100}%` }} 
-            />
+            <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all" style={{ width: `${(refreshProgress.current / refreshProgress.total) * 100}%` }} />
           </div>
-          <span className="text-xs text-blue-600 font-medium">{refreshProgress.current}/{refreshProgress.total}</span>
+          <span className="text-xs text-blue-500 font-medium">{refreshProgress.current}/{refreshProgress.total}</span>
         </div>
       )}
     </div>

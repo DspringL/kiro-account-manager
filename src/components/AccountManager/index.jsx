@@ -6,7 +6,6 @@ import { useAppSettings } from '../../contexts/AppSettingsContext'
 import { useAccounts } from './hooks/useAccounts'
 import AccountHeader from './AccountHeader'
 import AccountTable from './AccountTable'
-import AccountPagination from './AccountPagination'
 import AddAccountModal from './AddAccountModal'
 import ImportAccountModal from './ImportAccountModal'
 import RefreshProgressModal from './RefreshProgressModal'
@@ -20,8 +19,6 @@ function AccountManager() {
   const { settings: appSettings } = useAppSettings()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIds, setSelectedIds] = useState([])
-  const [pageSize, setPageSize] = useState(20)
-  const [currentPage, setCurrentPage] = useState(1)
   const [editingAccount, setEditingAccount] = useState(null)
   const [editingLabelAccount, setEditingLabelAccount] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -100,16 +97,9 @@ function AccountManager() {
     [accounts, searchTerm, selectedTag, selectedStatus]
   )
 
-  const totalPages = Math.ceil(filteredAccounts.length / pageSize) || 1
-  const paginatedAccounts = useMemo(() =>
-    filteredAccounts.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [filteredAccounts, currentPage, pageSize]
-  )
-
-  const handleSearchChange = useCallback((term) => { setSearchTerm(term); setCurrentPage(1) }, [])
-  const handleTagFilter = useCallback((tag) => { setSelectedTag(tag); setCurrentPage(1) }, [])
-  const handleStatusFilter = useCallback((status) => { setSelectedStatus(status); setCurrentPage(1) }, [])
-  const handlePageSizeChange = useCallback((size) => { setPageSize(size); setCurrentPage(1) }, [])
+  const handleSearchChange = useCallback((term) => { setSearchTerm(term) }, [])
+  const handleTagFilter = useCallback((tag) => { setSelectedTag(tag) }, [])
+  const handleStatusFilter = useCallback((status) => { setSelectedStatus(status) }, [])
   const handleSelectAll = useCallback((checked) => { setSelectedIds(checked ? filteredAccounts.map(a => a.id) : []) }, [filteredAccounts])
   const handleSelectOne = useCallback((id, checked) => { setSelectedIds(prev => checked ? [...prev, id] : prev.filter(i => i !== id)) }, [])
   const handleCopy = useCallback((text, id) => { 
@@ -312,8 +302,8 @@ function AccountManager() {
       />
       <div className="flex-1 overflow-auto">
       <AccountTable
-        accounts={paginatedAccounts}
-        filteredAccounts={filteredAccounts}
+        accounts={filteredAccounts}
+        totalCount={accounts.length}
         selectedIds={selectedIds}
         onSelectAll={handleSelectAll}
         onSelectOne={handleSelectOne}
@@ -329,16 +319,6 @@ function AccountManager() {
         refreshingId={refreshingId}
         switchingId={switchingId}
         localToken={localToken}
-      />
-      </div>
-      <div className="animate-slide-in-right delay-200">
-      <AccountPagination
-        totalCount={filteredAccounts.length}
-        pageSize={pageSize}
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageSizeChange={handlePageSizeChange}
-        onPageChange={setCurrentPage}
       />
       </div>
       {editingAccount && (

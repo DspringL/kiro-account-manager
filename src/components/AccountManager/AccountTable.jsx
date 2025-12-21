@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect } from 'react'
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Users, Plus } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
@@ -6,15 +6,15 @@ import AccountCard from './AccountCard'
 
 // 根据容器宽度计算列数
 function getColumnCount(width) {
-  if (width >= 1280) return 4 // xl
-  if (width >= 1024) return 3 // lg
-  if (width >= 768) return 2  // md
+  if (width >= 1280) return 4
+  if (width >= 1024) return 3
+  if (width >= 768) return 2
   return 1
 }
 
 function AccountTable({
   accounts,
-  filteredAccounts,
+  totalCount,
   selectedIds,
   onSelectAll,
   onSelectOne,
@@ -33,23 +33,22 @@ function AccountTable({
 }) {
   const { t, theme, colors } = useApp()
   const isDark = theme === 'dark'
-  const parentRef = useRef(null)
+  const containerRef = useRef(null)
+  const scrollRef = useRef(null)
   const [columns, setColumns] = useState(4)
 
-  // 监听容器大小变化
   useEffect(() => {
-    if (!parentRef.current) return
+    if (!containerRef.current) return
     const updateColumns = () => {
-      const width = parentRef.current?.offsetWidth - 48 || 0
+      const width = containerRef.current?.offsetWidth - 48 || 0
       setColumns(getColumnCount(width))
     }
     updateColumns()
     const observer = new ResizeObserver(updateColumns)
-    observer.observe(parentRef.current)
+    observer.observe(containerRef.current)
     return () => observer.disconnect()
   }, [])
 
-  // 将账号分组为行
   const rows = useMemo(() => {
     const result = []
     const items = [...accounts, { _isAddButton: true }]
@@ -59,19 +58,14 @@ function AccountTable({
     return result
   }, [accounts, columns])
 
-  // 虚拟化配置 - 增加行高估算，包含日期信息等动态内容
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 340, // 卡片最小高度 280 + 日期信息 40 + gap 16 + 余量
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 360,
     overscan: 2,
   })
 
-  // 账号少于 20 个时不启用虚拟滚动
-  const useVirtual = accounts.length >= 20
-
-  // 渲染单个卡片
-  const renderCard = (item) => {
+  const renderCard = useCallback((item) => {
     if (item._isAddButton) {
       return <AddButton key="add" onClick={onAdd} isDark={isDark} colors={colors} t={t} />
     }
@@ -94,17 +88,16 @@ function AccountTable({
         isCurrentAccount={localToken?.refreshToken && item.refreshToken === localToken.refreshToken}
       />
     )
-  }
+  }, [selectedIds, copiedId, onCopy, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onAdd, refreshingId, switchingId, localToken, isDark, colors, t, onSelectOne])
 
   return (
-    <div ref={parentRef} className="flex-1 overflow-auto p-6">
-      {/* 全选控制栏 */}
+    <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-6">
       {accounts.length > 0 && (
-        <div className="flex items-center gap-3 mb-4 px-1">
+        <div className="flex items-center justify-between mb-4 px-1 shrink-0">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={selectedIds.length === filteredAccounts.length && filteredAccounts.length > 0}
+              checked={selectedIds.length === accounts.length && accounts.length > 0}
               onChange={(e) => onSelectAll(e.target.checked)}
               className="w-4 h-4 rounded transition-transform hover:scale-110"
             />
@@ -112,10 +105,12 @@ function AccountTable({
               {selectedIds.length > 0 ? `${t('common.selected')} ${selectedIds.length}` : t('common.selectAll')}
             </span>
           </label>
+          <span className={`text-sm ${colors.textMuted}`}>
+            {accounts.length === totalCount ? `共 ${totalCount} 个账号` : `${accounts.length} / ${totalCount} 个账号`}
+          </span>
         </div>
       )}
 
-      {/* 空状态 */}
       {accounts.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 ${colors.textMuted}`}>
           <div className={`w-20 h-20 rounded-full ${isDark ? 'bg-white/5' : 'bg-gray-100'} flex items-center justify-center animate-float mb-4`}>
@@ -123,60 +118,42 @@ function AccountTable({
           </div>
           <p className="font-medium mb-1">{t('common.noAccounts')}</p>
           <p className="text-sm opacity-75">{t('common.addAccountHint')}</p>
-        </div>
-      ) : useVirtual ? (
-        /* 虚拟滚动网格 */
-        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
-          {rowVirtualizer.getVirtualItems().map((virtualRow) => (
-            <div
-              key={virtualRow.key}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            >
-              <div 
-                className="gap-4 pb-4" 
-                style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` 
-                }}
-              >
-                {rows[virtualRow.index].map(renderCard)}
-              </div>
-            </div>
-          ))}
+          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}>
+            <Plus size={16} className="inline mr-1" />
+            {t('common.addAccount')}
+          </button>
         </div>
       ) : (
-        /* 普通网格 - 使用动态计算的列数保持一致 */
-        <div 
-          className="gap-4 items-stretch" 
-          style={{ 
-            display: 'grid', 
-            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` 
-          }}
-        >
-          {accounts.map(renderCard)}
-          <AddButton onClick={onAdd} isDark={isDark} colors={colors} t={t} />
+        <div ref={scrollRef} className="flex-1 overflow-auto">
+          <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => (
+              <div
+                key={virtualRow.key}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                <div className="gap-4 pb-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+                  {rows[virtualRow.index].map(renderCard)}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-// 添加账号按钮
 function AddButton({ onClick, isDark, colors, t }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-2xl border-2 border-dashed transition-all duration-200 min-h-[320px] flex flex-col items-center justify-center gap-3 ${
-        isDark
-          ? 'border-gray-700 hover:border-gray-500 hover:bg-white/5'
-          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-      }`}
+      className={`rounded-2xl border-2 border-dashed transition-all duration-200 min-h-[320px] flex flex-col items-center justify-center gap-3 ${isDark ? 'border-gray-700 hover:border-gray-500 hover:bg-white/5' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}
     >
       <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
         <Plus size={24} className={colors.textMuted} />
