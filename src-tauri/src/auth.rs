@@ -251,13 +251,16 @@ pub async fn get_usage_limits_desktop(access_token: &str) -> Result<DesktopUsage
 
 
 /// 使用桌面端 API 删除账号（从 AWS 服务端删除）
-pub async fn delete_account_desktop(access_token: &str) -> Result<(), String> {
+pub async fn delete_account_desktop(access_token: &str, machine_id: &str) -> Result<(), String> {
+    let user_agent = format!("KiroIDE-0.6.18-{}", machine_id);
+    
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
     
-    let url = format!("{}/deleteAccount", DESKTOP_AUTH_API);
+    // Kiro Desktop 使用 DELETE /account 端点
+    let url = format!("{}/account", DESKTOP_AUTH_API);
     
     #[cfg(debug_assertions)]
     println!("[Desktop] DeleteAccount request");
@@ -265,7 +268,7 @@ pub async fn delete_account_desktop(access_token: &str) -> Result<(), String> {
     let response = client
         .delete(&url)
         .header("Authorization", format!("Bearer {}", access_token))
-        .header("Accept", "application/json")
+        .header("User-Agent", &user_agent)
         .send()
         .await
         .map_err(|e| format!("网络错误: {}", e))?;

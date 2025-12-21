@@ -11,12 +11,13 @@ pub struct KiroAuthServiceClient {
 }
 
 impl KiroAuthServiceClient {
-    pub fn new() -> Self {
+    pub fn new(machine_id: &str) -> Self {
         let endpoint = "https://prod.us-east-1.auth.desktop.kiro.dev".to_string();
+        let user_agent = format!("KiroIDE-0.6.18-{}", machine_id);
 
         let client = Client::builder()
             .timeout(Duration::from_millis(10_000))
-            .user_agent("KiroBatchLoginCLI/1.0.0")
+            .user_agent(user_agent)
             .build()
             .expect("failed to build reqwest client");
 

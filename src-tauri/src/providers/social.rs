@@ -4,6 +4,7 @@
 use crate::kiro_auth_client::KiroAuthServiceClient;
 use crate::deep_link_handler::{DeepLinkCallbackWaiter, register_waiter};
 use crate::auth_social;
+use crate::commands::machine_guid_cmd::get_machine_id;
 use super::{AuthResult, AuthProvider, RefreshMetadata};
 use serde::Deserialize;
 use async_trait::async_trait;
@@ -74,7 +75,8 @@ impl AuthProvider for SocialProvider {
         let waiter = register_waiter(&state);
 
         // Step 4: 打开浏览器登录
-        let client = KiroAuthServiceClient::new();
+        let machine_id = get_machine_id();
+        let client = KiroAuthServiceClient::new(&machine_id);
         client.login(provider, &redirect_uri, &code_challenge, &state).await?;
 
         // Step 5: 等待 deep link 回调
@@ -122,7 +124,8 @@ impl AuthProvider for SocialProvider {
     }
 
     async fn refresh_token(&self, refresh_token: &str, metadata: RefreshMetadata) -> Result<AuthResult, String> {
-        let client = KiroAuthServiceClient::new();
+        let machine_id = get_machine_id();
+        let client = KiroAuthServiceClient::new(&machine_id);
         let token_response: SocialRefreshResponse = client.refresh_token(refresh_token).await?;
 
         let expires_at = chrono::Local::now() + chrono::Duration::seconds(token_response.expires_in);

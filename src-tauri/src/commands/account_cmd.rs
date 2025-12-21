@@ -564,6 +564,7 @@ pub async fn delete_account_remote(
     delete_local: bool,
 ) -> Result<String, String> {
     use crate::auth::delete_account_desktop;
+    use crate::commands::machine_guid_cmd::get_machine_id;
     
     // 获取账号信息
     let account = {
@@ -580,8 +581,11 @@ pub async fn delete_account_remote(
     let access_token = account.access_token.as_ref()
         .ok_or("账号缺少 access_token，请先刷新")?;
     
+    // 获取机器码用于 User-Agent
+    let machine_id = get_machine_id();
+    
     // 调用 Desktop API 删除账号（Google/Github/BuilderId 都用同一个端点）
-    delete_account_desktop(access_token).await?;
+    delete_account_desktop(access_token, &machine_id).await?;
     
     // 如果需要同时删除本地记录
     if delete_local {
