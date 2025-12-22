@@ -29,4 +29,7 @@ src-tauri/target/
 docs/
 
 docs/
-scripts/
+
+# Python
+__pycache__/
+*.pyc
