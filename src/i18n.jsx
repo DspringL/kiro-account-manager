@@ -92,8 +92,14 @@ export function I18nProvider({ children }) {
     loadLocaleFromSettings().finally(() => setLoaded(true))
   }, [])
   
-  // 等待语言加载完成再渲染
-  if (!loaded) return null
+  // 等待语言加载完成再渲染，显示加载状态避免闪烁
+  if (!loaded) {
+    return (
+      <div className="h-screen bg-[#0d0d0d] flex items-center justify-center">
+        <div className="text-white/50 text-sm">加载中...</div>
+      </div>
+    )
+  }
   
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }

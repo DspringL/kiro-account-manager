@@ -30,23 +30,36 @@ export function AccountProvider({ children }) {
 
   // 初始加载 + 监听事件
   useEffect(() => {
-    loadData().finally(() => setLoading(false))
+    // 使用 ref 存储 unlisten 函数，避免闭包问题
+    let unlistenLogin = null
+    let unlistenAccounts = null
+    let mounted = true
     
-    // 监听登录成功事件，刷新数据
-    const unlistenLogin = listen('login-success', () => {
-      console.log('[AccountContext] 登录成功，刷新数据')
-      loadData()
-    })
+    const setup = async () => {
+      // 监听登录成功事件，刷新数据
+      unlistenLogin = await listen('login-success', () => {
+        if (!mounted) return
+        console.log('[AccountContext] 登录成功，刷新数据')
+        loadData()
+      })
+      
+      // 监听账号数据变化（如自动刷新 token 后）
+      unlistenAccounts = await listen('accounts-updated', () => {
+        if (!mounted) return
+        console.log('[AccountContext] 账号数据已更新，刷新缓存')
+        loadData()
+      })
+    }
     
-    // 监听账号数据变化（如自动刷新 token 后）
-    const unlistenAccounts = listen('accounts-updated', () => {
-      console.log('[AccountContext] 账号数据已更新，刷新缓存')
-      loadData()
+    loadData().finally(() => {
+      if (mounted) setLoading(false)
     })
+    setup()
     
     return () => {
-      unlistenLogin.then(fn => fn())
-      unlistenAccounts.then(fn => fn())
+      mounted = false
+      if (unlistenLogin) unlistenLogin()
+      if (unlistenAccounts) unlistenAccounts()
     }
   }, [loadData])
 

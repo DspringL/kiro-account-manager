@@ -130,15 +130,21 @@ export function useAccounts() {
   // 初始化和事件监听
   // 注意：自动刷新定时器已移至 App.jsx 统一管理，避免重复刷新
   useEffect(() => {
-    loadAccounts()
-    
-    let unlistenLoginSuccess, unlistenAccountsUpdated, unlistenKiroLoginData
+    let unlistenLoginSuccess = null
+    let unlistenAccountsUpdated = null
+    let unlistenKiroLoginData = null
+    let mounted = true
 
     const setupListeners = async () => {
-      unlistenLoginSuccess = await listen('login-success', () => loadAccounts())
+      unlistenLoginSuccess = await listen('login-success', () => {
+        if (mounted) loadAccounts()
+      })
       // 监听账号数据更新事件（来自 App.jsx 自动刷新或其他地方）
-      unlistenAccountsUpdated = await listen('accounts-updated', () => loadAccounts())
+      unlistenAccountsUpdated = await listen('accounts-updated', () => {
+        if (mounted) loadAccounts()
+      })
       unlistenKiroLoginData = await listen('kiro-login-data', async (event) => {
+        if (!mounted) return
         try {
           const data = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
           if (data?.accessToken && data?.refreshToken) {
@@ -151,7 +157,7 @@ export function useAccounts() {
               quota: data.quota ?? null,
               used: data.used ?? null
             })
-            loadAccounts()
+            if (mounted) loadAccounts()
           }
         } catch (e) {
           console.error('Failed to handle kiro-login-data:', e)
@@ -159,9 +165,11 @@ export function useAccounts() {
       })
     }
 
+    loadAccounts()
     setupListeners()
 
     return () => {
+      mounted = false
       if (unlistenLoginSuccess) unlistenLoginSuccess()
       if (unlistenAccountsUpdated) unlistenAccountsUpdated()
       if (unlistenKiroLoginData) unlistenKiroLoginData()

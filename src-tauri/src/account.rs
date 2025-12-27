@@ -96,12 +96,26 @@ impl AccountStore {
         }
     }
 
-    pub fn save_to_file(&self) {
+    /// 保存账号数据到文件，返回是否成功
+    pub fn save_to_file(&self) -> bool {
         if let Some(parent) = self.file_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                eprintln!("[AccountStore] 创建目录失败: {}", e);
+                return false;
+            }
         }
-        if let Ok(json) = serde_json::to_string_pretty(&self.accounts) {
-            let _ = std::fs::write(&self.file_path, json);
+        match serde_json::to_string_pretty(&self.accounts) {
+            Ok(json) => {
+                if let Err(e) = std::fs::write(&self.file_path, json) {
+                    eprintln!("[AccountStore] 写入文件失败: {}", e);
+                    return false;
+                }
+                true
+            }
+            Err(e) => {
+                eprintln!("[AccountStore] 序列化失败: {}", e);
+                false
+            }
         }
     }
 
@@ -119,7 +133,7 @@ impl AccountStore {
         self.accounts.retain(|a| a.id != id);
         let deleted = self.accounts.len() < len_before;
         if deleted {
-            self.save_to_file();
+            let _ = self.save_to_file();
         }
         deleted
     }
@@ -129,7 +143,7 @@ impl AccountStore {
         self.accounts.retain(|a| !ids.contains(&a.id));
         let deleted = len_before - self.accounts.len();
         if deleted > 0 {
-            self.save_to_file();
+            let _ = self.save_to_file();
         }
         deleted
     }
@@ -149,7 +163,9 @@ impl AccountStore {
                         added += 1;
                     }
                 }
-                self.save_to_file();
+                if !self.save_to_file() {
+                    return Err("保存文件失败".to_string());
+                }
                 Ok(added)
             }
             Err(e) => Err(e.to_string()),
@@ -177,7 +193,7 @@ impl AccountStore {
     pub fn update_tags(&mut self, id: &str, tags: Vec<String>) -> bool {
         if let Some(account) = self.accounts.iter_mut().find(|a| a.id == id) {
             account.tags = if tags.is_empty() { None } else { Some(tags) };
-            self.save_to_file();
+            let _ = self.save_to_file();
             true
         } else {
             false

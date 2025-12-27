@@ -215,11 +215,15 @@ function App() {
       return
     }
     
-    let unlisten, unlistenSettings, unlistenAppSettings
+    let unlisten = null
+    let unlistenSettings = null
+    let unlistenAppSettings = null
+    let mounted = true
 
     const setupListeners = async () => {
       // 监听登录成功事件
       unlisten = await listen('login-success', (event) => {
+        if (!mounted) return
         console.log('Login success in App:', event.payload)
         checkAuth()
         setActiveMenu('token')
@@ -227,12 +231,14 @@ function App() {
       
       // 监听设置变化，重启定时器
       unlistenSettings = await listen('settings-changed', () => {
+        if (!mounted) return
         console.log('[AutoRefresh] 设置已变化，重启定时器')
         startAutoRefreshTimer()
       })
       
       // 监听设置变化，重启模型锁定检查
       unlistenAppSettings = await listen('app-settings-changed', () => {
+        if (!mounted) return
         console.log('[ModelLock] 设置已变化，重新检查模型')
         checkAndRestoreLockedModel()
       })
@@ -247,6 +253,7 @@ function App() {
     startModelLockTimer()
     
     return () => { 
+      mounted = false
       if (unlisten) unlisten()
       if (unlistenSettings) unlistenSettings()
       if (unlistenAppSettings) unlistenAppSettings()
