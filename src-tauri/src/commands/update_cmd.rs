@@ -39,7 +39,16 @@ fn get_proxy_from_kiro_settings() -> Option<String> {
             .join("settings.json")
     });
     
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    #[cfg(target_os = "linux")]
+    let path = std::env::var("HOME").ok().map(|home| {
+        std::path::PathBuf::from(home)
+            .join(".config")
+            .join("Kiro")
+            .join("User")
+            .join("settings.json")
+    });
+    
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     let path: Option<std::path::PathBuf> = None;
     
     path.and_then(|p| {
@@ -86,10 +95,14 @@ fn get_platform_download_url(platforms: &serde_json::Value) -> Option<String> {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     let platform_key = "darwin-aarch64";
     
+    #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+    let platform_key = "linux-x86_64";
+    
     #[cfg(not(any(
         all(target_os = "windows", target_arch = "x86_64"),
         all(target_os = "macos", target_arch = "x86_64"),
-        all(target_os = "macos", target_arch = "aarch64")
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "linux", target_arch = "x86_64")
     )))]
     let platform_key = "";
     

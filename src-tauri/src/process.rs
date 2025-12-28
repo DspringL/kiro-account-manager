@@ -49,7 +49,15 @@ pub fn check_kiro_running() -> bool {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn check_kiro_running() -> bool {
-    false
+    // Linux: 使用 pgrep 检测 kiro 进程
+    let output = Command::new("pgrep")
+        .args(["-f", "kiro"])
+        .output();
+    
+    match output {
+        Ok(out) => out.status.success(),
+        Err(_) => false
+    }
 }
 
 /// 关闭 Kiro IDE（内部函数）
@@ -88,7 +96,19 @@ pub fn kill_kiro() -> Result<(), String> {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn kill_kiro() -> Result<(), String> {
-    Err("Unsupported platform".to_string())
+    // Linux: 使用 pkill 关闭 kiro 进程
+    let output = Command::new("pkill")
+        .args(["-f", "kiro"])
+        .output()
+        .map_err(|e| format!("Failed to execute pkill: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            return Err(format!("Failed to close Kiro IDE: {}", stderr));
+        }
+    }
+    Ok(())
 }
 
 /// 启动 Kiro IDE（内部函数）
@@ -131,7 +151,33 @@ pub fn launch_kiro() -> Result<(), String> {
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn launch_kiro() -> Result<(), String> {
-    Err("Unsupported platform".to_string())
+    // Linux: 尝试从 PATH 或常见位置启动 kiro
+    // 先尝试直接执行 kiro 命令
+    if Command::new("kiro").spawn().is_ok() {
+        return Ok(());
+    }
+    
+    // 尝试 /usr/bin/kiro
+    let kiro_path = "/usr/bin/kiro";
+    if std::path::Path::new(kiro_path).exists() {
+        Command::new(kiro_path)
+            .spawn()
+            .map_err(|e| format!("Failed to start Kiro IDE: {}", e))?;
+        return Ok(());
+    }
+    
+    // 尝试 ~/.local/bin/kiro
+    if let Ok(home) = std::env::var("HOME") {
+        let local_path = format!("{}/.local/bin/kiro", home);
+        if std::path::Path::new(&local_path).exists() {
+            Command::new(&local_path)
+                .spawn()
+                .map_err(|e| format!("Failed to start Kiro IDE: {}", e))?;
+            return Ok(());
+        }
+    }
+    
+    Err("Kiro IDE not found. Please ensure it's installed and in PATH.".to_string())
 }
 
 // ===== Tauri Commands (异步，避免阻塞主线程) =====
