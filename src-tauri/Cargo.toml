@@ -21,7 +21,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-deep-link = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs"] }
 uuid = { version = "1.6", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json", "cookies"] }
@@ -47,3 +47,15 @@ winreg = "0.52"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+# 开发配置：增量编译加速
+[profile.dev]
+incremental = true
+
+# 发布配置：优化二进制体积
+[profile.release]
+codegen-units = 1  # 允许 LLVM 更好的优化
+lto = true         # 启用链接时优化
+opt-level = "s"    # 优先小体积（用 "3" 优先性能）
+panic = "abort"    # 禁用 panic 处理器，提升性能
+strip = true       # 移除调试符号

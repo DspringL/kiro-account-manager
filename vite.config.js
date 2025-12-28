@@ -29,5 +29,25 @@ export default defineConfig({
         comments: false,         // 移除所有注释
       },
     },
+    // 代码分割优化
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom'],
+          'tauri': [
+            '@tauri-apps/api',
+            '@tauri-apps/plugin-dialog',
+            '@tauri-apps/plugin-fs',
+            '@tauri-apps/plugin-opener',
+            '@tauri-apps/plugin-process',
+            '@tauri-apps/plugin-shell',
+            '@tauri-apps/plugin-updater'
+          ],
+          'i18n': ['i18next', 'react-i18next', 'i18next-http-backend'],
+        }
+      }
+    },
+    // 大项目可关闭压缩报告加速构建
+    reportCompressedSize: false,
   },
 })

@@ -1,84 +1,10 @@
-import { memo, useState, useEffect, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { memo, useState, useCallback, useMemo } from 'react'
 import { RefreshCw, Eye, Trash2, Copy, Check, Clock, Repeat, Edit2, UserX } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import { usePrivacy } from '../../contexts/PrivacyContext'
 import { getUsagePercent, getProgressBarColor } from './hooks/useAccountStats'
 import { getQuota, getUsed, getSubType, getSubPlan } from '../../utils/accountStats'
-
-// 右键菜单组件（使用 Portal 渲染到 body）
-function ContextMenu({ x, y, onClose, items, isDark }) {
-  const menuRef = useRef(null)
-  const [position, setPosition] = useState({ x, y })
-
-  // 计算菜单位置，确保不超出视口
-  useEffect(() => {
-    if (!menuRef.current) return
-    const menu = menuRef.current
-    const rect = menu.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    
-    let newX = x
-    let newY = y
-    
-    // 右边超出
-    if (x + rect.width > viewportWidth - 10) {
-      newX = viewportWidth - rect.width - 10
-    }
-    // 下边超出
-    if (y + rect.height > viewportHeight - 10) {
-      newY = viewportHeight - rect.height - 10
-    }
-    
-    setPosition({ x: newX, y: newY })
-  }, [x, y])
-
-  useEffect(() => {
-    const handleClick = () => onClose()
-    const handleScroll = () => onClose()
-    document.addEventListener('click', handleClick)
-    window.addEventListener('scroll', handleScroll, true)
-    return () => {
-      document.removeEventListener('click', handleClick)
-      window.removeEventListener('scroll', handleScroll, true)
-    }
-  }, [onClose])
-
-  // 使用 Portal 渲染到 body，避免被父元素的 transform 影响
-  return createPortal(
-    <div
-      ref={menuRef}
-      className={`fixed z-[9999] min-w-[180px] py-2 rounded-xl shadow-2xl border backdrop-blur-sm ${
-        isDark ? 'bg-gray-800/95 border-gray-600/50' : 'bg-white/95 border-gray-200/80'
-      }`}
-      style={{ left: position.x, top: position.y }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {items.map((item, idx) =>
-        item.divider ? (
-          <div key={idx} className={`my-1.5 mx-3 border-t ${isDark ? 'border-gray-600/50' : 'border-gray-200'}`} />
-        ) : (
-          <button
-            key={idx}
-            onClick={() => { item.onClick(); onClose() }}
-            disabled={item.disabled}
-            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              item.danger
-                ? (isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50')
-                : (isDark ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 hover:bg-gray-100')
-            }`}
-          >
-            {item.icon && <item.icon size={16} className={item.danger ? '' : (isDark ? 'text-gray-400' : 'text-gray-500')} />}
-            <span className="flex-1">{item.label}</span>
-            {item.shortcut && <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{item.shortcut}</span>}
-          </button>
-        )
-      )}
-    </div>,
-    document.body
-  )
-}
+import ContextMenu from './ContextMenu'
 
 const AccountCard = memo(function AccountCard({
   account,
@@ -128,8 +54,8 @@ const AccountCard = memo(function AccountCard({
     onCopy(JSON.stringify(exportData, null, 2), account.id)
   }, [account, onCopy])
 
-  // 右键菜单项
-  const menuItems = [
+  // 右键菜单项（使用 useMemo 缓存）
+  const menuItems = useMemo(() => [
     { icon: Eye, label: t('accountCard.viewDetails'), onClick: () => onEdit(account) },
     { icon: Edit2, label: t('accountCard.editRemark'), onClick: () => onEditLabel(account) },
     { icon: Copy, label: t('accountCard.copyJson'), onClick: handleCopyJson },
@@ -142,7 +68,7 @@ const AccountCard = memo(function AccountCard({
     ...(account.provider !== 'Enterprise' && !isBannedAccount && onDeleteRemote ? [
       { icon: UserX, label: t('accountCard.deleteRemote'), onClick: () => onDeleteRemote(account), danger: true },
     ] : []),
-  ]
+  ], [t, account, handleCopyJson, onEdit, onEditLabel, onRefresh, onSwitch, onDelete, onDeleteRemote, refreshingId, switchingId, isBannedAccount])
 
   const quota = getQuota(account)
   const used = getUsed(account)

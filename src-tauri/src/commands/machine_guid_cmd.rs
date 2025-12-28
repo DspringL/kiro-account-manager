@@ -199,6 +199,16 @@ fn get_system_machine_guid_inner() -> Result<SystemMachineInfo, String> {
 
 #[cfg(target_os = "linux")]
 fn get_system_machine_guid_inner() -> Result<SystemMachineInfo, String> {
+    let backup_path = get_machine_guid_backup_path();
+    let (backup_exists, backup_time) = if backup_path.exists() {
+        if let Ok(content) = std::fs::read_to_string(&backup_path) {
+            if let Ok(backup) = serde_json::from_str::<MachineGuidBackup>(&content) {
+                (true, Some(backup.backup_time))
+            } else { (false, None) }
+        } else { (false, None) }
+    } else { (false, None) };
+
+    // 直接读取系统 machine-id
     let paths = ["/etc/machine-id", "/var/lib/dbus/machine-id"];
     
     for path in &paths {
@@ -207,22 +217,13 @@ fn get_system_machine_guid_inner() -> Result<SystemMachineInfo, String> {
                 let raw_id = content.trim().to_string();
                 let machine_guid = format_as_uuid(&raw_id);
                 
-                let backup_path = get_machine_guid_backup_path();
-                let (backup_exists, backup_time) = if backup_path.exists() {
-                    if let Ok(content) = std::fs::read_to_string(&backup_path) {
-                        if let Ok(backup) = serde_json::from_str::<MachineGuidBackup>(&content) {
-                            (true, Some(backup.backup_time))
-                        } else { (false, None) }
-                    } else { (false, None) }
-                } else { (false, None) };
-                
                 return Ok(SystemMachineInfo {
                     machine_guid: Some(machine_guid),
                     backup_exists,
                     backup_time,
                     os_type: "linux".to_string(),
                     can_modify: true,
-                    requires_admin: true,
+                    requires_admin: true,  // 需要管理员权限（pkexec）
                 });
             }
         }
@@ -425,12 +426,32 @@ fn restore_machine_guid_inner() -> Result<String, String> {
     let backup: MachineGuidBackup = serde_json::from_str(&content)
         .map_err(|e| format!("解析备份失败: {}", e))?;
     
-    // 转换为32位十六进制格式（移除连字符）
+    // 转换为32位十六进制格式
     let raw_id = backup.machine_guid.replace("-", "").to_lowercase();
     
-    // 尝试写入 /etc/machine-id
-    std::fs::write("/etc/machine-id", format!("{}\n", raw_id))
-        .map_err(|e| format!("写入 /etc/machine-id 失败（需要管理员权限）: {}", e))?;
+    // 使用 pkexec 提权写入 /etc/machine-id
+    let output = std::process::Command::new("pkexec")
+        .args(["tee", "/etc/machine-id"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(format!("{}\n", raw_id).as_bytes())?;
+            }
+            child.wait_with_output()
+        })
+        .map_err(|e| format!("执行 pkexec 失败: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("dismissed") || stderr.contains("Not authorized") {
+            return Err("用户取消了授权".to_string());
+        }
+        return Err(format!("恢复失败: {}", stderr));
+    }
     
     Ok(backup.machine_guid)
 }
@@ -483,9 +504,29 @@ fn reset_machine_guid_inner() -> Result<String, String> {
     // 转换为32位十六进制格式（移除连字符）
     let raw_id = new_guid.replace("-", "");
     
-    // 尝试写入 /etc/machine-id
-    std::fs::write("/etc/machine-id", format!("{}\n", raw_id))
-        .map_err(|e| format!("写入 /etc/machine-id 失败（需要管理员权限）: {}", e))?;
+    // 使用 pkexec 提权写入 /etc/machine-id
+    let output = std::process::Command::new("pkexec")
+        .args(["tee", "/etc/machine-id"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(format!("{}\n", raw_id).as_bytes())?;
+            }
+            child.wait_with_output()
+        })
+        .map_err(|e| format!("执行 pkexec 失败: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("dismissed") || stderr.contains("Not authorized") {
+            return Err("用户取消了授权".to_string());
+        }
+        return Err(format!("写入失败: {}", stderr));
+    }
     
     Ok(new_guid)
 }
@@ -564,12 +605,32 @@ fn set_custom_machine_guid_inner(new_guid: String) -> Result<String, String> {
         return Err("无效的机器码格式".to_string());
     }
     
-    // 转换为32位十六进制格式（移除连字符）
+    // 转换为32位十六进制格式
     let raw_id = new_guid.replace("-", "").to_lowercase();
     
-    // 尝试写入 /etc/machine-id
-    std::fs::write("/etc/machine-id", format!("{}\n", raw_id))
-        .map_err(|e| format!("写入 /etc/machine-id 失败（需要管理员权限）: {}", e))?;
+    // 使用 pkexec 提权写入 /etc/machine-id
+    let output = std::process::Command::new("pkexec")
+        .args(["tee", "/etc/machine-id"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(stdin) = child.stdin.as_mut() {
+                stdin.write_all(format!("{}\n", raw_id).as_bytes())?;
+            }
+            child.wait_with_output()
+        })
+        .map_err(|e| format!("执行 pkexec 失败: {}", e))?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if stderr.contains("dismissed") || stderr.contains("Not authorized") {
+            return Err("用户取消了授权".to_string());
+        }
+        return Err(format!("设置失败: {}", stderr));
+    }
     
     Ok(format_as_uuid(&raw_id))
 }

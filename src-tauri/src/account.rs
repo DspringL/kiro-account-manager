@@ -357,12 +357,25 @@ impl GroupTagStore {
         }
     }
 
-    pub fn save_to_file(&self) {
+    pub fn save_to_file(&self) -> bool {
         if let Some(parent) = self.file_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                eprintln!("[GroupTagStore] 创建目录失败: {}", e);
+                return false;
+            }
         }
-        if let Ok(json) = serde_json::to_string_pretty(&self.data) {
-            let _ = std::fs::write(&self.file_path, json);
+        match serde_json::to_string_pretty(&self.data) {
+            Ok(json) => {
+                if let Err(e) = std::fs::write(&self.file_path, json) {
+                    eprintln!("[GroupTagStore] 写入文件失败: {}", e);
+                    return false;
+                }
+                true
+            }
+            Err(e) => {
+                eprintln!("[GroupTagStore] 序列化失败: {}", e);
+                false
+            }
         }
     }
 
@@ -371,42 +384,45 @@ impl GroupTagStore {
         self.data.groups.clone()
     }
 
-    pub fn add_group(&mut self, name: String, color: Option<String>) -> AccountGroup {
+    pub fn add_group(&mut self, name: String, color: Option<String>) -> Result<AccountGroup, String> {
         let order = self.data.groups.len() as i32;
         let mut group = AccountGroup::new(name, color);
         group.order = order;
         self.data.groups.push(group.clone());
-        self.save_to_file();
-        group
+        if !self.save_to_file() {
+            return Err("保存分组失败".to_string());
+        }
+        Ok(group)
     }
 
-    pub fn update_group(&mut self, id: &str, name: Option<String>, color: Option<String>) -> Option<AccountGroup> {
-        if let Some(group) = self.data.groups.iter_mut().find(|g| g.id == id) {
-            if let Some(n) = name { group.name = n; }
-            if let Some(c) = color { group.color = Some(c); }
-            let result = group.clone();
-            self.save_to_file();
-            return Some(result);
+    pub fn update_group(&mut self, id: &str, name: Option<String>, color: Option<String>) -> Result<AccountGroup, String> {
+        let group = self.data.groups.iter_mut().find(|g| g.id == id)
+            .ok_or("分组不存在")?;
+        if let Some(n) = name { group.name = n; }
+        if let Some(c) = color { group.color = Some(c); }
+        let result = group.clone();
+        if !self.save_to_file() {
+            return Err("保存分组失败".to_string());
         }
-        None
+        Ok(result)
     }
 
     pub fn delete_group(&mut self, id: &str) -> bool {
         let len_before = self.data.groups.len();
         self.data.groups.retain(|g| g.id != id);
         let deleted = self.data.groups.len() < len_before;
-        if deleted { self.save_to_file(); }
+        if deleted { let _ = self.save_to_file(); }
         deleted
     }
 
-    pub fn reorder_groups(&mut self, ids: Vec<String>) {
+    pub fn reorder_groups(&mut self, ids: Vec<String>) -> bool {
         for (order, id) in ids.iter().enumerate() {
             if let Some(group) = self.data.groups.iter_mut().find(|g| &g.id == id) {
                 group.order = order as i32;
             }
         }
         self.data.groups.sort_by_key(|g| g.order);
-        self.save_to_file();
+        self.save_to_file()
     }
 
     // 标签操作
@@ -414,29 +430,32 @@ impl GroupTagStore {
         self.data.tags.clone()
     }
 
-    pub fn add_tag(&mut self, name: String, color: String) -> AccountTag {
+    pub fn add_tag(&mut self, name: String, color: String) -> Result<AccountTag, String> {
         let tag = AccountTag::new(name, color);
         self.data.tags.push(tag.clone());
-        self.save_to_file();
-        tag
+        if !self.save_to_file() {
+            return Err("保存标签失败".to_string());
+        }
+        Ok(tag)
     }
 
-    pub fn update_tag(&mut self, id: &str, name: Option<String>, color: Option<String>) -> Option<AccountTag> {
-        if let Some(tag) = self.data.tags.iter_mut().find(|t| t.id == id) {
-            if let Some(n) = name { tag.name = n; }
-            if let Some(c) = color { tag.color = c; }
-            let result = tag.clone();
-            self.save_to_file();
-            return Some(result);
+    pub fn update_tag(&mut self, id: &str, name: Option<String>, color: Option<String>) -> Result<AccountTag, String> {
+        let tag = self.data.tags.iter_mut().find(|t| t.id == id)
+            .ok_or("标签不存在")?;
+        if let Some(n) = name { tag.name = n; }
+        if let Some(c) = color { tag.color = c; }
+        let result = tag.clone();
+        if !self.save_to_file() {
+            return Err("保存标签失败".to_string());
         }
-        None
+        Ok(result)
     }
 
     pub fn delete_tag(&mut self, id: &str) -> bool {
         let len_before = self.data.tags.len();
         self.data.tags.retain(|t| t.id != id);
         let deleted = self.data.tags.len() < len_before;
-        if deleted { self.save_to_file(); }
+        if deleted { let _ = self.save_to_file(); }
         deleted
     }
 }

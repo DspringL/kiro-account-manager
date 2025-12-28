@@ -9,7 +9,6 @@ export function useAccounts() {
   const [refreshProgress, setRefreshProgress] = useState({ current: 0, total: 0, currentEmail: '', results: [] })
   const [lastRefreshTime, setLastRefreshTime] = useState(null)
   const [refreshingId, setRefreshingId] = useState(null)
-  const [switchingId, setSwitchingId] = useState(null)
   const refreshTimerRef = useRef(null)
 
   // 判断账号是否即将过期（5分钟内）
@@ -133,8 +132,7 @@ export function useAccounts() {
   }, [])
 
   // 注意：handleDelete, handleBatchDelete, handleSwitchAccount 已移动到 AccountManager/index.jsx 中
-  // 使用 useDialog 的 showConfirm 实现自定义弹窗
-  // 这里只保留 setSwitchingId 供组件使用
+  // switchingId 已移动到 useSwitchAccount.js hook 中
 
   // 初始化和事件监听
   // 注意：自动刷新定时器已移至 App.jsx 统一管理，避免重复刷新
@@ -152,19 +150,16 @@ export function useAccounts() {
       unlistenAccountsUpdated = await listen('accounts-updated', () => {
         if (mounted) loadAccounts()
       })
+      // 监听 Kiro 登录数据（通过 refresh_token 添加账号）
       unlistenKiroLoginData = await listen('kiro-login-data', async (event) => {
         if (!mounted) return
         try {
           const data = typeof event.payload === 'string' ? JSON.parse(event.payload) : event.payload
-          if (data?.accessToken && data?.refreshToken) {
-            await invoke('add_kiro_account', {
-              email: data.email || `banned_${Math.floor(100000 + Math.random() * 900000)}@${(data.idp || 'google').toLowerCase()}.unknown`,
-              accessToken: data.accessToken,
+          if (data?.refreshToken) {
+            // 使用正确的命令：add_account_by_social
+            await invoke('add_account_by_social', {
               refreshToken: data.refreshToken,
-              csrfToken: data.csrfToken || '',
-              idp: data.idp || 'Google',
-              quota: data.quota ?? null,
-              used: data.used ?? null
+              provider: data.idp || data.provider || null
             })
             if (mounted) loadAccounts()
           }
@@ -202,8 +197,6 @@ export function useAccounts() {
     refreshProgress,
     lastRefreshTime,
     refreshingId,
-    switchingId,
-    setSwitchingId,
     batchRefreshAccounts,
     handleRefreshStatus,
     handleExport,

@@ -71,6 +71,12 @@
     "macOS": {
       "minimumSystemVersion": "10.15"
     },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libappindicator3-1"],
+        "section": "utils"
+      }
+    },
     "shortDescription": "Kiro 账号管理工具",
     "longDescription": "管理 Kiro IDE 账号，支持多账号切换和配额监控"
   }

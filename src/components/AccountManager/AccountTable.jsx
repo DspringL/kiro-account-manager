@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState, useEffect, useCallback } from 'react'
+import { useRef, useMemo, useState, useEffect, useCallback, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Users, Plus } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
@@ -151,7 +151,7 @@ function AccountTable({
   )
 }
 
-function AddButton({ onClick, isDark, colors, t }) {
+const AddButton = memo(function AddButton({ onClick, isDark, colors, t }) {
   return (
     <button
       onClick={onClick}
@@ -163,6 +163,6 @@ function AddButton({ onClick, isDark, colors, t }) {
       <span className={`text-sm font-medium ${colors.textMuted}`}>{t('common.addAccount')}</span>
     </button>
   )
-}
+})
 
 export default AccountTable

@@ -29,33 +29,38 @@ pub struct ClientRegistration {
 }
 
 #[tauri::command]
-pub fn get_kiro_local_token() -> Option<KiroLocalToken> {
-    let home = std::env::var("USERPROFILE")
-        .or_else(|_| std::env::var("HOME"))
-        .ok()?;
-    let path = std::path::Path::new(&home)
-        .join(".aws")
-        .join("sso")
-        .join("cache")
-        .join("kiro-auth-token.json");
-    
-    let content = std::fs::read_to_string(&path).ok()?;
-    serde_json::from_str(&content).ok()
+pub async fn get_kiro_local_token() -> Option<KiroLocalToken> {
+    tokio::task::spawn_blocking(|| {
+        let home = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .ok()?;
+        let path = std::path::Path::new(&home)
+            .join(".aws")
+            .join("sso")
+            .join("cache")
+            .join("kiro-auth-token.json");
+        
+        let content = std::fs::read_to_string(&path).ok()?;
+        serde_json::from_str(&content).ok()
+    }).await.ok().flatten()
 }
 
 /// 读取 IdC 客户端注册信息
-pub fn get_client_registration(client_id_hash: &str) -> Option<ClientRegistration> {
-    let home = std::env::var("USERPROFILE")
-        .or_else(|_| std::env::var("HOME"))
-        .ok()?;
-    let path = std::path::Path::new(&home)
-        .join(".aws")
-        .join("sso")
-        .join("cache")
-        .join(format!("{}.json", client_id_hash));
-    
-    let content = std::fs::read_to_string(&path).ok()?;
-    serde_json::from_str(&content).ok()
+pub async fn get_client_registration(client_id_hash: &str) -> Option<ClientRegistration> {
+    let hash = client_id_hash.to_string();
+    tokio::task::spawn_blocking(move || {
+        let home = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .ok()?;
+        let path = std::path::Path::new(&home)
+            .join(".aws")
+            .join("sso")
+            .join("cache")
+            .join(format!("{}.json", hash));
+        
+        let content = std::fs::read_to_string(&path).ok()?;
+        serde_json::from_str(&content).ok()
+    }).await.ok().flatten()
 }
 
 

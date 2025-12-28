@@ -14,12 +14,12 @@ pub fn get_groups(state: State<AppState>) -> Vec<AccountGroup> {
 }
 
 #[tauri::command]
-pub fn add_group(state: State<AppState>, name: String, color: Option<String>) -> AccountGroup {
+pub fn add_group(state: State<AppState>, name: String, color: Option<String>) -> Result<AccountGroup, String> {
     state.group_tag_store.lock().unwrap().add_group(name, color)
 }
 
 #[tauri::command]
-pub fn update_group(state: State<AppState>, id: String, name: Option<String>, color: Option<String>) -> Option<AccountGroup> {
+pub fn update_group(state: State<AppState>, id: String, name: Option<String>, color: Option<String>) -> Result<AccountGroup, String> {
     state.group_tag_store.lock().unwrap().update_group(&id, name, color)
 }
 
@@ -38,7 +38,7 @@ pub fn delete_group(state: State<AppState>, id: String) -> bool {
 }
 
 #[tauri::command]
-pub fn reorder_groups(state: State<AppState>, ids: Vec<String>) {
+pub fn reorder_groups(state: State<AppState>, ids: Vec<String>) -> bool {
     state.group_tag_store.lock().unwrap().reorder_groups(ids)
 }
 
@@ -52,12 +52,12 @@ pub fn get_tags(state: State<AppState>) -> Vec<AccountTag> {
 }
 
 #[tauri::command]
-pub fn add_tag(state: State<AppState>, name: String, color: String) -> AccountTag {
+pub fn add_tag(state: State<AppState>, name: String, color: String) -> Result<AccountTag, String> {
     state.group_tag_store.lock().unwrap().add_tag(name, color)
 }
 
 #[tauri::command]
-pub fn update_tag(state: State<AppState>, id: String, name: Option<String>, color: Option<String>) -> Option<AccountTag> {
+pub fn update_tag(state: State<AppState>, id: String, name: Option<String>, color: Option<String>) -> Result<AccountTag, String> {
     state.group_tag_store.lock().unwrap().update_tag(&id, name, color)
 }
 

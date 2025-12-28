@@ -1,23 +1,36 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { listen, emit } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import Sidebar from './components/Sidebar'
-import Home from './components/Home'
-import AccountManager from './components/AccountManager/index'
-import Settings from './components/Settings'
-import KiroConfig from './components/KiroConfig/index'
-import About from './components/About'
-import Login from './components/Login'
-import WebOAuthLogin from './components/WebOAuthLogin'
-import AuthCallback from './components/AuthCallback'
 import UpdateChecker from './components/UpdateChecker'
 import AnnouncementModal from './components/AnnouncementModal'
 
-
 import { useApp } from './hooks/useApp'
+import { useAutoRefresh } from './hooks/useAutoRefresh'
+import { useModelLock } from './hooks/useModelLock'
 import { useAppSettings } from './contexts/AppSettingsContext'
 import { AccountProvider } from './contexts/AccountContext'
 import { PrivacyProvider } from './contexts/PrivacyContext'
+
+// 路由级别懒加载，减少首屏加载时间
+const Home = lazy(() => import('./components/Home'))
+const AccountManager = lazy(() => import('./components/AccountManager/index'))
+const Settings = lazy(() => import('./components/Settings'))
+const KiroConfig = lazy(() => import('./components/KiroConfig/index'))
+const About = lazy(() => import('./components/About'))
+const Login = lazy(() => import('./components/Login'))
+const WebOAuthLogin = lazy(() => import('./components/WebOAuthLogin'))
+const AuthCallback = lazy(() => import('./components/AuthCallback'))
+
+// 页面加载骨架屏
+function PageLoading() {
+  const { colors } = useApp()
+  return (
+    <div className={`h-full flex items-center justify-center ${colors.main}`}>
+      <div className={`animate-pulse ${colors.textMuted}`}>加载中...</div>
+    </div>
+  )
+}
 
 function App() {
   const [user, setUser] = useState(null)
@@ -25,210 +38,10 @@ function App() {
   const [activeMenu, setActiveMenu] = useState('home')
   const { colors } = useApp()
   const { settings: appSettings, loading: settingsLoading } = useAppSettings()
-  const refreshTimerRef = useRef(null)
-  // 使用 ref 保持最新的设置引用，避免闭包捕获旧值
-  const appSettingsRef = useRef(appSettings)
 
-  // 常量（与 Kiro 官方一致）
-  const REFRESH_BEFORE_EXPIRY_SECONDS = 10 * 60
-
-  // 判断 token 是否在指定秒数内过期（与 Kiro isAuthTokenExpiredWithinSeconds 完全一致）
-  const isAuthTokenExpiredWithinSeconds = (acc, seconds) => {
-    if (!acc.expiresAt || !acc.accessToken) {
-      return true
-    }
-    const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
-    const now = new Date()
-    return expiresAt.valueOf() < now.valueOf() + seconds * 1000
-  }
-
-  // 判断账号是否需要刷新
-  const isExpiringSoon = (acc) => {
-    // 跳过已封禁账号
-    if (acc.status === 'banned') {
-      console.log(`[AutoRefresh] 跳过封禁账号: ${acc.email}`)
-      return false
-    }
-    // 没有过期时间或 accessToken 的不刷新
-    if (!acc.expiresAt || !acc.accessToken) {
-      console.log(`[AutoRefresh] 跳过无过期时间或 token: ${acc.email}`)
-      return false
-    }
-    const needRefresh = isAuthTokenExpiredWithinSeconds(acc, REFRESH_BEFORE_EXPIRY_SECONDS)
-    if (needRefresh) {
-      const expiresAt = new Date(acc.expiresAt.replace(/\//g, '-'))
-      const timeLeft = Math.round((expiresAt.getTime() - Date.now()) / 1000)
-      console.log(`[AutoRefresh] 需要刷新: ${acc.email}, 剩余 ${timeLeft}秒`)
-    }
-    return needRefresh
-  }
-
-  // 启动时只刷新 token（不获取 usage，快速启动）
-  // 启动时强制刷新，不检查 autoRefresh 设置
-  const refreshExpiredTokensOnly = async () => {
-    try {
-      // 使用 ref 获取最新设置，避免闭包捕获旧值
-      const settings = appSettingsRef.current || {}
-      const autoRefreshEnabled = settings.autoRefresh !== false
-      const interval = settings.autoRefreshInterval ?? DEFAULT_REFRESH_INTERVAL
-      console.log('[AutoRefresh] 设置:', { autoRefresh: autoRefreshEnabled, interval })
-      
-      const accounts = await invoke('get_accounts')
-      console.log('[AutoRefresh] 账号数量:', accounts?.length || 0)
-      if (!accounts || accounts.length === 0) return
-      
-      const expiredAccounts = accounts.filter(isExpiringSoon)
-      console.log('[AutoRefresh] 需要刷新的账号:', expiredAccounts.length)
-      
-      if (expiredAccounts.length === 0) {
-        console.log('[AutoRefresh] 没有需要刷新的 token')
-        return
-      }
-      
-      console.log(`[AutoRefresh] 刷新 ${expiredAccounts.length} 个过期 token...`)
-      
-      // 并发刷新
-      await Promise.allSettled(
-        expiredAccounts.map(async (account) => {
-          try {
-            await invoke('refresh_account_token', { id: account.id })
-            console.log(`[AutoRefresh] ${account.email} token 刷新成功`)
-          } catch (e) {
-            console.warn(`[AutoRefresh] ${account.email} token 刷新失败:`, e)
-          }
-        })
-      )
-      
-      console.log('[AutoRefresh] token 刷新完成')
-      // 通知 AccountContext 刷新缓存
-      emit('accounts-updated')
-    } catch (e) {
-      console.error('[AutoRefresh] 刷新失败:', e)
-    }
-  }
-
-  // 检查并恢复锁定的模型
-  const checkAndRestoreLockedModel = async () => {
-    try {
-      // 使用 ref 获取最新设置，避免闭包捕获旧值
-      const settings = appSettingsRef.current || {}
-      if (!settings.lockModel || !settings.lockedModel) return
-      
-      const kiroSettings = await invoke('get_kiro_settings').catch(() => ({}))
-      const currentModel = kiroSettings.modelSelection
-      
-      if (currentModel && currentModel !== settings.lockedModel) {
-        console.log(`[ModelLock] 检测到模型被修改: ${currentModel} -> 恢复为: ${settings.lockedModel}`)
-        await invoke('set_kiro_model', { model: settings.lockedModel })
-        console.log('[ModelLock] 模型已恢复')
-      }
-    } catch (e) {
-      console.error('[ModelLock] 检查模型失败:', e)
-    }
-  }
-
-  // 定时刷新：只刷新 token（复用 isExpiringSoon 判断）
-  const checkAndRefreshExpiringTokens = async () => {
-    try {
-      // 使用 ref 获取最新设置，避免闭包捕获旧值
-      const settings = appSettingsRef.current || {}
-      // autoRefresh 默认为 true（null/undefined 视为 true）
-      if (settings.autoRefresh === false) return
-      
-      const accounts = await invoke('get_accounts')
-      if (!accounts || accounts.length === 0) return
-      
-      const expiredAccounts = accounts.filter(isExpiringSoon)
-      
-      if (expiredAccounts.length === 0) {
-        console.log('[AutoRefresh] 没有需要刷新的 token')
-        return
-      }
-      
-      console.log(`[AutoRefresh] 刷新 ${expiredAccounts.length} 个 token...`)
-      
-      const results = await Promise.allSettled(
-        expiredAccounts.map(async (account) => {
-          try {
-            const updated = await invoke('refresh_account_token', { id: account.id })
-            console.log(`[AutoRefresh] ${account.email} token 刷新成功`)
-            return { success: true, account: updated }
-          } catch (e) {
-            console.warn(`[AutoRefresh] ${account.email} token 刷新失败:`, e)
-            return { success: false }
-          }
-        })
-      )
-      
-      console.log('[AutoRefresh] token 刷新完成')
-      // 重新加载账号列表确保前端数据是最新的
-      const updatedAccounts = await invoke('get_accounts')
-      console.log('[AutoRefresh] 账号列表已更新')
-      // 通知 AccountContext 刷新缓存
-      emit('accounts-updated')
-    } catch (e) {
-      console.error('[AutoRefresh] 刷新失败:', e)
-    }
-  }
-
-  // 默认刷新间隔（分钟）
-  const DEFAULT_REFRESH_INTERVAL = 50
-
-  // 启动自动刷新定时器
-  const startAutoRefreshTimer = () => {
-    if (refreshTimerRef.current) {
-      clearInterval(refreshTimerRef.current)
-    }
-    
-    // 启动时只刷新 token（快速启动）
-    refreshExpiredTokensOnly()
-    
-    // 使用 ref 获取最新设置读取刷新间隔
-    const settings = appSettingsRef.current || {}
-    const interval = settings.autoRefreshInterval ?? DEFAULT_REFRESH_INTERVAL
-    const intervalMs = interval * 60 * 1000
-    
-    console.log(`[AutoRefresh] 定时器间隔: ${interval} 分钟`)
-    refreshTimerRef.current = setInterval(checkAndRefreshExpiringTokens, intervalMs)
-  }
-
-  // 模型锁定检查定时器
-  const modelLockTimerRef = useRef(null)
-
-  // 同步 appSettings 到 ref
-  useEffect(() => {
-    appSettingsRef.current = appSettings
-  }, [appSettings])
-
-  // 设置加载完成后启动定时器
-  useEffect(() => {
-    if (settingsLoading) return
-    
-    console.log('[AutoRefresh] 设置加载完成，启动定时器')
-    startAutoRefreshTimer()
-    startModelLockTimer()
-    
-    return () => {
-      if (refreshTimerRef.current) {
-        clearInterval(refreshTimerRef.current)
-      }
-      if (modelLockTimerRef.current) {
-        clearInterval(modelLockTimerRef.current)
-      }
-    }
-  }, [settingsLoading])
-  
-  const startModelLockTimer = async () => {
-    if (modelLockTimerRef.current) {
-      clearInterval(modelLockTimerRef.current)
-    }
-    
-    // 启动时立即检查一次
-    checkAndRestoreLockedModel()
-    
-    // 每 30 秒检查一次
-    modelLockTimerRef.current = setInterval(checkAndRestoreLockedModel, 30 * 1000)
-  }
+  // 使用抽离的 hooks
+  const { startAutoRefreshTimer } = useAutoRefresh(appSettings, settingsLoading)
+  const { checkAndRestoreLockedModel } = useModelLock(appSettings, settingsLoading)
 
   useEffect(() => {
     checkAuth()
@@ -261,7 +74,7 @@ function App() {
         startAutoRefreshTimer()
       })
       
-      // 监听设置变化，重启模型锁定检查
+      // 监听设置变化，重新检查模型
       unlistenAppSettings = await listen('app-settings-changed', () => {
         if (!mounted) return
         console.log('[ModelLock] 设置已变化，重新检查模型')
@@ -335,7 +148,9 @@ function App() {
             onLogout={handleLogout}
           />
           <main className="flex-1 overflow-hidden">
-            {renderContent()}
+            <Suspense fallback={<PageLoading />}>
+              {renderContent()}
+            </Suspense>
           </main>
           
           <UpdateChecker />

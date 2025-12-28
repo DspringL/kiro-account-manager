@@ -374,7 +374,7 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
 pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<Account, String> {
     use crate::kiro::{get_kiro_local_token, get_client_registration};
     
-    let local_token = get_kiro_local_token()
+    let local_token = get_kiro_local_token().await
         .ok_or("未找到本地 Kiro 账号，请先在 Kiro IDE 中登录")?;
     
     let refresh_token = local_token.refresh_token
@@ -389,7 +389,7 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<Accoun
             .ok_or("IdC 账号缺少 clientIdHash")?;
         let region = local_token.region.clone().unwrap_or_else(|| "us-east-1".to_string());
         
-        let client_reg = get_client_registration(&hash)
+        let client_reg = get_client_registration(&hash).await
             .ok_or(format!("未找到客户端注册信息: {}.json", hash))?;
         
         add_account_by_idc(
