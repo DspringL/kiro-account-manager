@@ -580,7 +580,7 @@ pub fn update_account_tags(
 }
 
 /// 从 AWS 服务端删除账号（注销账号）
-/// 支持 Google、Github、BuilderId，不支持 Enterprise
+/// 仅支持 Google、Github，不支持 BuilderId 和 Enterprise
 #[tauri::command]
 pub async fn delete_account_remote(
     state: State<'_, AppState>,
@@ -596,26 +596,21 @@ pub async fn delete_account_remote(
         store.accounts.iter().find(|a| a.id == id).cloned()
     }.ok_or("账号不存在")?;
     
-    // 检查 provider，Enterprise 不支持删除
+    // 检查 provider
     let provider = account.provider.as_deref().unwrap_or("Google");
     if provider == "Enterprise" {
         return Err("Enterprise 账号不支持远程删除".to_string());
+    }
+    if provider == "BuilderId" {
+        return Err("BuilderId 账号不支持远程删除".to_string());
     }
     
     let access_token = account.access_token.as_ref()
         .ok_or("账号缺少 access_token，请先刷新")?;
     
-    // 根据 provider 类型选择不同的删除 API
-    // BuilderId 使用 Web Portal CBOR API，Google/Github 使用 Desktop API
-    if provider == "BuilderId" {
-        // BuilderId 账号使用 Web Portal API
-        let client = KiroWebPortalClient::new();
-        client.delete_account(access_token, provider).await?;
-    } else {
-        // Google/Github 账号使用 Desktop API
-        let machine_id = get_machine_id();
-        delete_account_desktop(access_token, &machine_id).await?;
-    }
+    // Google/Github 账号使用 Desktop API
+    let machine_id = get_machine_id();
+    delete_account_desktop(access_token, &machine_id).await?;
     
     // 如果需要同时删除本地记录
     if delete_local {

@@ -704,58 +704,6 @@ impl KiroWebPortalClient {
         let resp: GetUserUsageAndLimitsResponse = cbor_decode(&bytes)?;
         Ok(resp)
     }
-
-    /// 调用 DeleteAccount 接口 (KiroWebPortalService)
-    /// 使用 Cookie 认证: AccessToken, Idp
-    pub async fn delete_account(
-        &self,
-        access_token: &str,
-        idp: &str,
-    ) -> Result<(), String> {
-        let url = format!(
-            "{}/service/KiroWebPortalService/operation/DeleteAccount",
-            self.endpoint
-        );
-
-        // 空请求体
-        let body = cbor_encode(&serde_json::json!({}))?;
-        let cookie = format!("Idp={}; AccessToken={}", idp, access_token);
-
-        #[cfg(debug_assertions)]
-        println!("[WebOAuth] DeleteAccount Request: {}", serde_json::to_string_pretty(&serde_json::json!({
-            "url": url,
-            "idp": idp
-        })).unwrap_or_default());
-
-        let response = self.client
-            .post(&url)
-            .header("Content-Type", "application/cbor")
-            .header("Accept", "application/cbor")
-            .header("smithy-protocol", "rpc-v2-cbor")
-            .header("authorization", format!("Bearer {}", access_token))
-            .header("Cookie", cookie)
-            .body(body)
-            .send()
-            .await
-            .map_err(|e| format!("DeleteAccount request failed: {}", e))?;
-
-        let status = response.status();
-        
-        #[cfg(debug_assertions)]
-        println!("[WebOAuth] DeleteAccount Status: {}", status);
-
-        if !status.is_success() {
-            let bytes = response.bytes().await.unwrap_or_default();
-            let error_msg = if let Ok(error) = cbor_decode::<serde_json::Value>(&bytes) {
-                serde_json::to_string(&error).unwrap_or_default()
-            } else {
-                String::from_utf8_lossy(&bytes).to_string()
-            };
-            return Err(format!("DeleteAccount failed ({}): {}", status, error_msg));
-        }
-
-        Ok(())
-    }
 }
 
 // ============================================================
