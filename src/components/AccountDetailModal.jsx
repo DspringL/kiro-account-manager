@@ -90,7 +90,15 @@ function AccountDetailModal({ account, onClose }) {
                   {account.usageData?.subscriptionInfo?.subscriptionTitle || 'Free'}
                 </span>
               </div>
-              <p className={`text-sm ${colors.textMuted}`}>{account.provider || t('common.unknown')} · {t('detail.addedAt')} {account.addedAt?.split(' ')[0]}</p>
+              <p className={`text-sm ${colors.textMuted}`}>
+                <span className={`${
+                  account.provider === 'Google' ? 'text-red-500'
+                    : account.provider === 'GitHub' ? (isDark ? 'text-gray-300' : 'text-gray-700')
+                    : account.provider === 'BuilderId' ? 'text-orange-500'
+                    : colors.textMuted
+                }`}>{account.provider || t('common.unknown')}</span>
+                {' · '}{t('detail.addedAt')} {account.addedAt?.split(' ')[0]}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className={`p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-xl transition-all`}>

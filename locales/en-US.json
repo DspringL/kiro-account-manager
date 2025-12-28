@@ -9,6 +9,8 @@
   "nav.settings": "Settings",
   "nav.about": "About",
   "nav.kiroConnected": "Kiro IDE Connected",
+  "nav.collapseSidebar": "Double-click to collapse",
+  "nav.expandSidebar": "Double-click to expand",
 
   "home.title": "Kiro Account Manager",
   "home.subtitle": "Manage your Kiro IDE accounts, smart switching, quota monitoring",
@@ -159,6 +161,8 @@
   "settings.kiroSettingsDesc": "Configure Kiro IDE features",
   "settings.enableCodebaseIndexing": "Enable Codebase Indexing",
   "settings.enableCodebaseIndexingDesc": "When enabled, Kiro will automatically index your codebase for better code understanding and search",
+  "settings.trustAllCommands": "Trust All Commands",
+  "settings.trustAllCommandsDesc": "When enabled, Kiro will execute any shell command without confirmation (requires IDE restart)",
   "settings.invalidProxyFormat": "Invalid proxy format. Use http://, https://, or socks5:// URL",
   "settings.invalidBrowserPath": "Invalid browser path. Ensure you enter an executable file path (.exe, .app, etc.)",
 
@@ -183,8 +187,6 @@
   "accounts.status": "Status",
   "accounts.active": "Active",
   "accounts.banned": "Banned",
-  "accounts.expired": "Expired",
-  "accounts.expiringSoon": "Expiring Soon",
   "accounts.noAccounts": "No accounts",
   "accounts.addFirst": "Click 'Add Account' to start",
   "accounts.confirmDelete": "Delete this account?",
@@ -204,6 +206,8 @@
   "accounts.deselectAll": "Deselect All",
   "accounts.batchRefresh": "Batch Refresh",
   "accounts.batchDelete": "Batch Delete",
+  "accounts.cardView": "Card View",
+  "accounts.tableView": "List View",
 
   "login.title": "Desktop OAuth Login",
   "login.subtitle": "Choose login method",
@@ -253,9 +257,10 @@
   "about.ui": "UI",
   "about.backend": "Backend",
   "about.links": "Links",
+  "about.tutorial": "Tutorial",
   "about.qqGroup": "QQ Group",
-  "about.shop": "Shop",
-  "about.donate": "Buy me a coffee",
+  "about.shop": "Buy",
+  "about.donate": "Buy me a coffee · Support",
   "about.alipay": "Alipay",
   "about.wechat": "WeChat Pay",
   "about.clickToEnlarge": "Click to enlarge",
@@ -425,6 +430,7 @@
   "accountCard.deleteRemoteFailed": "Delete failed",
   "accountCard.tokenExpired": "Expired",
   "accountCard.rightClickTip": "Right-click for more",
+  "accountCard.copyJson": "Copy JSON",
 
   "refresh.title": "Refresh Accounts",
   "refresh.progress": "Progress",
@@ -544,11 +550,6 @@
   "steering.unknownTime": "Unknown time",
   "steering.contentPlaceholder": "Enter Markdown content...",
 
-  "settings.deviceFingerprint": "Device Fingerprint",
-  "settings.deviceFingerprintDesc": "Unique identifier generated from hardware info for device identification",
-  "settings.fullFingerprint": "Full Fingerprint",
-  "settings.fingerprintTip": "Generated from motherboard, BIOS, disk serial numbers. Unique per device",
-
   "callback.processing": "Processing login callback...",
   "callback.missingParams": "Missing required callback parameters",
   "callback.exchangingToken": "Exchanging access token...",
@@ -577,5 +578,7 @@
   "announcement.content2": "This project is licensed under GPL-3.0, free for everyone to use.",
   "announcement.content3": "Please download from the official GitHub repository to avoid tampered versions.",
   "announcement.official": "Official Download:",
+  "announcement.qqGroup": "QQ Group:",
+  "announcement.dontRemind": "Don't remind",
   "announcement.understand": "I Understand"
 }

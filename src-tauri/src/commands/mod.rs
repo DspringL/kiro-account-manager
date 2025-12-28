@@ -12,7 +12,6 @@ pub fn generate_random_email(provider: &str) -> String {
 pub mod account_cmd;
 pub mod app_settings_cmd;
 pub mod auth_cmd;
-pub mod fingerprint_cmd;
 pub mod kiro_settings_cmd;
 pub mod machine_guid_cmd;
 pub mod mcp_cmd;

@@ -67,12 +67,9 @@ fn build_http_client() -> Result<reqwest::Client, String> {
     
     // 尝试从 Kiro 设置获取代理
     if let Some(proxy_url) = get_proxy_from_kiro_settings() {
-        println!("[Update] 使用代理: {}", proxy_url);
         let proxy = Proxy::all(&proxy_url)
             .map_err(|e| format!("代理配置错误: {}", e))?;
         builder = builder.proxy(proxy);
-    } else {
-        println!("[Update] 未配置代理，直连");
     }
     
     builder.build().map_err(|e| format!("创建 HTTP 客户端失败: {}", e))

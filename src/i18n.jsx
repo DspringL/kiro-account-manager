@@ -9,7 +9,7 @@ import enUS from '../locales/en-US.json'
 import ruRU from '../locales/ru-RU.json'
 
 // 支持的语言
-export const locales = {
+const locales = {
   'zh-CN': '简体中文',
   'en-US': 'English',
   'ru-RU': 'Русский',
@@ -39,7 +39,7 @@ i18n
   })
 
 // 从 app-settings.json 加载语言设置
-export const loadLocaleFromSettings = async () => {
+const loadLocaleFromSettings = async () => {
   try {
     const settings = await invoke('get_app_settings')
     if (settings?.locale && locales[settings.locale]) {
@@ -51,7 +51,7 @@ export const loadLocaleFromSettings = async () => {
 }
 
 // 切换语言（保存到 app-settings.json）
-export const changeLanguage = async (lng) => {
+const changeLanguage = async (lng) => {
   await i18n.changeLanguage(lng)
   try {
     await invoke('save_app_settings', { settings: { locale: lng } })
@@ -61,7 +61,7 @@ export const changeLanguage = async (lng) => {
 }
 
 // 兼容旧的 useI18n hook
-export function useI18n() {
+function useI18n() {
   const { t, i18n: i18nInstance } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [, forceUpdate] = React.useReducer(x => x + 1, 0)
@@ -85,7 +85,7 @@ export function useI18n() {
 }
 
 // I18nProvider 组件
-export function I18nProvider({ children }) {
+function I18nProvider({ children }) {
   const [loaded, setLoaded] = useState(false)
   
   useEffect(() => {
@@ -104,4 +104,5 @@ export function I18nProvider({ children }) {
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }
 
+export { locales, useI18n, I18nProvider, changeLanguage, loadLocaleFromSettings }
 export default i18n

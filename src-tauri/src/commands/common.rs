@@ -1,10 +1,7 @@
 // 公共工具函数 - 提取重复逻辑
 
 use crate::account::Account;
-use crate::auth::get_usage_limits_desktop;
-use crate::codewhisperer_client::CodeWhispererClient;
-use crate::commands::machine_guid_cmd::get_machine_id;
-use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, SocialProvider};
+use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, SocialProvider, KiroWebPortalClient};
 
 /// Token 刷新结果
 pub struct RefreshResult {
@@ -65,20 +62,16 @@ pub async fn refresh_token_by_provider(
     }
 }
 
-/// 根据 provider 获取 usage 数据
+/// 根据 provider 获取 usage 数据（统一使用 Web Portal 接口）
 pub async fn get_usage_by_provider(
     provider: &str,
     access_token: &str,
 ) -> UsageResult {
-    if provider == "BuilderId" {
-        let machine_id = get_machine_id();
-        let cw_client = CodeWhispererClient::new(&machine_id);
-        let usage_call = cw_client.get_usage_limits(access_token).await;
-        parse_usage_result(usage_call)
-    } else {
-        let usage_call = get_usage_limits_desktop(access_token).await;
-        parse_usage_result(usage_call)
-    }
+    // 统一使用 KiroWebPortalService 的 GetUserUsageAndLimits 接口
+    // provider 即 idp: Google / Github / BuilderId
+    let client = KiroWebPortalClient::new();
+    let usage_call = client.get_user_usage_and_limits(access_token, provider).await;
+    parse_usage_result(usage_call)
 }
 
 /// 解析 usage 结果，提取封禁状态

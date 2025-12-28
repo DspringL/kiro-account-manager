@@ -9,6 +9,8 @@
   "nav.settings": "设置",
   "nav.about": "关于",
   "nav.kiroConnected": "Kiro IDE 已连接",
+  "nav.collapseSidebar": "双击折叠侧边栏",
+  "nav.expandSidebar": "双击展开侧边栏",
 
   "home.title": "Kiro Account Manager",
   "home.subtitle": "管理你的 Kiro IDE 账号，智能切换，配额监控",
@@ -165,6 +167,8 @@
   "settings.kiroSettingsDesc": "配置 Kiro IDE 的功能选项",
   "settings.enableCodebaseIndexing": "启用代码库索引",
   "settings.enableCodebaseIndexingDesc": "启用后，Kiro 会自动索引代码库以提供更好的代码理解和搜索功能",
+  "settings.trustAllCommands": "信任所有命令",
+  "settings.trustAllCommandsDesc": "启用后，Kiro 执行任何 Shell 命令都不会弹窗确认（需重启 IDE 生效）",
   "settings.invalidProxyFormat": "代理格式无效，请使用 http://、https:// 或 socks5:// 开头的 URL",
   "settings.invalidBrowserPath": "浏览器路径无效，请确保输入的是可执行文件路径（.exe、.app 等）",
 
@@ -188,9 +192,7 @@
   "accounts.used": "已用",
   "accounts.status": "状态",
   "accounts.active": "正常",
-  "accounts.banned": "已封禁",
-  "accounts.expired": "已过期",
-  "accounts.expiringSoon": "即将过期",
+  "accounts.banned": "封禁",
   "accounts.noAccounts": "暂无账号",
   "accounts.addFirst": "点击上方「添加账号」开始",
   "accounts.confirmDelete": "确定要删除这个账号吗？",
@@ -210,6 +212,8 @@
   "accounts.deselectAll": "取消全选",
   "accounts.batchRefresh": "批量刷新",
   "accounts.batchDelete": "批量删除",
+  "accounts.cardView": "卡片视图",
+  "accounts.tableView": "列表视图",
 
   "login.title": "桌面授权登录",
   "login.subtitle": "选择登录方式",
@@ -259,9 +263,10 @@
   "about.ui": "UI",
   "about.backend": "后端",
   "about.links": "链接",
+  "about.tutorial": "使用教程",
   "about.qqGroup": "QQ群",
-  "about.shop": "小店",
-  "about.donate": "请作者喝杯咖啡",
+  "about.shop": "购买",
+  "about.donate": "请作者喝杯咖啡 · 支持作者",
   "about.alipay": "支付宝",
   "about.wechat": "微信支付",
   "about.clickToEnlarge": "点击图片可放大查看",
@@ -431,6 +436,7 @@
   "accountCard.deleteRemoteFailed": "注销失败",
   "accountCard.tokenExpired": "已过期",
   "accountCard.rightClickTip": "右键查看更多操作",
+  "accountCard.copyJson": "复制 JSON",
 
   "refresh.title": "刷新账号",
   "refresh.progress": "进度",
@@ -451,7 +457,7 @@
   "detail.ssoCredentials": "AWS SSO OIDC 凭证",
   "detail.refreshFailed": "刷新失败",
   "detail.accountNormal": "账号正常",
-  "detail.accountBanned": "账号已封禁",
+  "detail.accountBanned": "账号封禁",
   "detail.used": "已使用",
   "detail.precise": "精确",
   "detail.reset": "重置",
@@ -550,11 +556,6 @@
   "steering.unknownTime": "未知时间",
   "steering.contentPlaceholder": "输入 Markdown 内容...",
 
-  "settings.deviceFingerprint": "设备指纹",
-  "settings.deviceFingerprintDesc": "基于硬件信息生成的唯一标识，用于设备识别",
-  "settings.fullFingerprint": "完整指纹",
-  "settings.fingerprintTip": "此指纹基于主板、BIOS、硬盘等硬件信息生成，每台设备唯一",
-
   "callback.processing": "正在处理登录回调...",
   "callback.missingParams": "缺少必要的回调参数",
   "callback.exchangingToken": "正在交换访问令牌...",
@@ -583,5 +584,7 @@
   "announcement.content2": "本项目遵循 GPL-3.0 开源协议，任何人都可以免费使用。",
   "announcement.content3": "请从官方 GitHub 仓库下载，避免使用来路不明的版本。",
   "announcement.official": "官方下载地址：",
+  "announcement.qqGroup": "交流群：",
+  "announcement.dontRemind": "不再提醒",
   "announcement.understand": "我已知晓"
 }

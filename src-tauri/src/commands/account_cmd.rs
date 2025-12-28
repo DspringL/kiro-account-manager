@@ -3,10 +3,8 @@
 use tauri::State;
 use crate::state::AppState;
 use crate::account::Account;
-use crate::auth::{User, refresh_token_desktop, get_usage_limits_desktop};
-use crate::codewhisperer_client::CodeWhispererClient;
-use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata};
-use crate::commands::machine_guid_cmd::get_machine_id;
+use crate::auth::{User, refresh_token_desktop};
+use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, KiroWebPortalClient};
 use crate::commands::common::{refresh_token_by_provider, get_usage_by_provider, calc_expires_at};
 use serde::{Deserialize, Serialize};
 
@@ -197,10 +195,9 @@ pub async fn verify_account(
         let idc_provider = IdcProvider::new(&provider, region_str, None);
         let auth_result = idc_provider.refresh_token(&refresh_token, metadata).await?;
         
-        // 使用 CodeWhisperer API 获取 usage
-        let machine_id = get_machine_id();
-        let cw_client = CodeWhispererClient::new(&machine_id);
-        let usage = cw_client.get_usage_limits(&auth_result.access_token).await?;
+        // 统一使用 Web Portal 接口获取 usage
+        let client = KiroWebPortalClient::new();
+        let usage = client.get_user_usage_and_limits(&auth_result.access_token, &provider).await?;
         
         let (q, u) = usage.usage_breakdown_list.as_ref()
             .and_then(|list| list.first())
@@ -211,7 +208,10 @@ pub async fn verify_account(
     } else {
         // Social 账号使用 Desktop API 刷新
         let refresh_result = refresh_token_desktop(&refresh_token).await?;
-        let usage = get_usage_limits_desktop(&refresh_result.access_token).await?;
+        
+        // 统一使用 Web Portal 接口获取 usage
+        let client = KiroWebPortalClient::new();
+        let usage = client.get_user_usage_and_limits(&refresh_result.access_token, &provider).await?;
         
         let (q, u) = usage.usage_breakdown_list.as_ref()
             .and_then(|list| list.first())
@@ -263,7 +263,12 @@ pub async fn add_account_by_social(
     let access_token = refresh_result.access_token;
     let new_refresh_token = refresh_result.refresh_token;
     
-    let usage_call = get_usage_limits_desktop(&access_token).await;
+    // 先根据 provider 参数推断 idp（用于 Web Portal 接口）
+    let idp = provider.clone().unwrap_or_else(|| "Google".to_string());
+    
+    // 统一使用 Web Portal 接口获取 usage
+    let client = KiroWebPortalClient::new();
+    let usage_call = client.get_user_usage_and_limits(&access_token, &idp).await;
     let (usage_result, ban_reason) = match &usage_call {
         Ok(usage) => (Some(usage.clone()), None),
         Err(e) if e.starts_with("BANNED:") => (None, Some(e.strip_prefix("BANNED:").unwrap_or("UNKNOWN").to_string())),
@@ -279,7 +284,7 @@ pub async fn add_account_by_social(
         .and_then(|u| u.user_info.as_ref())
         .and_then(|u| u.user_id.clone());
     
-    // 先根据 provider 参数或邮箱推断 idp
+    // 根据 provider 参数或邮箱推断最终 idp
     let idp = provider.unwrap_or_else(|| {
         if let Some(ref e) = new_email {
             if e.contains("gmail") { "Google".to_string() }
@@ -431,9 +436,9 @@ pub async fn add_account_by_idc(
     let idc_provider = IdcProvider::new("BuilderId", &region, None);
     let auth_result = idc_provider.refresh_token(&refresh_token, metadata).await?;
     
-    let machine_id = get_machine_id();
-    let cw_client = CodeWhispererClient::new(&machine_id);
-    let usage_call = cw_client.get_usage_limits(&auth_result.access_token).await;
+    // 统一使用 Web Portal 接口获取 usage
+    let client = KiroWebPortalClient::new();
+    let usage_call = client.get_user_usage_and_limits(&auth_result.access_token, "BuilderId").await;
     let (usage, is_banned) = match &usage_call {
         Ok(u) => (Some(u.clone()), false),
         Err(e) if e.starts_with("BANNED:") => (None, true),
@@ -600,11 +605,17 @@ pub async fn delete_account_remote(
     let access_token = account.access_token.as_ref()
         .ok_or("账号缺少 access_token，请先刷新")?;
     
-    // 获取机器码用于 User-Agent
-    let machine_id = get_machine_id();
-    
-    // 调用 Desktop API 删除账号（Google/Github/BuilderId 都用同一个端点）
-    delete_account_desktop(access_token, &machine_id).await?;
+    // 根据 provider 类型选择不同的删除 API
+    // BuilderId 使用 Web Portal CBOR API，Google/Github 使用 Desktop API
+    if provider == "BuilderId" {
+        // BuilderId 账号使用 Web Portal API
+        let client = KiroWebPortalClient::new();
+        client.delete_account(access_token, provider).await?;
+    } else {
+        // Google/Github 账号使用 Desktop API
+        let machine_id = get_machine_id();
+        delete_account_desktop(access_token, &machine_id).await?;
+    }
     
     // 如果需要同时删除本地记录
     if delete_local {

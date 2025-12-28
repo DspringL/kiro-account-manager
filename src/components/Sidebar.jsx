@@ -24,36 +24,53 @@ function Sidebar({ activeMenu, onMenuChange }) {
   const [showThemeMenu, setShowThemeMenu] = useState(false)
   const [showLangMenu, setShowLangMenu] = useState(false)
   const [version, setVersion] = useState('')
+  const [collapsed, setCollapsed] = useState(false)
   const { t, theme, colors, setTheme, locale, setLocale, langLoading } = useApp()
   const menuItems = useMenuItems()
 
   useEffect(() => {
     invoke('get_kiro_local_token').then(setLocalToken).catch(() => {})
     getVersion().then(setVersion)
+    // 从 localStorage 读取折叠状态
+    const saved = localStorage.getItem('sidebar-collapsed')
+    if (saved === 'true') setCollapsed(true)
   }, [])
+
+  // 保存折叠状态
+  const toggleCollapsed = () => {
+    const newState = !collapsed
+    setCollapsed(newState)
+    localStorage.setItem('sidebar-collapsed', String(newState))
+  }
 
   const themeIcons = { light: Sun, dark: Moon, purple: Palette, green: Palette }
   const ThemeIcon = themeIcons[theme] || Sun
 
   return (
-    <div className={`w-56 ${colors.sidebar} ${colors.sidebarText} flex flex-col relative`}>
-      {/* Logo */}
-      <div className="p-5 pb-4">
-        <div className="flex items-center gap-2.5 mb-1 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm transition-transform hover:scale-110 hover:rotate-3">
+    <div className={`${collapsed ? 'w-16' : 'w-56'} ${colors.sidebar} ${colors.sidebarText} flex flex-col relative transition-all duration-300`}>
+      {/* Logo - 双击折叠 */}
+      <div 
+        className={`p-5 pb-4 ${collapsed ? 'px-3' : ''} cursor-pointer select-none`}
+        onDoubleClick={toggleCollapsed}
+        title={collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
+      >
+        <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-2.5'} mb-1 animate-fade-in-up`} style={{ animationDelay: '0.1s' }}>
+          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm transition-transform hover:scale-110 hover:rotate-3 flex-shrink-0">
             <svg width="24" height="24" viewBox="0 0 40 40" fill="none">
               <path d="M20 4C12 4 6 10 6 18C6 22 8 25 8 25C8 25 7 28 7 30C7 32 8 34 10 34C11 34 12 33 13 32C14 33 16 34 20 34C24 34 26 33 27 32C28 33 29 34 30 34C32 34 33 32 33 30C33 28 32 25 32 25C32 25 34 22 34 18C34 10 28 4 20 4ZM14 20C12.5 20 11 18.5 11 17C11 15.5 12.5 14 14 14C15.5 14 17 15.5 17 17C17 18.5 15.5 20 14 20ZM26 20C24.5 20 23 18.5 23 17C23 15.5 24.5 14 26 14C27.5 14 29 15.5 29 17C29 18.5 27.5 20 26 20Z" fill="white"/>
             </svg>
           </div>
-          <div>
-            <span className="font-bold text-lg tracking-wide">KIRO</span>
-            <p className={`text-xs ${colors.sidebarMuted}`}>Account Manager</p>
-          </div>
+          {!collapsed && (
+            <div>
+              <span className="font-bold text-lg tracking-wide">KIRO</span>
+              <p className={`text-xs ${colors.sidebarMuted}`}>Account Manager</p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Menu */}
-      <nav className="flex-1 px-3 space-y-1">
+      <nav className={`flex-1 ${collapsed ? 'px-2' : 'px-3'} space-y-1`}>
         {menuItems.map((item, index) => {
           const Icon = item.icon
           const isActive = activeMenu === item.id
@@ -61,19 +78,22 @@ function Sidebar({ activeMenu, onMenuChange }) {
             <button
               key={item.id}
               onClick={() => onMenuChange(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all rounded-xl group animate-slide-in-left ${
+              title={collapsed ? item.label : undefined}
+              className={`w-full flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-4'} py-2.5 text-left transition-all rounded-xl group animate-slide-in-left ${
                 isActive ? `${colors.sidebarActive} font-medium shadow-sm` : `${colors.sidebarText} ${colors.sidebarHover}`
               }`}
               style={{ animationDelay: `${0.15 + index * 0.05}s` }}
             >
-              <div className={`transition-transform ${isActive ? '' : 'group-hover:scale-110'}`}>
+              <div className={`transition-transform ${isActive ? '' : 'group-hover:scale-110'} flex-shrink-0`}>
                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
               </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm">{item.label}</span>
-                {item.desc && <p className={`text-xs ${colors.sidebarMuted} truncate`}>{item.desc}</p>}
-              </div>
-              {isActive && (
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm">{item.label}</span>
+                  {item.desc && <p className={`text-xs ${colors.sidebarMuted} truncate`}>{item.desc}</p>}
+                </div>
+              )}
+              {isActive && !collapsed && (
                 <div className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse" />
               )}
             </button>
@@ -82,7 +102,7 @@ function Sidebar({ activeMenu, onMenuChange }) {
       </nav>
 
       {/* Kiro IDE 本地连接状态 */}
-      {localToken && (
+      {localToken && !collapsed && (
         <div className={`mx-3 mb-3 ${colors.sidebarCard} rounded-xl p-3 animate-fade-in-up card-glow`} style={{ animationDelay: '0.5s' }}>
           <div className={`text-xs ${colors.sidebarMuted} mb-2 flex items-center gap-1.5`}>
             <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
@@ -102,8 +122,15 @@ function Sidebar({ activeMenu, onMenuChange }) {
         </div>
       )}
 
+      {/* 折叠状态下的连接指示器 */}
+      {localToken && collapsed && (
+        <div className="mx-2 mb-3 flex justify-center">
+          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" title={t('nav.kiroConnected')} />
+        </div>
+      )}
+
       {/* Theme & Language & Version */}
-      <div className={`px-3 pb-3 flex items-center justify-between gap-2`}>
+      <div className={`px-3 pb-3 flex items-center ${collapsed ? 'flex-col gap-2' : 'justify-between gap-2'}`}>
         {/* 主题切换 */}
         <div className="relative">
           <button
@@ -116,7 +143,7 @@ function Sidebar({ activeMenu, onMenuChange }) {
           {showThemeMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowThemeMenu(false)} />
-              <div className={`absolute bottom-full left-0 mb-2 ${colors.card} rounded-xl shadow-xl border ${colors.cardBorder} py-1 min-w-[100px] z-50 animate-scale-in`}>
+              <div className={`absolute bottom-full ${collapsed ? 'left-full ml-2' : 'left-0'} mb-2 ${colors.card} rounded-xl shadow-xl border ${colors.cardBorder} py-1 min-w-[100px] z-50 animate-scale-in`}>
                 {Object.entries(themes).map(([key, themeConfig]) => {
                   const TIcon = themeIcons[key] || Sun
                   return (
@@ -145,13 +172,13 @@ function Sidebar({ activeMenu, onMenuChange }) {
             className={`flex items-center gap-1.5 px-2 py-1.5 ${colors.sidebarCard} rounded-lg text-xs ${colors.sidebarMuted} hover:text-white transition-all hover:scale-105 disabled:opacity-50`}
           >
             <Languages size={14} />
-            <span>{locales[locale]?.substring(0, 2) || 'ZH'}</span>
+            {!collapsed && <span>{locales[locale]?.substring(0, 2) || 'ZH'}</span>}
           </button>
           
           {showLangMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)} />
-              <div className={`absolute bottom-full left-0 mb-2 ${colors.card} rounded-xl shadow-xl border ${colors.cardBorder} py-1 min-w-[120px] z-50 animate-scale-in`}>
+              <div className={`absolute bottom-full ${collapsed ? 'left-full ml-2' : 'left-0'} mb-2 ${colors.card} rounded-xl shadow-xl border ${colors.cardBorder} py-1 min-w-[120px] z-50 animate-scale-in`}>
                 {Object.entries(locales).map(([key, name]) => (
                   <button
                     key={key}
@@ -168,7 +195,7 @@ function Sidebar({ activeMenu, onMenuChange }) {
           )}
         </div>
         
-        <span className={`text-xs ${colors.sidebarMuted} ml-auto`}>v{version || '...'}</span>
+        {!collapsed && <span className={`text-xs ${colors.sidebarMuted} ml-auto`}>v{version || '...'}</span>}
       </div>
     </div>
   )

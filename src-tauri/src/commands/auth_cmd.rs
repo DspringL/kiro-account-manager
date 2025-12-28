@@ -3,11 +3,9 @@
 use tauri::{Emitter, State};
 use crate::state::AppState;
 use crate::account::Account;
-use crate::auth::{User, get_usage_limits_desktop};
+use crate::auth::User;
 use crate::auth_social;
-use crate::codewhisperer_client::CodeWhispererClient;
-use crate::providers::{AuthMethod, AuthProvider, get_provider_config, create_social_provider, create_idc_provider};
-use crate::commands::machine_guid_cmd::get_machine_id;
+use crate::providers::{AuthMethod, AuthProvider, get_provider_config, create_social_provider, create_idc_provider, KiroWebPortalClient};
 use serde::Deserialize;
 
 /// add_kiro_account 命令参数
@@ -61,8 +59,9 @@ async fn login_social(
     
     let auth_result = social_provider.login().await?;
     
-    // 获取 usage，检测封禁状态
-    let usage_call = get_usage_limits_desktop(&auth_result.access_token).await;
+    // 统一使用 Web Portal 接口获取 usage
+    let client = KiroWebPortalClient::new();
+    let usage_call = client.get_user_usage_and_limits(&auth_result.access_token, &provider_id).await;
     let (usage, is_banned) = match &usage_call {
         Ok(u) => (Some(u.clone()), false),
         Err(e) if e.starts_with("BANNED:") => (None, true),
@@ -149,9 +148,9 @@ async fn login_idc(
     
     let auth_result = idc_provider.login().await?;
 
-    let machine_id = get_machine_id();
-    let cw_client = CodeWhispererClient::new(&machine_id);
-    let usage_call = cw_client.get_usage_limits(&auth_result.access_token).await;
+    // 统一使用 Web Portal 接口获取 usage
+    let client = KiroWebPortalClient::new();
+    let usage_call = client.get_user_usage_and_limits(&auth_result.access_token, &provider_id).await;
     let (usage, is_banned) = match &usage_call {
         Ok(u) => (Some(u.clone()), false),
         Err(e) if e.starts_with("BANNED:") => (None, true),
@@ -265,7 +264,9 @@ pub async fn handle_kiro_social_callback(
         &code, &pending.code_verifier, redirect_uri, &pending.machineid,
     ).await?;
     
-    let usage_call = get_usage_limits_desktop(&token_response.access_token).await;
+    // 统一使用 Web Portal 接口获取 usage
+    let client = KiroWebPortalClient::new();
+    let usage_call = client.get_user_usage_and_limits(&token_response.access_token, &pending.provider).await;
     let (usage, is_banned) = match &usage_call {
         Ok(u) => (Some(u.clone()), false),
         Err(e) if e.starts_with("BANNED:") => (None, true),
@@ -344,8 +345,10 @@ pub async fn add_kiro_account(
     
     println!("Adding Kiro account: email={}, idp={}, quota={:?}, used={:?}", email, idp, quota, used);
     
+    // 统一使用 Web Portal 接口获取 usage
     let (usage, is_banned) = if !access_token.is_empty() {
-        let usage_call = get_usage_limits_desktop(&access_token).await;
+        let client = KiroWebPortalClient::new();
+        let usage_call = client.get_user_usage_and_limits(&access_token, &idp).await;
         match &usage_call {
             Ok(u) => (Some(u.clone()), false),
             Err(e) if e.starts_with("BANNED:") => (None, true),

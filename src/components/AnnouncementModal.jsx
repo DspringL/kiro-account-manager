@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, X, ExternalLink } from 'lucide-react'
+import { AlertTriangle, X, ExternalLink, MessageCircle } from 'lucide-react'
 import { useApp } from '../hooks/useApp'
 
 // 公告版本号，修改此值会重新显示公告
-const ANNOUNCEMENT_VERSION = '1'
+const ANNOUNCEMENT_VERSION = '2'
 
 export default function AnnouncementModal() {
   const { t, theme, colors } = useApp()
@@ -19,6 +19,11 @@ export default function AnnouncementModal() {
   }, [])
 
   const handleClose = () => {
+    localStorage.setItem('announcement_shown', ANNOUNCEMENT_VERSION)
+    setShow(false)
+  }
+
+  const handleDontRemind = () => {
     localStorage.setItem('announcement_shown', ANNOUNCEMENT_VERSION)
     setShow(false)
   }
@@ -66,13 +71,36 @@ export default function AnnouncementModal() {
               <ExternalLink size={14} />
             </a>
           </div>
+
+          {/* QQ 群 */}
+          <div className={`mt-3 p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+            <p className={`text-sm font-medium mb-2 ${colors.text}`}>{t('announcement.qqGroup')}</p>
+            <a 
+              href="https://qm.qq.com/q/JjXJiVCiAw" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-blue-500 hover:text-blue-400 text-sm"
+            >
+              <MessageCircle size={14} />
+              <span>1020204332</span>
+              <ExternalLink size={14} />
+            </a>
+          </div>
         </div>
 
         {/* 底部按钮 */}
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={handleDontRemind}
+            className={`flex-1 py-3 rounded-xl border ${
+              isDark ? 'border-gray-600 text-gray-300 hover:bg-white/5' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            } font-medium transition-colors`}
+          >
+            {t('announcement.dontRemind')}
+          </button>
           <button
             onClick={handleClose}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium hover:opacity-90 transition-opacity"
+            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium hover:opacity-90 transition-opacity"
           >
             {t('announcement.understand')}
           </button>

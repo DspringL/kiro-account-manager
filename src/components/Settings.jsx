@@ -29,6 +29,7 @@ function Settings() {
     const [showBrowserList, setShowBrowserList] = useState(false)
     const [detectingProxy, setDetectingProxy] = useState(false)
     const [enableCodebaseIndexing, setEnableCodebaseIndexing] = useState(true)
+    const [trustAllCommands, setTrustAllCommands] = useState(false)
 
     // Kiro IDE 状态
     const [loading, setLoading] = useState(false)
@@ -37,8 +38,7 @@ function Settings() {
     const [systemMachineInfo, setSystemMachineInfo] = useState(null)
     const [machineGuidAction, setMachineGuidAction] = useState(null) // 'reset'
 
-    // 设备指纹
-    const [deviceFingerprint, setDeviceFingerprint] = useState('')
+
 
 
 
@@ -54,8 +54,7 @@ function Settings() {
             ])
             setSystemMachineInfo(sysMachine)
 
-            // 延迟加载设备指纹（不阻塞页面）
-            invoke('get_full_hardware_fingerprint').then(fp => setDeviceFingerprint(fp || '')).catch(() => { })
+
             // 从 Kiro IDE 设置读取
             if (kiroSettings) {
                 const proxy = kiroSettings.httpProxy || ''
@@ -63,6 +62,7 @@ function Settings() {
                 setOriginalProxy(proxy)
                 setAiModel(kiroSettings.modelSelection || 'claude-sonnet-4.5')
                 setEnableCodebaseIndexing(kiroSettings.enableCodebaseIndexing ?? true)
+                setTrustAllCommands(kiroSettings.trustAllCommands ?? false)
             }
             // 从应用设置读取
             if (appSettings) {
@@ -187,6 +187,15 @@ function Settings() {
         setEnableCodebaseIndexing(checked)
         try {
             await invoke('set_kiro_codebase_indexing', { enabled: checked })
+        } catch (err) {
+            await showError(t('settings.saveFailed'), t('settings.saveFailed') + ': ' + err)
+        }
+    }
+
+    const handleTrustAllCommandsChange = async (checked) => {
+        setTrustAllCommands(checked)
+        try {
+            await invoke('set_kiro_trust_all_commands', { enabled: checked })
         } catch (err) {
             await showError(t('settings.saveFailed'), t('settings.saveFailed') + ': ' + err)
         }
@@ -463,6 +472,21 @@ function Settings() {
                         <div>
                             <span className={`text-sm font-medium ${colors.text}`}>{t('settings.enableCodebaseIndexing')}</span>
                             <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('settings.enableCodebaseIndexingDesc')}</p>
+                        </div>
+                    </label>
+
+                    {/* 信任所有命令 */}
+                    <label className={`flex items-start gap-3 cursor-pointer ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-4 transition-all hover:scale-[1.01] mb-3`}>
+                        <input
+                            type="checkbox"
+                            checked={trustAllCommands}
+                            onChange={(e) => handleTrustAllCommandsChange(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded-lg border-gray-300 text-blue-500 focus:ring-blue-500"
+                        />
+                        <Shield size={16} className={`${colors.textMuted} mt-0.5 flex-shrink-0`} />
+                        <div>
+                            <span className={`text-sm font-medium ${colors.text}`}>{t('settings.trustAllCommands')}</span>
+                            <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('settings.trustAllCommandsDesc')}</p>
                         </div>
                     </label>
 
@@ -754,39 +778,7 @@ function Settings() {
                     )}
                 </section>
 
-                {/* 设备指纹 */}
-                <section className={`card-glow ${colors.card} rounded-2xl p-6 shadow-sm border ${colors.cardBorder} mb-6 animate-slide-in-left delay-700`}>
-                    <div className="flex items-center gap-2 mb-1">
-                        <Shield size={18} className="text-purple-500" />
-                        <h2 className={`text-lg font-semibold ${colors.text}`}>{t('settings.deviceFingerprint')}</h2>
-                    </div>
-                    <p className={`text-sm ${colors.textMuted} mb-5`}>{t('settings.deviceFingerprintDesc')}</p>
 
-                    <div className={`${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${colors.text}`}>{t('settings.fullFingerprint')}</span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                            <div className={`flex-1 text-xs ${isDark ? 'bg-white/10' : 'bg-gray-100'} px-3 py-2 rounded-lg font-mono ${colors.text} max-h-20 overflow-y-auto border ${isDark ? 'border-white/5' : 'border-gray-200'}`}>
-                                <code className="word-break">{deviceFingerprint || t('common.loading')}</code>
-                            </div>
-                            {deviceFingerprint && (
-                                <button
-                                    onClick={() => copyToClipboard(deviceFingerprint, 'deviceFingerprint')}
-                                    className={`btn-icon p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} transition-colors flex-shrink-0 mt-0.5`}
-                                    title={copiedField === 'deviceFingerprint' ? t('settings.copied') : t('common.copy')}
-                                >
-                                    {copiedField === 'deviceFingerprint' ? (
-                                        <Check size={16} className="text-green-500" />
-                                    ) : (
-                                        <Copy size={16} className={colors.textMuted} />
-                                    )}
-                                </button>
-                            )}
-                        </div>
-                        <p className={`text-xs ${colors.textMuted} mt-3`}>{t('settings.fingerprintTip')}</p>
-                    </div>
-                </section>
             </div>
         </div>
     )

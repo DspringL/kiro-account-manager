@@ -5,9 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 use crate::state::AppState;
 use crate::account::Account;
 use crate::auth::User;
-use crate::providers::web_oauth::{WebOAuthProvider, WebOAuthInitResult};
-use crate::commands::machine_guid_cmd::get_machine_id;
-use crate::codewhisperer_client::CodeWhispererClient;
+use crate::providers::web_oauth::{WebOAuthProvider, WebOAuthInitResult, KiroWebPortalClient};
 
 static PENDING_LOGIN: OnceLock<Mutex<Option<WebOAuthInitResult>>> = OnceLock::new();
 
@@ -695,11 +693,9 @@ pub async fn web_oauth_builderid_complete(
     let (client_id, client_secret, access_token, refresh_token) = 
         exchange_code_for_token(&code, &auth_state).await?;
     
-    // 使用获取的 token 获取用量信息
-    let machine_id = get_machine_id();
-    let cw_client = CodeWhispererClient::new(&machine_id);
-    
-    let usage = cw_client.get_usage_limits(&access_token).await.ok();
+    // 统一使用 Web Portal 接口获取用量信息
+    let client = KiroWebPortalClient::new();
+    let usage = client.get_user_usage_and_limits(&access_token, "BuilderId").await.ok();
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
     
     // 从 usage 中提取 email 和 user_id

@@ -5,8 +5,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use crate::state::AppState;
 use crate::account::Account;
-use crate::commands::machine_guid_cmd::get_machine_id;
-use crate::codewhisperer_client::CodeWhispererClient;
+use crate::providers::KiroWebPortalClient;
 
 const PORTAL_BASE: &str = "https://portal.sso.us-east-1.amazonaws.com";
 const START_URL: &str = "https://view.awsapps.com/start";
@@ -314,11 +313,9 @@ pub async fn import_from_sso_token(
     
     println!("[SSO Import] Token 获取成功!");
 
-    // Step 8: 获取用量信息并添加账号
-    let machine_id = get_machine_id();
-    let cw_client = CodeWhispererClient::new(&machine_id);
-    
-    let usage = cw_client.get_usage_limits(&token_data.access_token).await.ok();
+    // Step 8: 统一使用 Web Portal 接口获取用量信息
+    let client = KiroWebPortalClient::new();
+    let usage = client.get_user_usage_and_limits(&token_data.access_token, "BuilderId").await.ok();
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
     
     // 从 usage 中提取 email

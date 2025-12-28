@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, Download, Upload, RefreshCw, Trash2, Plus, Sparkles, Tag, Filter, MoreHorizontal } from 'lucide-react'
+import { Search, Download, Upload, RefreshCw, Trash2, Plus, Sparkles, MoreHorizontal, ShoppingCart, LayoutGrid, List } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 
 function AccountHeader({
@@ -19,6 +19,8 @@ function AccountHeader({
   onTagFilter,
   selectedStatus,
   onStatusFilter,
+  viewMode = 'card',
+  onViewModeChange,
 }) {
   const { t, theme, colors } = useApp()
   const isDark = theme === 'dark'
@@ -87,13 +89,42 @@ function AccountHeader({
             </select>
           )}
 
+          {/* 视图切换 */}
+          <div className={`flex rounded-xl border ${colors.cardBorder} overflow-hidden`}>
+            <button
+              onClick={() => onViewModeChange('card')}
+              className={`p-2 ${viewMode === 'card' ? 'bg-blue-500 text-white' : `${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.textMuted}`}`}
+              title={t('accounts.cardView')}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => onViewModeChange('table')}
+              className={`p-2 ${viewMode === 'table' ? 'bg-blue-500 text-white' : `${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.textMuted}`}`}
+              title={t('accounts.tableView')}
+            >
+              <List size={16} />
+            </button>
+          </div>
+
           {/* 批量删除 */}
           {selectedCount > 0 && (
-            <button onClick={onBatchDelete} className="px-3 py-2 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 flex items-center gap-1">
+            <button onClick={onBatchDelete} className="px-3 py-2 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 flex items-center gap-1.5">
               <Trash2 size={14} />
-              {selectedCount}
+              {t('accounts.batchDelete')} ({selectedCount})
             </button>
           )}
+
+          {/* 购买按钮 */}
+          <a
+            href="https://pay.ldxp.cn/shop/hj01857655"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl text-sm font-medium hover:from-amber-600 hover:to-orange-600 flex items-center gap-1.5 shadow-lg shadow-amber-500/25"
+          >
+            <ShoppingCart size={14} />
+            {t('about.shop')}
+          </a>
 
           {/* 添加按钮 */}
           <button onClick={onAdd} className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-medium hover:from-blue-600 hover:to-blue-700 flex items-center gap-1.5 shadow-lg shadow-blue-500/25">

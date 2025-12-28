@@ -9,6 +9,8 @@
   "nav.settings": "Настройки",
   "nav.about": "О программе",
   "nav.kiroConnected": "Kiro IDE подключен",
+  "nav.collapseSidebar": "Двойной клик для сворачивания",
+  "nav.expandSidebar": "Двойной клик для разворачивания",
 
   "home.title": "Kiro Account Manager",
   "home.subtitle": "Управление аккаунтами Kiro IDE, умное переключение, мониторинг квот",
@@ -165,6 +167,8 @@
   "settings.kiroSettingsDesc": "Настройка функций Kiro IDE",
   "settings.enableCodebaseIndexing": "Включить индексацию кодовой базы",
   "settings.enableCodebaseIndexingDesc": "При включении Kiro автоматически индексирует кодовую базу для лучшего понимания и поиска кода",
+  "settings.trustAllCommands": "Доверять всем командам",
+  "settings.trustAllCommandsDesc": "При включении Kiro будет выполнять любые команды без подтверждения (требуется перезапуск IDE)",
   "settings.invalidProxyFormat": "Неверный формат прокси. Используйте URL-адрес, начинающийся с http://, https:// или socks5://",
   "settings.invalidBrowserPath": "Неверный путь браузера. Убедитесь, что введен путь к исполняемому файлу (.exe, .app и т. д.)",
 
@@ -189,8 +193,6 @@
   "accounts.status": "Статус",
   "accounts.active": "Активен",
   "accounts.banned": "Заблокирован",
-  "accounts.expired": "Истёк",
-  "accounts.expiringSoon": "Скоро истекает",
   "accounts.noAccounts": "Нет аккаунтов",
   "accounts.addFirst": "Нажмите 'Добавить аккаунт' для начала",
   "accounts.confirmDelete": "Удалить этот аккаунт?",
@@ -210,6 +212,8 @@
   "accounts.deselectAll": "Снять выбор",
   "accounts.batchRefresh": "Обновить выбранные",
   "accounts.batchDelete": "Удалить выбранные",
+  "accounts.cardView": "Карточки",
+  "accounts.tableView": "Список",
 
   "login.title": "Авторизация",
   "login.subtitle": "Выберите способ входа",
@@ -259,9 +263,10 @@
   "about.ui": "UI",
   "about.backend": "Бэкенд",
   "about.links": "Ссылки",
+  "about.tutorial": "Руководство",
   "about.qqGroup": "QQ группа",
-  "about.shop": "Магазин",
-  "about.donate": "Угостить кофе",
+  "about.shop": "Купить",
+  "about.donate": "Угостить кофе · Поддержать",
   "about.alipay": "Alipay",
   "about.wechat": "WeChat Pay",
   "about.clickToEnlarge": "Нажмите для увеличения",
@@ -431,6 +436,7 @@
   "accountCard.deleteRemoteFailed": "Ошибка удаления",
   "accountCard.tokenExpired": "Истёк",
   "accountCard.rightClickTip": "ПКМ для действий",
+  "accountCard.copyJson": "Копировать JSON",
 
   "refresh.title": "Обновление аккаунтов",
   "refresh.progress": "Прогресс",
@@ -550,11 +556,6 @@
   "steering.unknownTime": "Неизвестно",
   "steering.contentPlaceholder": "Введите Markdown...",
 
-  "settings.deviceFingerprint": "Отпечаток устройства",
-  "settings.deviceFingerprintDesc": "Уникальный идентификатор на основе аппаратной информации",
-  "settings.fullFingerprint": "Полный отпечаток",
-  "settings.fingerprintTip": "Генерируется из серийных номеров материнской платы, BIOS, диска. Уникален для каждого устройства",
-
   "callback.processing": "Обработка входа...",
   "callback.missingParams": "Отсутствуют параметры",
   "callback.exchangingToken": "Обмен токена...",
@@ -583,5 +584,7 @@
   "announcement.content2": "Проект распространяется под лицензией GPL-3.0, бесплатно для всех.",
   "announcement.content3": "Скачивайте только с официального репозитория GitHub.",
   "announcement.official": "Официальная загрузка:",
+  "announcement.qqGroup": "QQ группа:",
+  "announcement.dontRemind": "Не напоминать",
   "announcement.understand": "Понятно"
 }

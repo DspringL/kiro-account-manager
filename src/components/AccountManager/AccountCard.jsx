@@ -48,28 +48,29 @@ function ContextMenu({ x, y, onClose, items, isDark }) {
   return createPortal(
     <div
       ref={menuRef}
-      className={`fixed z-[9999] min-w-[160px] py-1 rounded-lg shadow-xl border ${
-        isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+      className={`fixed z-[9999] min-w-[180px] py-2 rounded-xl shadow-2xl border backdrop-blur-sm ${
+        isDark ? 'bg-gray-800/95 border-gray-600/50' : 'bg-white/95 border-gray-200/80'
       }`}
       style={{ left: position.x, top: position.y }}
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, idx) =>
         item.divider ? (
-          <div key={idx} className={`my-1 border-t ${isDark ? 'border-gray-700' : 'border-gray-200'}`} />
+          <div key={idx} className={`my-1.5 mx-3 border-t ${isDark ? 'border-gray-600/50' : 'border-gray-200'}`} />
         ) : (
           <button
             key={idx}
             onClick={() => { item.onClick(); onClose() }}
             disabled={item.disabled}
-            className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors disabled:opacity-50 ${
+            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
               item.danger
                 ? (isDark ? 'text-red-400 hover:bg-red-500/20' : 'text-red-600 hover:bg-red-50')
                 : (isDark ? 'text-gray-200 hover:bg-white/10' : 'text-gray-700 hover:bg-gray-100')
             }`}
           >
-            {item.icon && <item.icon size={14} />}
-            {item.label}
+            {item.icon && <item.icon size={16} className={item.danger ? '' : (isDark ? 'text-gray-400' : 'text-gray-500')} />}
+            <span className="flex-1">{item.label}</span>
+            {item.shortcut && <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{item.shortcut}</span>}
           </button>
         )
       )}
@@ -107,14 +108,31 @@ const AccountCard = memo(function AccountCard({
   // 判断是否被封禁
   const isBannedAccount = account.status === 'banned' || account.status === '封禁' || account.status === '已封禁'
 
+  // 复制账号 JSON
+  const handleCopyJson = useCallback(() => {
+    const exportData = {
+      email: account.email,
+      provider: account.provider,
+      accessToken: account.accessToken,
+      refreshToken: account.refreshToken,
+      ...(account.clientIdHash && { clientIdHash: account.clientIdHash }),
+      ...(account.clientId && { clientId: account.clientId }),
+      ...(account.clientSecret && { clientSecret: account.clientSecret }),
+      ...(account.region && { region: account.region }),
+      ...(account.label && { label: account.label }),
+      ...(account.tags?.length && { tags: account.tags }),
+    }
+    onCopy(JSON.stringify(exportData, null, 2), account.id)
+  }, [account, onCopy])
+
   // 右键菜单项
   const menuItems = [
-    { icon: Repeat, label: t('accountCard.switchAccount'), onClick: () => onSwitch(account), disabled: switchingId === account.id },
-    { icon: RefreshCw, label: t('accountCard.refresh'), onClick: () => onRefresh(account.id), disabled: refreshingId === account.id },
-    { divider: true },
     { icon: Eye, label: t('accountCard.viewDetails'), onClick: () => onEdit(account) },
     { icon: Edit2, label: t('accountCard.editRemark'), onClick: () => onEditLabel(account) },
-    { icon: Copy, label: t('common.copy') + ' Email', onClick: () => onCopy(account.email, account.id) },
+    { icon: Copy, label: t('accountCard.copyJson'), onClick: handleCopyJson },
+    { divider: true },
+    { icon: RefreshCw, label: t('accountCard.refresh'), onClick: () => onRefresh(account.id), disabled: refreshingId === account.id },
+    { icon: Repeat, label: t('accountCard.switchAccount'), onClick: () => onSwitch(account), disabled: switchingId === account.id },
     { divider: true },
     { icon: Trash2, label: t('accountCard.delete'), onClick: () => onDelete(account.id), danger: true },
     // Google/Github/BuilderId 支持远程注销，Enterprise 不支持，封禁账号不支持
@@ -225,7 +243,12 @@ const AccountCard = memo(function AccountCard({
           }`}>
             {subPlan || 'Free'}
           </span>
-          <span className={`text-xs px-2 py-1 rounded-lg ${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
+          <span className={`text-xs px-2 py-1 rounded-lg ${
+            account.provider === 'Google' ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600')
+              : account.provider === 'GitHub' ? (isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700')
+              : account.provider === 'BuilderId' ? (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600')
+              : (isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500')
+          }`}>
             {account.provider || t('common.unknown')}
           </span>
           {isCurrentAccount && (

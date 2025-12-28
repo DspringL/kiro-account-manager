@@ -6,6 +6,7 @@ import { useAppSettings } from '../../contexts/AppSettingsContext'
 import { useAccounts } from './hooks/useAccounts'
 import AccountHeader from './AccountHeader'
 import AccountTable from './AccountTable'
+import AccountListView from './AccountListView'
 import AddAccountModal from './AddAccountModal'
 import ImportAccountModal from './ImportAccountModal'
 import RefreshProgressModal from './RefreshProgressModal'
@@ -26,6 +27,7 @@ function AccountManager() {
   const [copiedId, setCopiedId] = useState(null)
   const [selectedTag, setSelectedTag] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState(null)
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('accountViewMode') || 'card')
   
   // 切换账号弹窗状态
   const [switchDialog, setSwitchDialog] = useState(null) // { type, title, message, account }
@@ -100,6 +102,10 @@ function AccountManager() {
   const handleSearchChange = useCallback((term) => { setSearchTerm(term) }, [])
   const handleTagFilter = useCallback((tag) => { setSelectedTag(tag) }, [])
   const handleStatusFilter = useCallback((status) => { setSelectedStatus(status) }, [])
+  const handleViewModeChange = useCallback((mode) => {
+    setViewMode(mode)
+    localStorage.setItem('accountViewMode', mode)
+  }, [])
   const handleSelectAll = useCallback((checked) => { setSelectedIds(checked ? filteredAccounts.map(a => a.id) : []) }, [filteredAccounts])
   const handleSelectOne = useCallback((id, checked) => { setSelectedIds(prev => checked ? [...prev, id] : prev.filter(i => i !== id)) }, [])
   const handleCopy = useCallback((text, id) => { 
@@ -299,27 +305,50 @@ function AccountManager() {
         onTagFilter={handleTagFilter}
         selectedStatus={selectedStatus}
         onStatusFilter={handleStatusFilter}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
       />
       <div className="flex-1 overflow-auto">
-      <AccountTable
-        accounts={filteredAccounts}
-        totalCount={accounts.length}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectOne={handleSelectOne}
-        copiedId={copiedId}
-        onCopy={handleCopy}
-        onSwitch={handleSwitchAccount}
-        onRefresh={handleRefreshStatus}
-        onEdit={setEditingAccount}
-        onEditLabel={setEditingLabelAccount}
-        onDelete={handleDelete}
-        onDeleteRemote={handleDeleteRemote}
-        onAdd={() => setShowAddModal(true)}
-        refreshingId={refreshingId}
-        switchingId={switchingId}
-        localToken={localToken}
-      />
+      {viewMode === 'card' ? (
+        <AccountTable
+          accounts={filteredAccounts}
+          totalCount={accounts.length}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectOne={handleSelectOne}
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          onSwitch={handleSwitchAccount}
+          onRefresh={handleRefreshStatus}
+          onEdit={setEditingAccount}
+          onEditLabel={setEditingLabelAccount}
+          onDelete={handleDelete}
+          onDeleteRemote={handleDeleteRemote}
+          onAdd={() => setShowAddModal(true)}
+          refreshingId={refreshingId}
+          switchingId={switchingId}
+          localToken={localToken}
+        />
+      ) : (
+        <AccountListView
+          accounts={filteredAccounts}
+          totalCount={accounts.length}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectOne={handleSelectOne}
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          onSwitch={handleSwitchAccount}
+          onRefresh={handleRefreshStatus}
+          onEdit={setEditingAccount}
+          onEditLabel={setEditingLabelAccount}
+          onDelete={handleDelete}
+          onAdd={() => setShowAddModal(true)}
+          refreshingId={refreshingId}
+          switchingId={switchingId}
+          localToken={localToken}
+        />
+      )}
       </div>
       {editingAccount && (
         <AccountDetailModal

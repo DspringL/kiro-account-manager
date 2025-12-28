@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Github, Heart, Coffee, ExternalLink, Sparkles, Code2, Palette, Cpu, RefreshCw, X } from 'lucide-react'
+import { Github, Heart, Coffee, ExternalLink, Sparkles, Code2, Palette, Cpu, RefreshCw, X, BookOpen, ShoppingCart } from 'lucide-react'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { check } from '@tauri-apps/plugin-updater'
@@ -95,64 +95,65 @@ function About() {
             </button>
           </div>
 
-          <p className={`${colors.textMuted} text-sm`}>{t('about.appDesc')}</p>
+          <p className={`${colors.textMuted} text-sm mb-5`}>{t('about.appDesc')}</p>
+
+          {/* 技术栈 */}
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            {techStack.map(({ icon: Icon, label, value, color }) => (
+              <div key={label} className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-white/5' : 'bg-gray-100'} rounded-full`}>
+                <Icon size={14} className={color} />
+                <span className={`text-xs ${colors.textMuted}`}>{value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* 技术栈 + 链接 */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* 技术栈 */}
-          <div className={`card-glow ${colors.card} rounded-2xl p-6 shadow-lg border ${colors.cardBorder} opacity-0 animate-fade-in-up delay-100`}>
-            <h3 className={`text-sm font-medium ${colors.text} mb-4 text-center`}>{t('about.techStack')}</h3>
-            <div className="space-y-3">
-              {techStack.map(({ icon: Icon, label, value, color }) => (
-                <div key={label} className={`flex items-center gap-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-3`}>
-                  <Icon size={18} className={color} />
-                  <span className={`text-sm ${colors.textMuted}`}>{label}</span>
-                  <span className={`text-sm font-medium ${colors.text} ml-auto`}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 链接 */}
-          <div className={`card-glow ${colors.card} rounded-2xl p-6 shadow-lg border ${colors.cardBorder} opacity-0 animate-fade-in-up delay-200`}>
-            <h3 className={`text-sm font-medium ${colors.text} mb-4 text-center`}>{t('about.links')}</h3>
-            <div className="space-y-3">
-              <a 
-                href="https://github.com/hj01857655/kiro-account-manager" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className={`flex items-center gap-3 ${isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-900 hover:bg-gray-800'} rounded-xl p-3 transition-colors group`}
-              >
-                <Github size={18} className="text-white" />
-                <span className="text-white text-sm font-medium">GitHub: @hj01857655</span>
-                <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
-              </a>
-              <a 
-                href="https://qm.qq.com/q/Vh7mUrNpa8" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className={`flex items-center gap-3 ${isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-600'} rounded-xl p-3 transition-colors group`}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                  <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-1.77 1.182 0 .686 4.078.43 6.29.43 2.213 0 6.29.256 6.29-.43 0-.687-1.77-1.182-1.77-1.182 2.085-1.77 1.905-3.967 1.905-3.967.845 1.588 1.634 2.072 1.746 2.072.111 0 .283-.36.283-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.29 3.364 14.268 2 12.003 2z"/>
-                </svg>
-                <span className="text-white text-sm font-medium">{t('about.qqGroup')}: 1020204332</span>
-                <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
-              </a>
-              <a 
-                href="https://pay.ldxp.cn/shop/U60F42WD" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className={`flex items-center gap-3 ${isDark ? 'bg-amber-600 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'} rounded-xl p-3 transition-colors group`}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                  <path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h14v12zm-7-8c-1.66 0-3-1.34-3-3H7c0 2.76 2.24 5 5 5s5-2.24 5-5h-2c0 1.66-1.34 3-3 3z"/>
-                </svg>
-                <span className="text-white text-sm font-medium">{t('about.shop')}</span>
-                <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
-              </a>
-            </div>
+        {/* 链接 */}
+        <div className={`card-glow ${colors.card} rounded-2xl p-6 shadow-lg border ${colors.cardBorder} mb-6 opacity-0 animate-fade-in-up delay-100`}>
+          <h3 className={`text-sm font-medium ${colors.text} mb-4 text-center`}>{t('about.links')}</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <a 
+              href="https://www.kdocs.cn/l/cv2n0PViyD7a" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex items-center gap-3 ${isDark ? 'bg-purple-600 hover:bg-purple-500' : 'bg-purple-500 hover:bg-purple-600'} rounded-xl p-3 transition-colors group`}
+            >
+              <BookOpen size={18} className="text-white" />
+              <span className="text-white text-sm font-medium">{t('about.tutorial')}</span>
+              <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
+            </a>
+            <a 
+              href="https://github.com/hj01857655/kiro-account-manager" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex items-center gap-3 ${isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-900 hover:bg-gray-800'} rounded-xl p-3 transition-colors group`}
+            >
+              <Github size={18} className="text-white" />
+              <span className="text-white text-sm font-medium">GitHub</span>
+              <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
+            </a>
+            <a 
+              href="https://qm.qq.com/q/Vh7mUrNpa8" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex items-center gap-3 ${isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-600'} rounded-xl p-3 transition-colors group`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-1.77 1.182 0 .686 4.078.43 6.29.43 2.213 0 6.29.256 6.29-.43 0-.687-1.77-1.182-1.77-1.182 2.085-1.77 1.905-3.967 1.905-3.967.845 1.588 1.634 2.072 1.746 2.072.111 0 .283-.36.283-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.29 3.364 14.268 2 12.003 2z"/>
+              </svg>
+              <span className="text-white text-sm font-medium">{t('about.qqGroup')}</span>
+              <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
+            </a>
+            <a 
+              href="https://pay.ldxp.cn/shop/hj01857655" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className={`flex items-center gap-3 ${isDark ? 'bg-amber-600 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'} rounded-xl p-3 transition-colors group`}
+            >
+              <ShoppingCart size={18} className="text-white" />
+              <span className="text-white text-sm font-medium">{t('about.shop')}</span>
+              <ExternalLink size={14} className="text-white/50 ml-auto group-hover:text-white" />
+            </a>
           </div>
         </div>
 

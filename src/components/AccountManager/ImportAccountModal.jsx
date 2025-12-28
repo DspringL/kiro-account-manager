@@ -139,6 +139,30 @@ function ImportAccountModal({ onClose, onSuccess }) {
     parseJson(text)
   }
 
+  // 并发数限制
+  const CONCURRENCY_LIMIT = 5
+
+  // 分批并发执行
+  const runConcurrent = async (items, handler, onProgress) => {
+    const results = []
+    let completed = 0
+    
+    for (let i = 0; i < items.length; i += CONCURRENCY_LIMIT) {
+      const batch = items.slice(i, i + CONCURRENCY_LIMIT)
+      const batchResults = await Promise.all(
+        batch.map(async (item, batchIndex) => {
+          const result = await handler(item)
+          completed++
+          onProgress(completed)
+          return result
+        })
+      )
+      results.push(...batchResults)
+    }
+    
+    return results
+  }
+
   // 执行 JSON 导入
   const handleJsonImport = async () => {
     if (!parseResult?.valid.length) return
@@ -149,17 +173,10 @@ function ImportAccountModal({ onClose, onSuccess }) {
     const success = []
     const failed = []
     
-    for (let i = 0; i < parseResult.valid.length; i++) {
-      const item = parseResult.valid[i]
-      setImportProgress({ 
-        current: i, 
-        total: parseResult.valid.length, 
-        currentEmail: item.refreshToken.slice(0, 20) + '...' 
-      })
-      
+    // 单个账号导入处理
+    const importOne = async (item) => {
       try {
         let account
-        // 使用推断的 provider（兼容导出格式）
         const provider = item._inferredProvider || item.provider
         if (item._type === 'social') {
           account = await invoke('add_account_by_social', {
@@ -174,15 +191,31 @@ function ImportAccountModal({ onClose, onSuccess }) {
             region: item.region || null
           })
         }
-        success.push({ index: item._index + 1, email: account.email })
+        return { success: true, index: item._index + 1, email: account.email }
       } catch (e) {
-        failed.push({ index: item._index + 1, error: String(e).slice(0, 50) })
-      }
-      
-      if (i < parseResult.valid.length - 1) {
-        await new Promise(r => setTimeout(r, 500))
+        return { success: false, index: item._index + 1, error: String(e).slice(0, 50) }
       }
     }
+    
+    // 并发执行
+    const results = await runConcurrent(
+      parseResult.valid,
+      importOne,
+      (completed) => setImportProgress({ 
+        current: completed, 
+        total: parseResult.valid.length, 
+        currentEmail: '' 
+      })
+    )
+    
+    // 分类结果
+    results.forEach(r => {
+      if (r.success) {
+        success.push({ index: r.index, email: r.email })
+      } else {
+        failed.push({ index: r.index, error: r.error })
+      }
+    })
     
     setImportProgress({ current: parseResult.valid.length, total: parseResult.valid.length, currentEmail: '' })
     setImportResult({ success, failed })
@@ -213,28 +246,42 @@ function ImportAccountModal({ onClose, onSuccess }) {
     const success = []
     const failed = []
     
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i]
-      setSsoProgress({ current: i, total: tokens.length })
-      
+    // 单个 Token 导入处理
+    const importOne = async (token, index) => {
       try {
         const result = await invoke('import_from_sso_token', {
           bearerToken: token,
           region: ssoRegion || null
         })
         if (result.success) {
-          success.push({ index: i + 1, email: result.email })
+          return { success: true, index: index + 1, email: result.email }
         } else {
-          failed.push({ index: i + 1, error: result.error || t('common.unknown') })
+          return { success: false, index: index + 1, error: result.error || t('common.unknown') }
         }
       } catch (e) {
-        failed.push({ index: i + 1, error: String(e).slice(0, 80) })
+        return { success: false, index: index + 1, error: String(e).slice(0, 80) }
       }
+    }
+    
+    // SSO 导入并发数限制为 3（因为每个请求涉及多步骤）
+    const SSO_CONCURRENCY = 3
+    const tokensWithIndex = tokens.map((token, index) => ({ token, index }))
+    
+    for (let i = 0; i < tokensWithIndex.length; i += SSO_CONCURRENCY) {
+      const batch = tokensWithIndex.slice(i, i + SSO_CONCURRENCY)
+      const batchResults = await Promise.all(
+        batch.map(({ token, index }) => importOne(token, index))
+      )
       
-      // 间隔避免请求过快
-      if (i < tokens.length - 1) {
-        await new Promise(r => setTimeout(r, 1000))
-      }
+      batchResults.forEach(r => {
+        if (r.success) {
+          success.push({ index: r.index, email: r.email })
+        } else {
+          failed.push({ index: r.index, error: r.error })
+        }
+      })
+      
+      setSsoProgress({ current: Math.min(i + SSO_CONCURRENCY, tokens.length), total: tokens.length })
     }
     
     setSsoProgress({ current: tokens.length, total: tokens.length })

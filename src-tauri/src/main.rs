@@ -4,7 +4,6 @@ mod auth;
 mod auth_social;
 mod aws_sso_client;
 mod browser;
-mod codewhisperer_client;
 mod commands;
 mod deep_link_handler;
 
@@ -42,7 +41,6 @@ use commands::sso_import_cmd::*;
 use commands::update_cmd::*;
 use commands::web_oauth_cmd::*;
 use commands::steering_cmd::*;
-use commands::fingerprint_cmd::*;
 use kiro::{
     get_kiro_local_token, switch_kiro_account,
 };
@@ -121,6 +119,7 @@ fn main() {
             set_kiro_proxy,
             set_kiro_model,
             set_kiro_codebase_indexing,
+            set_kiro_trust_all_commands,
             // 应用设置命令
             get_app_settings,
             save_app_settings,
@@ -165,10 +164,7 @@ fn main() {
             get_steering_file,
             save_steering_file,
             delete_steering_file,
-            create_steering_file,
-            // 硬件指纹命令
-            get_hardware_fingerprint,
-            get_full_hardware_fingerprint
+            create_steering_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
