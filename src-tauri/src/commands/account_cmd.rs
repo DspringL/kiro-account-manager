@@ -5,11 +5,8 @@ use crate::state::AppState;
 use crate::account::Account;
 use crate::auth::{User, refresh_token_desktop};
 use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, KiroWebPortalClient};
-use crate::commands::common::{refresh_token_by_provider, get_usage_by_provider, calc_expires_at};
+use crate::commands::common::*;
 use serde::{Deserialize, Serialize};
-
-// 账号数量上限
-const MAX_ACCOUNT_COUNT: usize = 100;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifyAccountResponse {
@@ -28,6 +25,7 @@ pub struct VerifyAccountResponse {
 /// verify_account 命令参数
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]  // access_token 和 csrf_token 保留用于未来扩展
 pub struct VerifyAccountParams {
     pub access_token: String,
     pub refresh_token: String,
@@ -64,43 +62,16 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
     }.ok_or("Account not found")?;
 
     let provider_str = account.provider.as_deref().unwrap_or("Google");
-    
-    #[cfg(debug_assertions)]
-    println!("[sync_account] Refreshing {} account", provider_str);
-    
-    // 使用公共函数刷新 token
     let refresh_result = refresh_token_by_provider(&account).await?;
-    
-    // 使用公共函数获取 usage
     let usage_result = get_usage_by_provider(provider_str, &refresh_result.access_token).await;
-    
-    let expires_at_str = calc_expires_at(refresh_result.expires_in);
 
-    // 更新账号
     let mut store = state.store.lock().unwrap();
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
-        a.access_token = Some(refresh_result.access_token);
-        if let Some(rt) = refresh_result.refresh_token {
-            a.refresh_token = Some(rt);
-        }
-        if let Some(arn) = refresh_result.profile_arn {
-            a.profile_arn = Some(arn);
-        }
-        if let Some(id_token) = refresh_result.id_token {
-            a.id_token = Some(id_token);
-        }
-        if let Some(session_id) = refresh_result.sso_session_id {
-            a.sso_session_id = Some(session_id);
-        }
-        a.expires_at = Some(expires_at_str);
-        a.usage_data = Some(usage_result.usage_data);
-        a.status = if usage_result.is_banned { "banned".to_string() } else { "active".to_string() };
-        
+        apply_refresh_result(a, &refresh_result, &usage_result);
         let result = a.clone();
         store.save_to_file();
         return Ok(result);
     }
-
     Err("Account not found after update".to_string())
 }
 
@@ -112,30 +83,17 @@ pub async fn refresh_account_token(state: State<'_, AppState>, id: String) -> Re
         store.accounts.iter().find(|a| a.id == id).cloned()
     }.ok_or("Account not found")?;
 
-    let _provider_str = account.provider.as_deref().unwrap_or("Google");
-    
-    #[cfg(debug_assertions)]
-    println!("[refresh_token] Refreshing {} token", _provider_str);
-    
-    // 使用公共函数刷新 token
     let refresh_result = refresh_token_by_provider(&account).await?;
-    let expires_at_str = calc_expires_at(refresh_result.expires_in);
 
     let mut store = state.store.lock().unwrap();
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
         a.access_token = Some(refresh_result.access_token);
-        if let Some(rt) = refresh_result.refresh_token {
-            a.refresh_token = Some(rt);
-        }
-        a.expires_at = Some(expires_at_str);
-        
+        if let Some(rt) = refresh_result.refresh_token { a.refresh_token = Some(rt.clone()); }
+        a.expires_at = Some(calc_expires_at(refresh_result.expires_in));
         let result = a.clone();
         store.save_to_file();
-        #[cfg(debug_assertions)]
-        println!("[refresh_token] {} token refreshed", _provider_str);
         return Ok(result);
     }
-
     Err("Account not found after update".to_string())
 }
 
@@ -145,88 +103,51 @@ pub async fn verify_account(
     params: VerifyAccountParams,
 ) -> Result<VerifyAccountResponse, String> {
     let VerifyAccountParams {
-        access_token,
+        access_token: _,
         refresh_token,
-        csrf_token,
+        csrf_token: _,
         provider,
         client_id,
         client_secret,
         region,
     } = params;
     
-    #[cfg(debug_assertions)]
-    println!("[verify_account] provider={}, has_access_token={}, has_csrf_token={}", 
-        provider, !access_token.is_empty(), csrf_token.is_some());
-    
-    // 在 release 模式下避免 unused 警告
-    let _ = (&access_token, &csrf_token);
-    
-    // 判断是否是 IdC 账号
     let is_idc = provider == "BuilderId" || provider == "Enterprise";
     
-    let (new_access_token, new_refresh_token, quota, used, subscription_type) = if is_idc {
-        // IdC 账号使用 AWS OIDC 刷新
-        // 优先使用传入的参数，否则从数据库查找
+    // 刷新 token
+    let (new_access_token, new_refresh_token) = if is_idc {
         let (cid, csec, reg) = if client_id.is_some() && client_secret.is_some() {
             (client_id, client_secret, region)
         } else {
-            // 从数据库查找
             let store = state.store.lock().unwrap();
-            store.accounts.iter().find(|a| {
-                a.refresh_token.as_ref() == Some(&refresh_token)
-            }).map(|a| (
-                a.client_id.clone(),
-                a.client_secret.clone(),
-                a.region.clone(),
-            )).unwrap_or((None, None, None))
+            store.accounts.iter().find(|a| a.refresh_token.as_ref() == Some(&refresh_token))
+                .map(|a| (a.client_id.clone(), a.client_secret.clone(), a.region.clone()))
+                .unwrap_or((None, None, None))
         };
         
         let cid = cid.ok_or("IdC 账号缺少 client_id，请重新添加账号")?;
         let csec = csec.ok_or("IdC 账号缺少 client_secret，请重新添加账号")?;
-        
         let metadata = RefreshMetadata {
-            client_id: Some(cid),
-            client_secret: Some(csec),
-            region: reg.clone(),
-            ..Default::default()
+            client_id: Some(cid), client_secret: Some(csec), region: reg.clone(), ..Default::default()
         };
         
-        let region_str = reg.as_deref().unwrap_or("us-east-1");
-        let idc_provider = IdcProvider::new(&provider, region_str, None);
-        let auth_result = idc_provider.refresh_token(&refresh_token, metadata).await?;
-        
-        // 统一使用 Web Portal 接口获取 usage
-        let client = KiroWebPortalClient::new();
-        let usage = client.get_user_usage_and_limits(&auth_result.access_token, &provider).await?;
-        
-        let (q, u) = usage.usage_breakdown_list.as_ref()
-            .and_then(|list| list.first())
-            .map(|b| (b.usage_limit, b.current_usage))
-            .unwrap_or((None, None));
-        
-        (auth_result.access_token, auth_result.refresh_token, q, u, usage.subscription_info.and_then(|s| s.subscription_type))
+        let idc_provider = IdcProvider::new(&provider, reg.as_deref().unwrap_or("us-east-1"), None);
+        let auth = idc_provider.refresh_token(&refresh_token, metadata).await?;
+        (auth.access_token, auth.refresh_token)
     } else {
-        // Social 账号使用 Desktop API 刷新
-        let refresh_result = refresh_token_desktop(&refresh_token).await?;
-        
-        // 统一使用 Web Portal 接口获取 usage
-        let client = KiroWebPortalClient::new();
-        let usage = client.get_user_usage_and_limits(&refresh_result.access_token, &provider).await?;
-        
-        let (q, u) = usage.usage_breakdown_list.as_ref()
-            .and_then(|list| list.first())
-            .map(|b| (b.usage_limit, b.current_usage))
-            .unwrap_or((None, None));
-        
-        (refresh_result.access_token, refresh_result.refresh_token, q, u, usage.subscription_info.and_then(|s| s.subscription_type))
+        let auth = refresh_token_desktop(&refresh_token).await?;
+        (auth.access_token, auth.refresh_token)
     };
     
-    // 更新数据库中的 token
+    // 获取 usage（统一逻辑）
+    let client = KiroWebPortalClient::new();
+    let usage = client.get_user_usage_and_limits(&new_access_token, &provider).await?;
+    let (quota, used, subscription_type) = extract_quota(&usage);
+    
+    // 更新数据库
     {
         let mut store = state.store.lock().unwrap();
-        if let Some(account) = store.accounts.iter_mut().find(|a| {
-            a.refresh_token.as_ref() == Some(&refresh_token)
-        }) {
+        if let Some(account) = store.accounts.iter_mut().find(|a| a.refresh_token.as_ref() == Some(&refresh_token)) {
             account.access_token = Some(new_access_token.clone());
             account.refresh_token = Some(new_refresh_token.clone());
             store.save_to_file();
@@ -248,84 +169,50 @@ pub async fn add_account_by_social(
     refresh_token: String,
     provider: Option<String>,
 ) -> Result<Account, String> {
-    // 检查账号数量上限
     {
         let store = state.store.lock().unwrap();
-        if store.accounts.len() >= MAX_ACCOUNT_COUNT {
-            return Err(format!("账号数量已达上限 ({})，无法继续添加", MAX_ACCOUNT_COUNT));
-        }
+        check_account_limit(store.accounts.len())?;
     }
-    
-    #[cfg(debug_assertions)]
-    println!("[add_account] Adding account by refresh (desktop API)");
     
     let refresh_result = refresh_token_desktop(&refresh_token).await?;
     let access_token = refresh_result.access_token;
     let new_refresh_token = refresh_result.refresh_token;
     
-    // 先根据 provider 参数推断 idp（用于 Web Portal 接口）
     let idp = provider.clone().unwrap_or_else(|| "Google".to_string());
     
-    // 统一使用 Web Portal 接口获取 usage
-    let client = KiroWebPortalClient::new();
-    let usage_call = client.get_user_usage_and_limits(&access_token, &idp).await;
-    let (usage_result, ban_reason) = match &usage_call {
-        Ok(usage) => (Some(usage.clone()), None),
-        Err(e) if e.starts_with("BANNED:") => (None, Some(e.strip_prefix("BANNED:").unwrap_or("UNKNOWN").to_string())),
-        Err(_) => (None, None),
-    };
-    let usage_data = serde_json::to_value(&usage_result).unwrap_or(serde_json::Value::Null);
-    let is_banned = ban_reason.is_some();
+    let usage_result = get_usage_by_provider(&idp, &access_token).await;
+    let usage: Option<crate::providers::web_oauth::GetUserUsageAndLimitsResponse> = 
+        serde_json::from_value(usage_result.usage_data.clone()).ok();
     
-    let new_email = usage_result.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.email.clone());
-    let user_id = usage_result.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.user_id.clone());
+    let (new_email, user_id) = extract_user_info(&usage);
     
-    // 根据 provider 参数或邮箱推断最终 idp
+    // 根据邮箱推断最终 provider
     let idp = provider.unwrap_or_else(|| {
-        if let Some(ref e) = new_email {
-            if e.contains("gmail") { "Google".to_string() }
-            else if e.contains("github") { "Github".to_string() }
-            else { "Google".to_string() }
-        } else {
-            "Google".to_string()
-        }
+        new_email.as_ref().map(|e| {
+            if e.contains("gmail") { "Google" } else if e.contains("github") { "Github" } else { "Google" }
+        }).unwrap_or("Google").to_string()
     });
     
     let mut store = state.store.lock().unwrap();
-    
-    // 查找已存在的账号：优先按邮箱匹配，其次按 refresh_token 匹配
-    let existing_idx = if let Some(ref email) = new_email {
-        store.accounts.iter().position(|a| &a.email == email && a.provider.as_deref() == Some(&idp))
-    } else {
-        // 被封禁时无法获取邮箱，尝试通过 refresh_token 匹配
-        store.accounts.iter().position(|a| {
-            a.provider.as_deref() == Some(&idp) && a.refresh_token.as_ref() == Some(&refresh_token)
-        })
-    };
+    let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &idp, &refresh_token);
     
     let account = if let Some(idx) = existing_idx {
         let existing = &mut store.accounts[idx];
-        // 保留原有邮箱，不替换
         existing.access_token = Some(access_token.clone());
         existing.refresh_token = Some(new_refresh_token);
         existing.user_id = user_id;
-        existing.usage_data = Some(usage_data);
-        existing.status = if is_banned { "banned".to_string() } else { "active".to_string() };
+        existing.usage_data = Some(usage_result.usage_data);
+        existing.status = calc_status(usage_result.is_banned);
         existing.clone()
     } else {
-        // 全新账号
         let final_email = new_email.unwrap_or_else(|| super::generate_random_email(&idp));
         let mut account = Account::new(final_email.clone(), format!("Kiro {} 账号", idp));
         account.access_token = Some(access_token.clone());
         account.refresh_token = Some(new_refresh_token);
         account.provider = Some(idp.clone());
         account.user_id = user_id;
-        account.usage_data = Some(usage_data);
-        account.status = if is_banned { "banned".to_string() } else { "active".to_string() };
+        account.usage_data = Some(usage_result.usage_data);
+        account.status = calc_status(usage_result.is_banned);
         store.accounts.insert(0, account.clone());
         account
     };
@@ -417,12 +304,9 @@ pub async fn add_account_by_idc(
     client_secret: String,
     region: Option<String>,
 ) -> Result<Account, String> {
-    // 检查账号数量上限
     {
         let store = state.store.lock().unwrap();
-        if store.accounts.len() >= MAX_ACCOUNT_COUNT {
-            return Err(format!("账号数量已达上限 ({})，无法继续添加", MAX_ACCOUNT_COUNT));
-        }
+        check_account_limit(store.accounts.len())?;
     }
     
     let region = region.unwrap_or_else(|| "us-east-1".to_string());
@@ -436,82 +320,53 @@ pub async fn add_account_by_idc(
     let idc_provider = IdcProvider::new("BuilderId", &region, None);
     let auth_result = idc_provider.refresh_token(&refresh_token, metadata).await?;
     
-    // 统一使用 Web Portal 接口获取 usage
-    let client = KiroWebPortalClient::new();
-    let usage_call = client.get_user_usage_and_limits(&auth_result.access_token, "BuilderId").await;
-    let (usage, is_banned) = match &usage_call {
-        Ok(u) => (Some(u.clone()), false),
-        Err(e) if e.starts_with("BANNED:") => (None, true),
-        Err(_) => (None, false),
-    };
-    let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
+    let usage_result = get_usage_by_provider("BuilderId", &auth_result.access_token).await;
+    let usage: Option<crate::providers::web_oauth::GetUserUsageAndLimitsResponse> = 
+        serde_json::from_value(usage_result.usage_data.clone()).ok();
     
-    let new_email = usage.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.email.clone());
-    let user_id = usage.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.user_id.clone());
-    
-    use sha2::{Digest, Sha256};
-    let start_url = "https://view.awsapps.com/start";
-    let mut hasher = Sha256::new();
-    hasher.update(start_url.as_bytes());
-    let client_id_hash = hex::encode(hasher.finalize());
-    
-    let expires_at = chrono::Local::now() + chrono::Duration::seconds(auth_result.expires_in);
+    let (new_email, user_id) = extract_user_info(&usage);
+    let client_id_hash = calc_client_id_hash();
+    let expires_at = calc_expires_at(auth_result.expires_in);
     
     let mut store = state.store.lock().unwrap();
-    
-    // 查找已存在的账号：优先按邮箱匹配，其次按 refresh_token 匹配
-    let existing_idx = if let Some(ref email) = new_email {
-        store.accounts.iter().position(|a| &a.email == email && a.provider.as_deref() == Some("BuilderId"))
-    } else {
-        // 被封禁时无法获取邮箱，尝试通过 refresh_token 匹配
-        store.accounts.iter().position(|a| {
-            a.provider.as_deref() == Some("BuilderId") && a.refresh_token.as_ref() == Some(&refresh_token)
-        })
-    };
+    let existing_idx = find_existing_account_idx(&store.accounts, &new_email, "BuilderId", &refresh_token);
     
     let account = if let Some(idx) = existing_idx {
         let existing = &mut store.accounts[idx];
-        // 保留原有邮箱，不替换
         existing.access_token = Some(auth_result.access_token);
         existing.refresh_token = Some(auth_result.refresh_token);
         existing.user_id = user_id;
-        existing.expires_at = Some(expires_at.format("%Y/%m/%d %H:%M:%S").to_string());
+        existing.expires_at = Some(expires_at);
         existing.client_id = Some(client_id);
         existing.client_secret = Some(client_secret);
         existing.region = Some(region);
         existing.client_id_hash = Some(client_id_hash);
         existing.id_token = auth_result.id_token;
         existing.sso_session_id = auth_result.sso_session_id;
-        existing.usage_data = Some(usage_data);
-        existing.status = if is_banned { "banned".to_string() } else { "active".to_string() };
+        existing.usage_data = Some(usage_result.usage_data);
+        existing.status = calc_status(usage_result.is_banned);
         existing.clone()
     } else {
-        // 全新账号
         let final_email = new_email.unwrap_or_else(|| super::generate_random_email("BuilderId"));
         let mut account = Account::new(final_email, "Kiro BuilderId 账号".to_string());
         account.access_token = Some(auth_result.access_token);
         account.refresh_token = Some(auth_result.refresh_token);
         account.provider = Some("BuilderId".to_string());
         account.user_id = user_id;
-        account.expires_at = Some(expires_at.format("%Y/%m/%d %H:%M:%S").to_string());
+        account.expires_at = Some(expires_at);
         account.client_id = Some(client_id);
         account.client_secret = Some(client_secret);
         account.region = Some(region);
         account.client_id_hash = Some(client_id_hash);
         account.id_token = auth_result.id_token;
         account.sso_session_id = auth_result.sso_session_id;
-        account.usage_data = Some(usage_data);
-        account.status = if is_banned { "banned".to_string() } else { "active".to_string() };
+        account.usage_data = Some(usage_result.usage_data);
+        account.status = calc_status(usage_result.is_banned);
         store.accounts.insert(0, account.clone());
         account
     };
     
     store.save_to_file();
-    
     Ok(account)
 }
 
@@ -566,7 +421,7 @@ pub async fn delete_account_remote(
     delete_local: bool,
 ) -> Result<String, String> {
     use crate::auth::delete_account_desktop;
-    use crate::commands::machine_guid_cmd::get_machine_id;
+    use crate::commands::machine_guid::get_machine_id;
     
     // 获取账号信息
     let account = {

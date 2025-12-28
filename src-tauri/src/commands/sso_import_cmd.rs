@@ -6,11 +6,10 @@ use tauri::State;
 use crate::state::AppState;
 use crate::account::Account;
 use crate::providers::KiroWebPortalClient;
+use crate::commands::common::{MAX_ACCOUNT_COUNT, calc_client_id_hash, extract_user_info};
 
 const PORTAL_BASE: &str = "https://portal.sso.us-east-1.amazonaws.com";
 const START_URL: &str = "https://view.awsapps.com/start";
-// 账号数量上限
-const MAX_ACCOUNT_COUNT: usize = 100;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -318,23 +317,9 @@ pub async fn import_from_sso_token(
     let usage = client.get_user_usage_and_limits(&token_data.access_token, "BuilderId").await.ok();
     let usage_data = serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null);
     
-    // 从 usage 中提取 email
-    let email = usage.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|ui| ui.email.clone())
-        .unwrap_or_else(|| super::generate_random_email("BuilderId"));
-    
-    let user_id = usage.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|ui| ui.user_id.clone());
-
-    // 计算 clientIdHash (与 IdC provider 保持一致)
-    let client_id_hash = {
-        use sha2::{Sha256, Digest};
-        let mut hasher = Sha256::new();
-        hasher.update(START_URL.as_bytes());
-        hex::encode(hasher.finalize())
-    };
+    let (new_email, user_id) = extract_user_info(&usage);
+    let email = new_email.unwrap_or_else(|| super::generate_random_email("BuilderId"));
+    let client_id_hash = calc_client_id_hash();
 
     let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
     

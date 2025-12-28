@@ -4,7 +4,7 @@
 use crate::kiro_auth_client::KiroAuthServiceClient;
 use crate::deep_link_handler::{DeepLinkCallbackWaiter, register_waiter};
 use crate::auth_social;
-use crate::commands::machine_guid_cmd::get_machine_id;
+use crate::commands::machine_guid::get_machine_id;
 use super::{AuthResult, AuthProvider, RefreshMetadata};
 use serde::Deserialize;
 use async_trait::async_trait;

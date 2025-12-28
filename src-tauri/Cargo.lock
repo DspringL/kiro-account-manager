@@ -2152,6 +2152,7 @@ dependencies = [
  "cookie",
  "dirs 5.0.1",
  "hex",
+ "once_cell",
  "open",
  "rand 0.8.5",
  "regex",

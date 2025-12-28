@@ -40,7 +40,7 @@ use commands::group_tag_cmd::{
 use commands::app_settings_cmd::*;
 use commands::auth_cmd::*;
 use commands::kiro_settings_cmd::*;
-use commands::machine_guid_cmd::*;
+use commands::machine_guid::*;
 use commands::mcp_cmd::*;
 
 use commands::proxy_cmd::*;

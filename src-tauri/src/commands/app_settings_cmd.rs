@@ -39,17 +39,17 @@ impl Default for AppSettings {
     }
 }
 
+fn get_data_dir() -> PathBuf {
+    dirs::data_dir().unwrap_or_else(|| {
+        let home = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .unwrap_or_else(|_| ".".to_string());
+        PathBuf::from(home)
+    }).join(".kiro-account-manager")
+}
+
 fn get_app_settings_path() -> PathBuf {
-    let data_dir = dirs::data_dir()
-        .unwrap_or_else(|| {
-            let home = std::env::var("USERPROFILE")
-                .or_else(|_| std::env::var("HOME"))
-                .unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(home)
-        });
-    data_dir
-        .join(".kiro-account-manager")
-        .join("app-settings.json")
+    get_data_dir().join("app-settings.json")
 }
 
 fn get_app_settings_inner() -> Result<AppSettings, String> {
@@ -63,13 +63,18 @@ fn get_app_settings_inner() -> Result<AppSettings, String> {
         .map_err(|e| format!("解析设置失败: {}", e))
 }
 
-fn save_app_settings_inner(updates: AppSettings) -> Result<(), String> {
+fn save_settings_to_file(settings: &AppSettings) -> Result<(), String> {
     let path = get_app_settings_path();
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).ok();
     }
-    
-    // 读取现有设置，合并更新
+    let content = serde_json::to_string_pretty(settings)
+        .map_err(|e| format!("序列化失败: {}", e))?;
+    std::fs::write(&path, content)
+        .map_err(|e| format!("写入失败: {}", e))
+}
+
+fn save_app_settings_inner(updates: AppSettings) -> Result<(), String> {
     let mut current = get_app_settings_inner().unwrap_or_default();
     
     // 只更新传入的非 None 字段
@@ -85,11 +90,7 @@ fn save_app_settings_inner(updates: AppSettings) -> Result<(), String> {
     if updates.account_machine_ids.is_some() { current.account_machine_ids = updates.account_machine_ids; }
     if updates.privacy_mode.is_some() { current.privacy_mode = updates.privacy_mode; }
     
-    let content = serde_json::to_string_pretty(&current)
-        .map_err(|e| format!("序列化失败: {}", e))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入失败: {}", e))?;
-    Ok(())
+    save_settings_to_file(&current)
 }
 
 #[tauri::command]
@@ -126,37 +127,20 @@ pub fn get_browser_path() -> Option<String> {
 
 /// 绑定机器码到账号
 fn bind_machine_id_inner(account_id: String, machine_id: String) -> Result<(), String> {
-    let path = get_app_settings_path();
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).ok();
-    }
-    
     let mut current = get_app_settings_inner().unwrap_or_default();
     let mut map = current.account_machine_ids.unwrap_or_default();
     map.insert(account_id, machine_id);
     current.account_machine_ids = Some(map);
-    
-    let content = serde_json::to_string_pretty(&current)
-        .map_err(|e| format!("序列化失败: {}", e))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入失败: {}", e))?;
-    Ok(())
+    save_settings_to_file(&current)
 }
 
 /// 解绑账号的机器码
 fn unbind_machine_id_inner(account_id: String) -> Result<(), String> {
-    let path = get_app_settings_path();
     let mut current = get_app_settings_inner().unwrap_or_default();
-    
     if let Some(ref mut map) = current.account_machine_ids {
         map.remove(&account_id);
     }
-    
-    let content = serde_json::to_string_pretty(&current)
-        .map_err(|e| format!("序列化失败: {}", e))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入失败: {}", e))?;
-    Ok(())
+    save_settings_to_file(&current)
 }
 
 /// 获取账号绑定的机器码
@@ -221,16 +205,7 @@ pub struct UsageHistory {
 }
 
 fn get_usage_history_path() -> PathBuf {
-    let data_dir = dirs::data_dir()
-        .unwrap_or_else(|| {
-            let home = std::env::var("USERPROFILE")
-                .or_else(|_| std::env::var("HOME"))
-                .unwrap_or_else(|_| ".".to_string());
-            PathBuf::from(home)
-        });
-    data_dir
-        .join(".kiro-account-manager")
-        .join("usage-history.json")
+    get_data_dir().join("usage-history.json")
 }
 
 fn get_usage_history_inner() -> Result<UsageHistory, String> {
