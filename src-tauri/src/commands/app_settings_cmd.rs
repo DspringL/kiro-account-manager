@@ -16,7 +16,6 @@ pub struct AppSettings {
     pub browser_path: Option<String>,
     // 账户机器码绑定功能
     pub bind_machine_id_to_account: Option<bool>,  // true=绑定模式（每个账号固定机器码），false=随机模式
-    pub account_machine_ids: Option<std::collections::HashMap<String, String>>,  // 账户ID -> 机器码映射
     // 隐私模式：脱敏显示邮箱
     pub privacy_mode: Option<bool>,
 }
@@ -33,7 +32,6 @@ impl Default for AppSettings {
             auto_change_machine_id: Some(true),  // 默认开启
             browser_path: None,
             bind_machine_id_to_account: Some(true),
-            account_machine_ids: None,
             privacy_mode: Some(false),  // 默认关闭
         }
     }
@@ -87,7 +85,6 @@ fn save_app_settings_inner(updates: AppSettings) -> Result<(), String> {
     if updates.auto_change_machine_id.is_some() { current.auto_change_machine_id = updates.auto_change_machine_id; }
     if updates.browser_path.is_some() { current.browser_path = updates.browser_path; }
     if updates.bind_machine_id_to_account.is_some() { current.bind_machine_id_to_account = updates.bind_machine_id_to_account; }
-    if updates.account_machine_ids.is_some() { current.account_machine_ids = updates.account_machine_ids; }
     if updates.privacy_mode.is_some() { current.privacy_mode = updates.privacy_mode; }
     
     save_settings_to_file(&current)
@@ -122,66 +119,31 @@ pub fn get_browser_path() -> Option<String> {
 }
 
 // ============================================================
-// 账号绑定机器码功能
+// 账号绑定机器码功能（已废弃，保留空实现兼容旧调用）
 // ============================================================
 
-/// 绑定机器码到账号
-fn bind_machine_id_inner(account_id: String, machine_id: String) -> Result<(), String> {
-    let mut current = get_app_settings_inner().unwrap_or_default();
-    let mut map = current.account_machine_ids.unwrap_or_default();
-    map.insert(account_id, machine_id);
-    current.account_machine_ids = Some(map);
-    save_settings_to_file(&current)
-}
-
-/// 解绑账号的机器码
-fn unbind_machine_id_inner(account_id: String) -> Result<(), String> {
-    let mut current = get_app_settings_inner().unwrap_or_default();
-    if let Some(ref mut map) = current.account_machine_ids {
-        map.remove(&account_id);
-    }
-    save_settings_to_file(&current)
-}
-
-/// 获取账号绑定的机器码
-fn get_bound_machine_id_inner(account_id: String) -> Result<Option<String>, String> {
-    let current = get_app_settings_inner().unwrap_or_default();
-    Ok(current.account_machine_ids
-        .and_then(|map| map.get(&account_id).cloned()))
-}
-
-/// 获取所有账号绑定的机器码
-fn get_all_bound_machine_ids_inner() -> Result<std::collections::HashMap<String, String>, String> {
-    let current = get_app_settings_inner().unwrap_or_default();
-    Ok(current.account_machine_ids.unwrap_or_default())
+#[tauri::command]
+pub async fn bind_machine_id_to_account(_account_id: String, _machine_id: String) -> Result<(), String> {
+    // 已废弃：机器码现在存储在账号的 machine_id 字段
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn bind_machine_id_to_account(account_id: String, machine_id: String) -> Result<(), String> {
-    tokio::task::spawn_blocking(move || bind_machine_id_inner(account_id, machine_id))
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
+pub async fn unbind_machine_id_from_account(_account_id: String) -> Result<(), String> {
+    // 已废弃：机器码现在存储在账号的 machine_id 字段
+    Ok(())
 }
 
 #[tauri::command]
-pub async fn unbind_machine_id_from_account(account_id: String) -> Result<(), String> {
-    tokio::task::spawn_blocking(move || unbind_machine_id_inner(account_id))
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
-}
-
-#[tauri::command]
-pub async fn get_bound_machine_id(account_id: String) -> Result<Option<String>, String> {
-    tokio::task::spawn_blocking(move || get_bound_machine_id_inner(account_id))
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
+pub async fn get_bound_machine_id(_account_id: String) -> Result<Option<String>, String> {
+    // 已废弃：机器码现在存储在账号的 machine_id 字段
+    Ok(None)
 }
 
 #[tauri::command]
 pub async fn get_all_bound_machine_ids() -> Result<std::collections::HashMap<String, String>, String> {
-    tokio::task::spawn_blocking(get_all_bound_machine_ids_inner)
-        .await
-        .map_err(|e| format!("Task failed: {}", e))?
+    // 已废弃：机器码现在存储在账号的 machine_id 字段
+    Ok(std::collections::HashMap::new())
 }
 
 

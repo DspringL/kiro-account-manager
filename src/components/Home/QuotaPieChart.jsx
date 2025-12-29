@@ -16,7 +16,7 @@ const getQuota = (account) => {
 export default function QuotaPieChart({ accounts }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
 
   // 计算总配额
   const totalQuota = useMemo(() => 

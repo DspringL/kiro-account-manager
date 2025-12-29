@@ -52,10 +52,9 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
     onChange(selectedTagIds.filter(id => id !== tagId))
   }
 
-  const handleSelectTag = (tagId) => {
-    if (!selectedTagIds.includes(tagId)) {
-      onChange([...selectedTagIds, tagId])
-    }
+  const handleSelectTag = (tag) => {
+    // 点击已有标签时，填入输入框，允许用户编辑
+    setNewTagName(tag.name)
   }
 
   const getTagById = (tagId) => actualTags.find(t => t.id === tagId)
@@ -116,7 +115,7 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
               <button
                 key={tag.id}
                 type="button"
-                onClick={() => handleSelectTag(tag.id)}
+                onClick={() => handleSelectTag(tag)}
                 className="text-xs px-2 py-0.5 rounded-full text-white opacity-80 hover:opacity-100"
                 style={{ backgroundColor: tag.color || '#8b5cf6' }}
               >
@@ -134,7 +133,7 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
 function GroupTagManager({ onClose, onSuccess }) {
   const { t, theme, colors } = useApp()
   const { showError, showConfirm } = useDialog()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   
   const [tags, setTags] = useState([])
   const [loading, setLoading] = useState(true)
@@ -219,7 +218,7 @@ function GroupTagManager({ onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className={`${isDark ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-xl w-full max-w-md shadow-2xl max-h-[80vh] overflow-hidden flex flex-col`}
+        className={`${isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'} rounded-xl w-full max-w-md shadow-2xl max-h-[80vh] overflow-hidden flex flex-col`}
         onClick={e => e.stopPropagation()}
       >
         {/* 头部 */}
@@ -228,7 +227,7 @@ function GroupTagManager({ onClose, onSuccess }) {
             <Tag size={20} className="text-purple-500" />
             <h3 className={`font-medium ${colors.text}`}>{t('tags.manage')}</h3>
           </div>
-          <button onClick={onClose} className={`p-1.5 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-lg`}>
+          <button onClick={onClose} className={`p-1.5 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}>
             <X size={18} className={colors.textMuted} />
           </button>
         </div>
@@ -282,7 +281,7 @@ function GroupTagManager({ onClose, onSuccess }) {
               {tags.map(tag => (
                 <div 
                   key={tag.id} 
-                  className={`flex items-center gap-3 p-3 rounded-lg ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}
                 >
                   {editingId === tag.id ? (
                     <>

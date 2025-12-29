@@ -30,9 +30,12 @@ import threading
 from typing import Dict, Tuple, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# 告诉 SeleniumBase 启用线程锁定（多线程并行必需）
+if "-n" not in sys.argv:
+    sys.argv.append("-n")
+
 import requests
-from seleniumbase import SB
-from selenium.webdriver.common.keys import Keys
+from seleniumbase import Driver
 
 from gptmail_service import GPTMailHandler
 
@@ -40,26 +43,55 @@ from gptmail_service import GPTMailHandler
 # ========== 路径配置 ==========
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ACCOUNTS_FILE = os.path.join(SCRIPT_DIR, "accounts.json")
+SCREENSHOT_DIR = os.path.join(SCRIPT_DIR, "screenshots")
 
-# ========== 代理配置 ==========
-PROXY_HOST = "127.0.0.1"
-PROXY_PORT = "7897"
-PROXY_SOCKS5 = f"socks5://{PROXY_HOST}:{PROXY_PORT}"
+# 确保截图目录存在
+os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 # ========== User-Agent 池配置 ==========
+# AWS SDK 版本（保持最新）
 AWS_SDK_VERSIONS = [
-    "1.3.9", "1.3.8", "1.3.7", "1.4.0", "1.4.1",
-    "1.2.15", "1.2.16", "1.3.0", "1.3.1"
+    "1.4.1", "1.4.0", "1.3.9", "1.3.8", "1.3.7", "1.3.6", "1.3.5",
+    "1.3.4", "1.3.3", "1.3.2", "1.3.1", "1.3.0", "1.2.16", "1.2.15"
 ]
+
+# Rust 版本（保持最新稳定版）
 RUST_VERSIONS = [
-    "1.87.0", "1.86.0", "1.85.0", "1.84.0", "1.83.0",
-    "1.88.0", "1.81.0", "1.82.0"
+    "1.88.0", "1.87.0", "1.86.0", "1.85.0", "1.84.0",
+    "1.83.0", "1.82.0", "1.81.0", "1.80.0", "1.79.0"
 ]
+
+# 操作系统类型
 OS_TYPES = ["windows", "macos", "linux"]
+
+# SSO OIDC 版本
 SSOOIDC_VERSIONS = [
-    "1.88.0", "1.87.0", "1.86.0", "1.85.0", "1.89.0"
+    "1.89.0", "1.88.0", "1.87.0", "1.86.0", "1.85.0",
+    "1.84.0", "1.83.0", "1.82.0", "1.81.0", "1.80.0"
 ]
-UA_MODE = ["m/E", "m/F", "m/D", "m/G"]
+
+# UA 模式标识
+UA_MODE = ["m/E", "m/F", "m/D", "m/G", "m/H", "m/I"]
+
+# 真实浏览器 User-Agent 池（用于 Selenium）
+BROWSER_USER_AGENTS = [
+    # Chrome Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    # Chrome macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    # Edge Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0",
+]
+
+
+def get_random_browser_ua():
+    """获取随机浏览器 User-Agent"""
+    return random.choice(BROWSER_USER_AGENTS)
 
 
 def generate_auth_user_agent():
@@ -99,12 +131,19 @@ def make_headers() -> Dict[str, str]:
     }
 
 
-def post_json(url: str, payload: Dict) -> requests.Response:
-    """发送JSON POST请求"""
+def post_json(url: str, payload: Dict, retries: int = 3) -> requests.Response:
+    """发送JSON POST请求，带重试"""
     payload_str = json.dumps(payload, ensure_ascii=False)
     headers = make_headers()
-    proxies = {"http": PROXY_SOCKS5, "https": PROXY_SOCKS5}
-    return requests.post(url, headers=headers, data=payload_str, timeout=(15, 60), proxies=proxies)
+    
+    for attempt in range(retries):
+        try:
+            return requests.post(url, headers=headers, data=payload_str, timeout=(30, 120))
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)  # 指数退避: 1s, 2s, 4s
+                continue
+            raise
 
 
 def register_client_min() -> Tuple[str, str]:
@@ -174,35 +213,165 @@ def poll_token_device_code(
 # ========== 批量注册配置 ==========
 DEFAULT_BATCH_COUNT = 1
 DEFAULT_CONCURRENT_WINDOWS = 1
+HEADLESS_MODE = False  # 无头模式开关（建议关闭，否则可能收不到验证码）
 
-# 全局锁
+# 全局锁（只有文件写入需要锁，API 调用可以并行）
 file_lock = threading.Lock()
-oidc_lock = threading.Lock()
-gptmail_lock = threading.Lock()
 
 
-def solve_cf_if_present(sb):
-    """如果存在 Cloudflare 验证，自动解决"""
+def set_headless_mode(enabled: bool):
+    """设置无头模式"""
+    global HEADLESS_MODE
+    HEADLESS_MODE = enabled
+    print(f"🖥️  无头模式: {'开启' if enabled else '关闭'}")
+
+
+def check_page_error(sb):
+    """检查页面是否有错误提示，返回 True 表示有错误"""
     try:
-        print("   🛡️  检查 CF 验证...")
-        sb.solve_captcha()
-        print("   ✅ CF 验证已通过")
-        sb.sleep(1)
-    except Exception:
-        print("   ℹ️  无需 CF 验证")
+        # 检查 AWS 错误文本（语言无关）
+        error_texts = [
+            'error processing your request',
+            'please try again',
+            "it's not you, it's us",
+            'something went wrong',
+            'unable to process',
+            'sorry, there was an error'
+        ]
+        
+        try:
+            page_text = sb.get_page_source().lower()
+            for text in error_texts:
+                if text in page_text:
+                    print(f"   ❌ 检测到错误: {text}")
+                    return True
+        except:
+            pass
+        
+        # 检查 AWS 错误提示元素
+        error_selectors = [
+            "[data-testid*='error-alert']",
+            ".awsui_type-error",
+            "[data-analytics-alert='error']",
+            "[role='alert']"
+        ]
+        
+        for selector in error_selectors:
+            try:
+                if sb.is_element_visible(selector):
+                    print(f"   ❌ 页面出现错误提示")
+                    return True
+            except:
+                continue
+        
+        return False
+    except:
+        return False
 
 
-def save_account_to_file(email, password, client_id, client_secret, refresh_token, access_token):
-    """保存账号信息到 JSON 文件 - 线程安全"""
+def get_current_page(sb):
+    """
+    通过 URL 判断当前所在页面
+    返回: 'email', 'name', 'verification', 'password', 'confirm', 'allow', 'callback', 'error', 'unknown'
+    
+    URL 流程：
+    0. 授权起始页: https://view.awsapps.com/start/#/device?user_code=XXXX-XXXX
+    1. 邮箱页: https://us-east-1.signin.aws/platform/d-9067642ac7/login?workflowStateHandle=...
+    2. 姓名页: https://profile.aws.amazon.com/?workflowID=...#/signup/enter-email
+    3. 验证码页: https://profile.aws.amazon.com/?workflowID=...#/signup/verify-otp
+    4. 密码页: https://us-east-1.signin.aws/platform/d-9067642ac7/signup?registrationCode=...
+    5. 确认页: https://view.awsapps.com/start/#/device?user_code=XXXX-XXXX (密码成功后重定向回来)
+    6. 允许页: https://view.awsapps.com/start/#/?clientId=...&clientType=...&deviceContextId=...
+    """
+    try:
+        url = sb.current_url.lower()
+        
+        # 回调页面（最高优先级）
+        if '127.0.0.1' in url and 'callback' in url:
+            return 'callback'
+        
+        # Allow access / Confirm 页面（view.awsapps.com 域名）
+        if 'view.awsapps.com' in url:
+            return 'allow'
+        
+        # 密码页面（signin.aws 域名 + registrationCode 参数）
+        if 'registrationcode=' in url:
+            return 'password'
+        
+        # 邮箱页面：signin.aws 域名 + login 路径
+        if 'signin.aws' in url and '/login' in url:
+            return 'email'
+        
+        # profile.aws 域名下，通过 hash 区分姓名页和验证码页
+        if 'profile.aws' in url:
+            # 验证码页：hash 是 verify-otp
+            if 'verify-otp' in url:
+                return 'verification'
+            # 姓名页：其他情况（包括 enter-email）
+            return 'name'
+        
+        return 'unknown'
+    except:
+        return 'unknown'
+
+
+def wait_for_page_change(sb, current_page, timeout=30):
+    """
+    等待页面变化（URL 变化）
+    返回新页面类型，超时返回 None
+    """
+    start_time = time.time()
+    last_url = sb.current_url
+    stable_count = 0
+    
+    while time.time() - start_time < timeout:
+        time.sleep(0.5)
+        try:
+            new_url = sb.current_url
+            if new_url != last_url:
+                print(f"   🔗 URL 变化: {new_url}")
+                last_url = new_url
+                stable_count = 0
+            else:
+                stable_count += 1
+                # URL 稳定 2 秒后认为跳转完成
+                if stable_count >= 4:
+                    new_page = get_current_page(sb)
+                    if new_page != current_page:
+                        return new_page
+        except:
+            pass
+    
+    return None
+
+
+def hide_cookie_banner(sb):
+    """隐藏 cookie banner 和其他遮挡元素"""
+    try:
+        sb.execute_script("""
+            var banners = document.querySelectorAll('[class*="cookie"], [class*="consent"], [id*="cookie"], [id*="consent"]');
+            banners.forEach(function(el) { el.style.display = 'none'; });
+            var overlays = document.querySelectorAll('[class*="overlay"], [class*="modal-backdrop"]');
+            overlays.forEach(function(el) { el.style.display = 'none'; });
+        """)
+    except:
+        pass
+
+
+
+def save_account_to_file(email, password, client_id, client_secret, refresh_token, access_token, machine_id=None):
+    """保存或更新账号信息到 JSON 文件 - 线程安全，按 email 去重"""
     try:
         account = {
             "email": email,
             "password": password,
+            "accessToken": access_token,
             "refreshToken": refresh_token,
             "clientId": client_id,
             "clientSecret": client_secret,
             "region": "us-east-1",
-            "provider": "BuilderId"
+            "provider": "BuilderId",
+            "machineId": machine_id
         }
 
         with file_lock:
@@ -214,7 +383,22 @@ def save_account_to_file(email, password, client_id, client_secret, refresh_toke
                 except:
                     accounts = []
             
-            accounts.append(account)
+            # 按 email 查找是否已存在
+            found = False
+            for i, a in enumerate(accounts):
+                if a.get('email') == email:
+                    # 更新现有记录（保留非空值）
+                    if access_token:
+                        accounts[i]['accessToken'] = access_token
+                    if refresh_token:
+                        accounts[i]['refreshToken'] = refresh_token
+                    if machine_id:
+                        accounts[i]['machineId'] = machine_id
+                    found = True
+                    break
+            
+            if not found:
+                accounts.append(account)
             
             with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
                 json.dump(accounts, f, ensure_ascii=False, indent=2)
@@ -228,25 +412,87 @@ def save_account_to_file(email, password, client_id, client_secret, refresh_toke
 
 
 
-def register_single_account(account_num, total_accounts):
-    """注册单个 Amazon Q Developer 账号"""
-    print("\n\n" + "🎯"*30)
-    print(f"  [窗口 {account_num}] 开始注册账号 {account_num}/{total_accounts}")
-    print("🎯"*30 + "\n")
+def generate_machine_id():
+    """生成新的机器 ID（UUID 格式）"""
+    return str(uuid.uuid4()).lower()
+
+
+def reset_system_machine_guid(new_guid):
+    """
+    重置系统机器码（需要管理员权限）
+    返回 (success, error_message)
+    """
+    if sys.platform != 'win32':
+        return False, "仅支持 Windows"
+    
+    try:
+        import ctypes
+        # 检查管理员权限
+        if not ctypes.windll.shell32.IsUserAnAdmin():
+            return False, "需要管理员权限"
+        
+        import winreg
+        key = winreg.OpenKey(
+            winreg.HKEY_LOCAL_MACHINE,
+            r"SOFTWARE\Microsoft\Cryptography",
+            0,
+            winreg.KEY_SET_VALUE | winreg.KEY_WOW64_64KEY
+        )
+        winreg.SetValueEx(key, "MachineGuid", 0, winreg.REG_SZ, new_guid)
+        winreg.CloseKey(key)
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def register_single_account(account_num, total_accounts, reset_machine_id=True):
+    """
+    注册单个 Amazon Q Developer 账号
+    
+    参数:
+        account_num: 当前账号序号
+        total_accounts: 总账号数
+        reset_machine_id: 是否重置系统机器 ID（需要管理员权限，默认 True）
+    """
+    
+    # 日志前缀
+    tag = f"[W{account_num}]"
+    def log(msg):
+        print(f"{tag} {msg}")
+    
+    password_success = False  # 标记密码是否设置成功
+    
+    # 生成本次注册使用的机器 ID
+    current_machine_id = generate_machine_id()
+    
+    log("")
+    log("🎯" * 20)
+    log(f"开始注册账号 {account_num}/{total_accounts}")
+    log("🎯" * 20)
+    
+    # 重置系统机器 ID
+    if reset_machine_id:
+        log(f"🔧 重置系统机器 ID: {current_machine_id}")
+        success, err = reset_system_machine_guid(current_machine_id)
+        if success:
+            log(f"✅ 系统机器 ID 已重置")
+        else:
+            log(f"⚠️ 重置失败: {err}（继续使用生成的 ID）")
+    else:
+        log(f"🆔 使用机器 ID: {current_machine_id}")
+    log("🎯" * 20)
 
     # 步骤1: 自动创建 GPTMail 邮箱
-    print(f"[窗口 {account_num}] 步骤1: 创建临时邮箱...")
+    log("步骤1: 创建临时邮箱...")
     
-    with gptmail_lock:
-        mail_handler = GPTMailHandler()
-        email = mail_handler.generate_email()
-        time.sleep(0.5)
+    mail_handler = GPTMailHandler()
+    email = mail_handler.generate_email()
     
     if not email:
-        print(f"❌ [窗口 {account_num}] 创建邮箱失败")
+        log("❌ 创建邮箱失败")
         return False
     
-    print(f"✅ [窗口 {account_num}] 邮箱: {email}")
+    log(f"✅ 邮箱: {email}")
 
     # 常用英文名库
     first_names = [
@@ -266,7 +512,7 @@ def register_single_account(account_num, total_accounts):
     first_name = random.choice(first_names)
     last_name = random.choice(last_names)
     username = f"{first_name} {last_name}"
-    print(f"👤 用户名设置为: {username}")
+    log(f"👤 用户名设置为: {username}")
 
     # 生成密码（至少12位，包含大小写字母、数字、特殊字符）
     special_chars = '!@#$%^&*'
@@ -286,24 +532,22 @@ def register_single_account(account_num, total_accounts):
     ]
     random.shuffle(password_chars)
     password = ''.join(password_chars)
-    print(f"🔑 密码设置为: {password}")
+    log(f"🔑 密码设置为: {password}")
 
     # 步骤2: 调用 AWS Device Authorization API
-    print("\n" + "="*60)
-    print(f"🔑 [窗口 {account_num}] 调用 AWS Device Authorization API")
-    print("="*60)
+    log("=" * 60)
+    log("🔑 调用 AWS Device Authorization API")
+    log("=" * 60)
 
     try:
-        with oidc_lock:
-            print(f"⏳ [窗口 {account_num}] 正在注册 OIDC 客户端...")
-            client_id, client_secret = register_client_min()
-            print(f"✅ [窗口 {account_num}] 客户端注册成功")
-            print(f"   Client ID: {client_id}")
-            print(f"   Client Secret: {client_secret[:20]}...")
+        log("⏳ 正在注册 OIDC 客户端...")
+        client_id, client_secret = register_client_min()
+        log("✅ 客户端注册成功")
+        log(f"   Client ID: {client_id}")
+        log(f"   Client Secret: {client_secret[:20]}...")
 
-            print(f"\n⏳ [窗口 {account_num}] 正在获取设备授权...")
-            device_auth = device_authorize(client_id, client_secret)
-            time.sleep(0.5)
+        log(f"\n⏳ [窗口 {account_num}] 正在获取设备授权...")
+        device_auth = device_authorize(client_id, client_secret)
 
         device_code = device_auth.get('deviceCode')
         verification_uri_complete = device_auth.get('verificationUriComplete')
@@ -311,557 +555,427 @@ def register_single_account(account_num, total_accounts):
         interval = device_auth.get('interval', 5)
         expires_in = device_auth.get('expiresIn', 600)
 
-        print(f"✅ [窗口 {account_num}] 设备授权成功")
-        print(f"   授权链接: {verification_uri_complete}")
-        print(f"   用户代码: {user_code}")
-        print(f"   有效期: {expires_in} 秒")
+        log(f"✅ 设备授权成功")
+        log(f"   授权链接: {verification_uri_complete}")
+        log(f"   用户代码: {user_code}")
+        log(f"   有效期: {expires_in} 秒")
 
     except Exception as e:
-        print(f"❌ [窗口 {account_num}] Device Authorization 失败: {e}")
+        log(f"❌ Device Authorization 失败: {e}")
         import traceback
         traceback.print_exc()
         return False
 
     # 步骤3: 启动浏览器并打开授权链接
-    print("\n" + "="*60)
-    print(f"🌐 [窗口 {account_num}] 启动独立浏览器会话（无缓存）")
-    print("="*60)
+    log("\n" + "="*60)
+    log(f"🌐 启动独立浏览器会话（无缓存）")
+    log("=" * 60)
 
-    sb_context = None
     sb = None
 
+    # 按钮选择器（按优先级排序）
     continue_btn_selectors = [
-        "button[class*='awsui_variant-primary']",
-        "button[data-testid='test-primary-button']",
-        "button[data-testid='email-verification-verify-button']",
-        "button[type='submit']",
+        "button[data-testid='test-primary-button']",  # 邮箱页 Continue
+        "button[data-testid='signup-next-button']",   # 姓名页 Continue
+        "button[data-testid='email-verification-verify-button']",  # 验证码页
+        "button.awsui_variant-primary_vjswe_19dg5_235",  # 主按钮 class
+        "button[type='submit']",  # 通用 submit
     ]
 
+    # 在 try 块外初始化临时目录变量
+    temp_user_data = None
+    
     try:
-        print(f"⏳ [窗口 {account_num}] 正在启动浏览器...")
-        sb_context = SB(uc=True, proxy=f"{PROXY_HOST}:{PROXY_PORT}", chromium_arg="--enable-logging --v=1")
-        sb = sb_context.__enter__()
-        print(f"✅ [窗口 {account_num}] 浏览器启动成功")
+        log(f"⏳ 正在启动浏览器...")
+        browser_ua = get_random_browser_ua()
+        log(f"   🌐 使用 UA: {browser_ua}...")
+        
+        # 使用 Driver 类（UC 模式反检测配置）
+        # 参考官方文档: https://github.com/seleniumbase/seleniumbase/blob/master/help_docs/uc_mode.md
+        # 使用 chromium_arg 强制启用无痕模式
+        sb = Driver(
+            uc=True,                    # 启用 undetected-chromedriver
+            uc_subprocess=True,         # 子进程模式（多线程必需）
+            uc_cdp_events=True,         # 启用 CDP 事件捕获
+            headless2=HEADLESS_MODE,    # 新版无头模式（支持扩展）
+            agent=browser_ua,           # 随机 User-Agent
+            locale_code="en",           # 语言设置
+            ad_block_on=True,           # 广告拦截
+            do_not_track=True,          # DNT 头
+            disable_csp=True,           # 禁用 CSP
+            page_load_strategy="eager", # 快速加载（不等待所有资源）
+            chromium_arg="--incognito,--disable-extensions",  # 强制无痕模式
+        )
+        log(f"✅ 浏览器启动成功 ({'无头模式' if HEADLESS_MODE else '有头模式'})")
 
-        print(f"⏳ [窗口 {account_num}] 正在打开授权链接: {verification_uri_complete}")
-        sb.open(verification_uri_complete)
-        sb.sleep(3)
-        solve_cf_if_present(sb)
-        print(f"✅ [窗口 {account_num}] 授权页面加载完成")
+        log(f"⏳ 正在打开授权链接...")
+        sb.uc_open_with_reconnect(verification_uri_complete, reconnect_time=4)
+        log(f"   🔗 初始页面: {sb.current_url}")
+        sb.uc_gui_click_captcha()  # 自动处理 CF 验证
+
+        # 等待重定向到邮箱输入页（view.awsapps.com → signin.aws）
+        log("⏳ 等待重定向...")
+        last_url = sb.current_url
+        for _ in range(45):  # 最多等 45 秒
+            current_url = sb.current_url
+            if current_url != last_url:
+                log(f"   🔗 重定向到: {current_url}")
+                last_url = current_url
+            current_page = get_current_page(sb)
+            if current_page == 'email':
+                break
+            time.sleep(1)
 
         # 页面1: 输入邮箱
-        print("\n" + "="*60)
-        print("📧 页面1: 输入邮箱")
-        print("="*60)
+        log("\n📧 页面1: 输入邮箱")
+        max_retries = 2
+        for retry in range(max_retries):
+            try:
+                # 1. 确认当前页面（通过 URL）
+                current_page = get_current_page(sb)
+                log(f"   当前页面: {current_page}, URL: {sb.current_url}")
+                
+                if check_page_error(sb):
+                    log("❌ AWS 服务端错误")
+                    sb.save_screenshot(os.path.join(SCREENSHOT_DIR, "error_page1_blocked.png"))
+                    return False
+                
+                # 2. 等待页面加载完成（增加超时时间）
+                sb.wait_for_element_visible("input[placeholder='username@example.com']", timeout=20)
+                sb.type("input[placeholder='username@example.com']", email)
+                log(f"✅ 已输入邮箱: {email}")
 
-        try:
-            sb.sleep(3)
-            
-            email_selectors = [
-                "input[placeholder='username@example.com']",
-                "input[class*='awsui_input']",
-                "input[type='text'][placeholder='username@example.com']"
-            ]
-            email_found = False
-            for selector in email_selectors:
-                try:
-                    print(f"   尝试选择器: {selector}")
-                    sb.wait_for_element_visible(selector, timeout=5)
-                    sb.sleep(0.5)
-                    sb.click(selector)
-                    sb.sleep(0.3)
-                    sb.type(selector, email)
-                    print(f"✅ 已输入邮箱: {email}")
-                    email_found = True
-                    break
-                except Exception as ex:
-                    print(f"   选择器失败: {str(ex)[:80]}")
-                    continue
+                hide_cookie_banner(sb)
+                
+                # 点击继续按钮
+                for selector in continue_btn_selectors:
+                    if sb.is_element_visible(selector):
+                        sb.uc_click(selector, reconnect_time=3)
+                        log("✅ 已点击'继续'")
+                        break
+                
+                sb.uc_gui_click_captcha()
+                
+                if check_page_error(sb):
+                    log("❌ 邮箱提交失败")
+                    sb.save_screenshot(os.path.join(SCREENSHOT_DIR, "error_page1_rejected.png"))
+                    return False
+                
+                # 4. 等待页面跳转到姓名页
+                new_page = wait_for_page_change(sb, 'email', timeout=15)
+                if new_page:
+                    log(f"   ✅ 已跳转到: {new_page}")
+                break  # 成功，跳出重试循环
 
-            if not email_found:
-                print("❌ 未找到邮箱输入框")
-                sb.save_screenshot("error_email_not_found.png")
-                return False
-
-            sb.sleep(1)
-            btn_clicked = False
-            for selector in continue_btn_selectors:
-                try:
-                    print(f"   尝试按钮选择器: {selector}")
-                    sb.wait_for_element_clickable(selector, timeout=3)
-                    sb.click(selector)
-                    print("✅ 已点击'继续'")
-                    btn_clicked = True
-                    break
-                except Exception as ex:
-                    print(f"   按钮选择器失败: {str(ex)[:50]}")
-                    continue
-            
-            if not btn_clicked:
-                print("   尝试JavaScript点击...")
-                try:
-                    sb.execute_script("document.querySelector('button[type=submit]').click()")
-                    print("✅ JS点击成功")
-                except:
-                    print("❌ 无法点击继续按钮")
-
-            sb.sleep(3)
-            solve_cf_if_present(sb)
-
-        except Exception as e:
-            print(f"❌ 页面1失败: {e}")
-            return False
+            except Exception as e:
+                if retry < max_retries - 1:
+                    log(f"⚠️ 页面1失败: {e}，刷新重试...")
+                    sb.refresh()
+                    time.sleep(3)
+                    sb.uc_gui_click_captcha()
+                else:
+                    log(f"❌ 页面1失败: {e}")
+                    return False
 
         # 页面2: 输入用户名
-        print("\n" + "="*60)
-        print("👤 页面2: 输入用户名")
-        print("="*60)
+        log("\n" + "="*60)
+        log("👤 页面2: 输入用户名")
+        log("=" * 60)
 
         try:
-            sb.sleep(3)
+            # 1. 确认当前页面（通过 URL）
+            current_page = get_current_page(sb)
+            log(f"   当前页面: {current_page}, URL: {sb.current_url}")
             
-            username_selectors = [
-                "input[placeholder*='Maria']",
-                "input[placeholder*='Silva']",
-                "input.awsui_input_2rhyz_1jxbf_149",
-                "input[class*='awsui_input']",
-                "input[autocomplete='on'][type='text']",
-            ]
+            # 如果已经跳过姓名页（直接到验证码页），跳过此步骤
+            if current_page == 'verification':
+                log("ℹ️ 已在验证码页面，跳过姓名步骤")
+            else:
+                # 2. 等待页面加载完成
+                # 等待用户名输入框（使用 data-testid 更可靠）
+                sb.wait_for_element_visible("[data-testid='signup-full-name-input'] input", timeout=10)
+                sb.type("[data-testid='signup-full-name-input'] input", username)
+                log(f"✅ 已输入用户名: {username}")
 
-            username_found = False
-            for selector in username_selectors:
-                try:
-                    print(f"   尝试选择器: {selector}")
-                    sb.wait_for_element_visible(selector, timeout=5)
-                    sb.sleep(0.5)
-                    sb.click(selector)
-                    sb.sleep(0.3)
-                    sb.type(selector, username)
-                    print(f"✅ 已输入用户名: {username}")
-                    username_found = True
-                    break
-                except Exception as ex:
-                    print(f"   选择器失败: {str(ex)[:50]}")
-                    continue
-
-            if not username_found:
-                print("❌ 未找到用户名输入框")
-                sb.save_screenshot("error_username_not_found.png")
-                return False
-
-            sb.sleep(1)
-            btn_clicked = False
-            for selector in continue_btn_selectors:
-                try:
-                    print(f"   尝试按钮: {selector}")
-                    sb.wait_for_element_clickable(selector, timeout=3)
-                    sb.click(selector)
-                    print("✅ 已点击'继续'")
-                    btn_clicked = True
-                    break
-                except:
-                    continue
-            
-            if not btn_clicked:
-                try:
-                    sb.execute_script("document.querySelector('button[type=submit]').click()")
-                    print("✅ JS点击成功")
-                except:
-                    pass
-
-            sb.sleep(3)
-            solve_cf_if_present(sb)
+                hide_cookie_banner(sb)
+                
+                for selector in continue_btn_selectors:
+                    if sb.is_element_visible(selector):
+                        sb.uc_click(selector, reconnect_time=3)
+                        log("✅ 已点击'继续'")
+                        break
+                
+                sb.uc_gui_click_captcha()
+                
+                if check_page_error(sb):
+                    log("❌ 用户名提交失败")
+                    sb.save_screenshot(os.path.join(SCREENSHOT_DIR, "error_page2_rejected.png"))
+                    return False
+                
+                # 4. 等待页面跳转到验证码页
+                new_page = wait_for_page_change(sb, current_page, timeout=20)
+                if new_page:
+                    log(f"   ✅ 已跳转到: {new_page}")
 
         except Exception as e:
-            print(f"❌ 页面2失败: {e}")
+            log(f"❌ 页面2失败: {e}")
             return False
 
-
         # 页面3: 输入邮箱验证码
-        print("\n" + "="*60)
-        print("🔢 页面3: 输入邮箱验证码")
-        print("="*60)
-
+        log("\n🔢 页面3: 输入邮箱验证码")
         try:
-            sb.sleep(3)
+            # 1. 确认当前页面（通过 URL）
+            current_page = get_current_page(sb)
+            log(f"   当前页面: {current_page}, URL: {sb.current_url}")
             
+            # 验证是否在验证码页面
+            if current_page != 'verification':
+                log(f"   ⚠️ 期望在验证码页面，实际在: {current_page}")
+            
+            # 2. 等待页面加载完成
+            # 等待验证码输入框
+            sb.wait_for_element_visible("[data-testid='email-verification-form-code-input'] input", timeout=15)
+            
+            # 获取验证码
             verification_code = mail_handler.get_verification_code(email, timeout=100)
-
             if not verification_code:
-                print("❌ 未能获取验证码")
+                log("❌ 未能获取验证码")
                 return False
 
-            code_selectors = [
-                "input[class*='awsui_input']",
-                "input[type='text']",
-            ]
+            sb.type("[data-testid='email-verification-form-code-input'] input", verification_code)
+            log(f"✅ 已输入验证码: {verification_code}")
 
-            code_found = False
-            for selector in code_selectors:
-                try:
-                    print(f"   尝试选择器: {selector}")
-                    sb.wait_for_element_visible(selector, timeout=5)
-                    sb.sleep(0.5)
-                    sb.click(selector)
-                    sb.sleep(0.3)
-                    sb.type(selector, verification_code)
-                    print(f"✅ 已输入验证码: {verification_code}")
-                    code_found = True
-                    break
-                except Exception as ex:
-                    print(f"   选择器失败: {str(ex)[:50]}")
-                    continue
-
-            if not code_found:
-                print("❌ 未找到验证码输入框")
-                sb.save_screenshot("error_code_not_found.png")
-                return False
-
-            sb.sleep(1)
-            btn_clicked = False
-            for selector in continue_btn_selectors:
-                try:
-                    print(f"   尝试按钮: {selector}")
-                    sb.wait_for_element_clickable(selector, timeout=3)
-                    sb.click(selector)
-                    print("✅ 已点击'继续'")
-                    btn_clicked = True
-                    break
-                except:
-                    continue
+            hide_cookie_banner(sb)
             
-            if not btn_clicked:
-                try:
-                    sb.execute_script("document.querySelector('button[type=submit]').click()")
-                    print("✅ JS点击成功")
-                except:
-                    pass
-
-            sb.sleep(3)
-            solve_cf_if_present(sb)
+            for selector in continue_btn_selectors:
+                if sb.is_element_visible(selector):
+                    sb.uc_click(selector, reconnect_time=3)
+                    log("✅ 已点击'继续'")
+                    break
+            
+            sb.uc_gui_click_captcha()
+            
+            if check_page_error(sb):
+                log("❌ 验证码提交失败")
+                sb.save_screenshot(os.path.join(SCREENSHOT_DIR, "error_page3_rejected.png"))
+                return False
+            
+            # 4. 等待页面跳转到密码页（URL 中有 registrationCode=）
+            new_page = wait_for_page_change(sb, current_page, timeout=20)
+            if new_page:
+                log(f"   ✅ 已跳转到: {new_page}")
 
         except Exception as e:
-            print(f"❌ 页面3失败: {e}")
+            log(f"❌ 页面3失败: {e}")
             return False
 
         # 页面4: 设置密码
-        print("\n" + "="*60)
-        print("🔐 页面4: 设置密码")
-        print("="*60)
-
+        log("\n🔐 页面4: 设置密码")
         try:
-            sb.sleep(5)
-            print("⏳ 等待密码输入框出现...")
+            # 1. 确认当前页面（通过 URL，应该有 registrationCode=）
+            current_page = get_current_page(sb)
+            log(f"   当前页面: {current_page}, URL: {sb.current_url}")
             
-            sb.wait_for_element_visible("input[type='password']", timeout=15)
-            sb.sleep(2)
+            # 验证是否在密码页面
+            if current_page != 'password':
+                log(f"   ⚠️ 期望在密码页面，实际在: {current_page}")
             
-            pwd_count = sb.execute_script("return document.querySelectorAll(\"input[type='password']\").length")
-            print(f"   找到 {pwd_count} 个密码框")
+            # 2. 等待页面加载完成
+            # 等待密码输入框
+            sb.wait_for_element_visible("[data-testid='test-input'] input", timeout=15)
             
-            try:
-                first_pwd_id = sb.execute_script("return document.querySelectorAll(\"input[type='password']\")[0].id")
-                second_pwd_id = sb.execute_script("return document.querySelectorAll(\"input[type='password']\")[1].id") if pwd_count >= 2 else None
-                
-                print(f"   第一个密码框ID: {first_pwd_id}")
-                if second_pwd_id:
-                    print(f"   第二个密码框ID: {second_pwd_id}")
-                
-                if first_pwd_id:
-                    sb.type(f"#{first_pwd_id}", password)
-                    print(f"✅ 已输入第一个密码")
-                else:
-                    sb.type("input[type='password']", password)
-                    print(f"✅ 已输入密码")
-                
-                sb.sleep(0.5)
-                
-                if second_pwd_id:
-                    sb.type(f"#{second_pwd_id}", password)
-                    print(f"✅ 已输入确认密码")
-                
-                print(f"✅ 密码输入完成: {password}")
-                
-            except Exception as ex:
-                print(f"   密码输入异常: {str(ex)[:80]}")
-                sb.execute_script(f'''
-                    var pwdInputs = document.querySelectorAll("input[type='password']");
-                    for (var i = 0; i < pwdInputs.length; i++) {{
-                        pwdInputs[i].focus();
-                        pwdInputs[i].value = "{password}";
-                        pwdInputs[i].dispatchEvent(new Event('input', {{ bubbles: true }}));
-                        pwdInputs[i].dispatchEvent(new Event('change', {{ bubbles: true }}));
-                    }}
-                ''')
-                print(f"✅ 已通过JS输入密码")
+            # 输入密码
+            sb.type("[data-testid='test-input'] input", password)
+            
+            # 输入确认密码
+            if sb.is_element_visible("[data-testid='test-retype-input'] input"):
+                sb.type("[data-testid='test-retype-input'] input", password)
+            
+            log(f"✅ 密码输入完成")
 
-            sb.sleep(2)
+            hide_cookie_banner(sb)
             
-            btn_clicked = False
             for selector in continue_btn_selectors:
-                try:
-                    print(f"   尝试按钮: {selector}")
-                    sb.wait_for_element_clickable(selector, timeout=3)
-                    sb.click(selector)
-                    print("✅ 已点击'继续'")
-                    btn_clicked = True
+                if sb.is_element_visible(selector):
+                    sb.uc_click(selector, reconnect_time=3)
+                    log("✅ 已点击'继续'")
                     break
-                except:
-                    continue
             
-            if not btn_clicked:
-                try:
-                    sb.execute_script("document.querySelector('button[type=submit]').click()")
-                    print("✅ JS点击成功")
-                except:
-                    pass
-
-            sb.sleep(3)
-            solve_cf_if_present(sb)
-
-        except Exception as e:
-            print(f"❌ 页面4失败: {e}")
-            return False
-
-        # 页面5: 确认并继续
-        print("\n" + "="*60)
-        print("✅ 页面5: 确认并继续")
-        print("="*60)
-
-        try:
-            confirm_selectors = [
-                "button:contains('确认并继续')",
-                "button:contains('Confirm and continue')",
-                "button:contains('Confirm')",
-                "button[type='submit']"
-            ]
-
-            confirm_found = False
-            for selector in confirm_selectors:
-                try:
-                    sb.wait_for_element_visible(selector, timeout=20)
-                    sb.click(selector)
-                    print("✅ 已点击'确认并继续'")
-                    confirm_found = True
-                    break
-                except:
-                    continue
-
-            if not confirm_found:
-                print("ℹ️  未找到'确认并继续'按钮，可能已自动跳过")
-
-            sb.sleep(2)
-
-        except Exception as e:
-            print(f"ℹ️  页面5处理: {e}")
-
-        # 页面6: 允许访问
-        print("\n" + "="*60)
-        print("✅ 页面6: 允许访问")
-        print("="*60)
-
-        try:
-            allow_selectors = [
-                "button:contains('允许访问')",
-                "button:contains('Allow access')",
-                "button[type='submit']",
-                "input[type='submit']"
-            ]
-
-            for selector in allow_selectors:
-                try:
-                    sb.wait_for_element_visible(selector, timeout=20)
-                    sb.click(selector)
-                    print("✅ 已点击'允许访问'")
-                    break
-                except:
-                    continue
-
-            sb.sleep(2)
-
-        except Exception as e:
-            print(f"ℹ️  页面6处理: {e}")
-
-        # 轮询获取 tokens
-        print("\n" + "="*60)
-        print("🔄 等待授权完成并获取 Tokens")
-        print("="*60)
-
-        print("⏳ 正在轮询获取 tokens...")
-        print(f"   最大等待时间: {expires_in} 秒")
-        print(f"   轮询间隔: {interval} 秒")
-
-        try:
-            tokens = poll_token_device_code(
-                client_id=client_id,
-                client_secret=client_secret,
-                device_code=device_code,
-                interval=interval,
-                expires_in=expires_in,
-                max_timeout_sec=300
-            )
-
-            access_token = tokens.get('accessToken')
-            refresh_token = tokens.get('refreshToken')
-
-            if access_token and refresh_token:
-                print("\n" + "🎉"*30)
-                print("🎉 账号注册成功！")
-                print("🎉"*30)
-                print(f"\n📧 邮箱: {email}")
-                print(f"🔑 密码: {password}")
-                print(f"\n🔐 Client ID: {client_id}")
-                print(f"🔐 Client Secret: {client_secret[:20]}...")
-                print(f"🔐 Access Token: {access_token[:50]}...")
-                print(f"🔄 Refresh Token: {refresh_token[:50]}...")
-
-                save_account_to_file(email, password, client_id, client_secret, refresh_token, access_token)
-
-                print("\n✅ 浏览器会话即将关闭...")
-                return True
-            else:
-                print("❌ Token 数据不完整")
+            sb.uc_gui_click_captcha()
+            
+            if check_page_error(sb):
+                log("❌ 密码设置失败")
+                sb.save_screenshot(os.path.join(SCREENSHOT_DIR, "error_page4_rejected.png"))
                 return False
+            
+            # 4. 等待页面跳转到 allow 页面（view.awsapps.com）
+            new_page = wait_for_page_change(sb, current_page, timeout=20)
+            if new_page:
+                log(f"✅ 已跳转到: {new_page}")
+                # 密码设置成功，先保存基本信息（无 token）
+                log("🎉 密码设置成功！")
+                save_account_to_file(email, password, client_id, client_secret, None, None, current_machine_id)
+                password_success = True  # 标记密码设置成功
 
-        except TimeoutError:
-            print("❌ 授权超时（5 分钟）")
-            return False
         except Exception as e:
-            print(f"❌ 获取 Token 失败: {e}")
-            import traceback
-            traceback.print_exc()
+            log(f"❌ 页面4失败: {e}")
             return False
+
+        # 页面5+6: 确认并继续 + 允许访问（都在 view.awsapps.com）
+        allow_selectors = [
+            "#cli_verification_btn",
+            "button[data-testid='allow-access-button']",
+            "button[data-analytics='accept-user-code']",
+            "button.awsui_variant-primary_vjswe_1hxdq_235",
+            "button[type='submit']"
+        ]
+        
+        max_poll_retries = 5
+        for poll_attempt in range(max_poll_retries):
+            if poll_attempt > 0:
+                log(f"\n🔄 第 {poll_attempt + 1} 次重试轮询...")
+            
+            # 页面5: 确认并继续
+            log("\n✅ 页面5: 确认并继续")
+            try:
+                # 1. 确认当前页面（通过 URL，应该是 view.awsapps.com）
+                current_page = get_current_page(sb)
+                log(f"   当前页面: {current_page}, URL: {sb.current_url}")
+                
+                # 2. 等待页面加载完成
+                # 等待并点击按钮
+                for selector in allow_selectors:
+                    if sb.is_element_visible(selector):
+                        sb.uc_click(selector, reconnect_time=3)
+                        log("✅ 已点击'确认并继续'")
+                        break
+                
+                # 4. 等待页面变化
+                new_page = wait_for_page_change(sb, current_page, timeout=10)
+                if new_page:
+                    log(f"   ✅ 已跳转到: {new_page}")
+                    
+            except Exception as e:
+                log(f"ℹ️  页面5: {e}")
+
+            # 页面6: 允许访问
+            log("\n✅ 页面6: 允许访问")
+            try:
+                # 1. 确认当前页面
+                current_page = get_current_page(sb)
+                log(f"   当前页面: {current_page}, URL: {sb.current_url}")
+                
+                # 如果已经到 callback，跳过
+                if current_page == 'callback':
+                    log("✅ 已重定向到 callback!")
+                    break
+                
+                # 2. 等待页面加载完成
+                # 等待并点击按钮
+                for selector in allow_selectors:
+                    if sb.is_element_visible(selector):
+                        sb.uc_click(selector, reconnect_time=3)
+                        log("✅ 已点击'允许访问'")
+                        break
+
+            except Exception as e:
+                log(f"ℹ️  页面6处理: {e}")
+
+            # 轮询获取 tokens
+            log("\n" + "="*60)
+            log("🔄 等待授权完成并获取 Tokens")
+            log("=" * 60)
+
+            log("⏳ 正在轮询获取 tokens...")
+            poll_timeout = 60  # 每次轮询 60 秒
+            log(f"   本次轮询超时: {poll_timeout} 秒")
+
+            try:
+                payload = {
+                    "clientId": client_id,
+                    "clientSecret": client_secret,
+                    "deviceCode": device_code,
+                    "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+                }
+                
+                deadline = time.time() + poll_timeout
+                poll_interval = max(1, int(interval or 5))
+                tokens = None
+                
+                while time.time() < deadline:
+                    r = post_json(TOKEN_URL, payload)
+                    if r.status_code == 200:
+                        tokens = r.json()
+                        break
+                        
+                    if r.status_code == 400:
+                        try:
+                            err = r.json()
+                        except:
+                            err = {"error": r.text}
+                        
+                        if str(err.get("error")) == "authorization_pending":
+                            time.sleep(poll_interval)
+                            continue
+                        r.raise_for_status()
+                    r.raise_for_status()
+                
+                if tokens:
+                    access_token = tokens.get('accessToken')
+                    refresh_token = tokens.get('refreshToken')
+
+                    if access_token and refresh_token:
+                        log("\n" + "🎉"*30)
+                        log("🎉 账号注册成功！")
+                        log("🎉" * 20)
+                        log(f"\n📧 邮箱: {email}")
+                        log(f"🔑 密码: {password}")
+                        log(f"🆔 机器 ID: {current_machine_id}")
+                        log(f"\n🔐 Client ID: {client_id}")
+                        log(f"🔐 Client Secret: {client_secret[:20]}...")
+                        log(f"🔐 Access Token: {access_token[:50]}...")
+                        log(f"🔄 Refresh Token: {refresh_token[:50]}...")
+
+                        # 更新 token（machineId 已在第一次保存时存入）
+                        save_account_to_file(email, password, client_id, client_secret, refresh_token, access_token)
+
+                        log("\n✅ 浏览器会话即将关闭...")
+                        return True
+                    else:
+                        log("❌ Token 数据不完整")
+                else:
+                    log(f"   ⚠️ 轮询超时，准备重试...")
+                    continue
+
+            except Exception as e:
+                log(f"   ⚠️ 轮询出错: {e}")
+                continue
+        
+        # token 轮询失败，但密码已成功
+        if password_success:
+            log("⚠️ Token 轮询超时，但账号已保存（无 token）")
+            return True
+        
+        log("❌ 授权超时，已重试 3 次")
+        return False
 
     except Exception as e:
-        print(f"❌ 注册过程出错: {e}")
+        log(f"❌ 注册过程出错: {e}")
         import traceback
         traceback.print_exc()
         return False
 
     finally:
-        if sb_context is not None:
+        if sb is not None:
             try:
-                sb_context.__exit__(None, None, None)
-                print("✅ 浏览器已关闭，缓存已清空")
+                sb.quit()
+                log("✅ 浏览器已关闭")
             except:
                 pass
 
 
 
-def main():
-    """主函数"""
-    batch_count = DEFAULT_BATCH_COUNT
-    concurrent_windows = DEFAULT_CONCURRENT_WINDOWS
-
-    if len(sys.argv) > 1:
-        try:
-            batch_count = int(sys.argv[1])
-            if batch_count <= 0:
-                print("❌ 注册数量必须大于 0")
-                return
-        except ValueError:
-            print(f"❌ 无效的数量参数: {sys.argv[1]}")
-            print(f"使用方法: python {sys.argv[0]} [数量] [并发窗口数]")
-            return
-
-    if len(sys.argv) > 2:
-        try:
-            concurrent_windows = int(sys.argv[2])
-            if concurrent_windows <= 0:
-                print("❌ 并发窗口数必须大于 0")
-                return
-            if concurrent_windows > 5:
-                print("⚠️  并发窗口数建议不超过 5，已自动调整为 5")
-                concurrent_windows = 5
-        except ValueError:
-            print(f"❌ 无效的并发窗口数参数: {sys.argv[2]}")
-            return
-
-    print("\n" + "🤖"*30)
-    print("  Amazon Q Developer 批量自动注册")
-    print("  完全自动化 - 使用临时邮箱")
-    print("🤖"*30 + "\n")
-
-    print(f"📊 批量注册配置:")
-    print(f"   目标数量: {batch_count} 个账号")
-    print(f"   并发窗口: {concurrent_windows} 个")
-    print(f"   注册流程: 邮箱 → 用户名 → 验证码 → 密码 → 确认")
-    print(f"   保存格式: JSON (email, password, refreshToken, clientId, clientSecret, region, provider)")
-    print(f"   保存文件: {ACCOUNTS_FILE}")
-    print("")
-
-    # 检查已有账号数量
-    existing_count = 0
-    if os.path.exists(ACCOUNTS_FILE):
-        try:
-            with open(ACCOUNTS_FILE, 'r', encoding='utf-8') as f:
-                existing_count = len(json.load(f))
-        except:
-            existing_count = 0
-        print(f"📁 已有 {existing_count} 个账号记录\n")
-
-    success_count = 0
-    fail_count = 0
-    count_lock = threading.Lock()
-
-    def process_account(account_num):
-        nonlocal success_count, fail_count
-
-        print(f"\n{'='*60}")
-        print(f"🔄 [窗口 {account_num}] 开始注册")
-        print(f"{'='*60}")
-
-        result = register_single_account(account_num, batch_count)
-
-        with count_lock:
-            if result:
-                success_count += 1
-            else:
-                fail_count += 1
-
-            print(f"\n📊 当前进度: ✅ 成功 {success_count} | ❌ 失败 {fail_count} | 📝 总计 {batch_count}")
-
-        return result
-
-    if concurrent_windows == 1:
-        print("🔄 单窗口模式 - 顺序注册\n")
-        for i in range(1, batch_count + 1):
-            process_account(i)
-            if i < batch_count:
-                wait_time = 3
-                print(f"\n⏳ 等待 {wait_time} 秒后注册下一个账号...")
-                time.sleep(wait_time)
-    else:
-        print(f"🚀 多窗口并发模式 - 同时 {concurrent_windows} 个窗口\n")
-        with ThreadPoolExecutor(max_workers=concurrent_windows) as executor:
-            futures = {executor.submit(process_account, i): i for i in range(1, batch_count + 1)}
-
-            for future in as_completed(futures):
-                account_num = futures[future]
-                try:
-                    future.result()
-                except Exception as e:
-                    print(f"❌ [窗口 {account_num}] 执行出错: {e}")
-                    with count_lock:
-                        fail_count += 1
-
-    print("\n\n" + "="*60)
-    print("📊 批量注册完成")
-    print("="*60)
-    print(f"✅ 成功: {success_count} 个账号")
-    print(f"❌ 失败: {fail_count} 个账号")
-    print(f"📁 所有账号已保存到: {ACCOUNTS_FILE}")
-    print("="*60)
-
-    print("\n👋 完成\n")
-
-
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n\n⚠️  用户中断操作")
-    except Exception as e:
-        print(f"\n❌ 程序出错: {e}")
-        import traceback
-        traceback.print_exc()
+    # 直接启动 GUI
+    from register_gui import main as gui_main
+    gui_main()

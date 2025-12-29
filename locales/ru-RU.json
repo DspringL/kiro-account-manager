@@ -322,6 +322,7 @@
 
   "common.save": "Сохранить",
   "common.cancel": "Отмена",
+  "common.optional": "Необязательно",
   "common.confirm": "Подтвердить",
   "common.delete": "Удалить",
   "common.edit": "Редактировать",
@@ -403,6 +404,8 @@
   "addAccount.errorSocialFormat": "Ошибка формата Google/GitHub Token, должен начинаться с aor",
   "addAccount.errorIdcFormat": "Ошибка формата BuilderId/Enterprise Token, должен начинаться с aor",
   "addAccount.errorNoClientId": "Введите Client ID и Client Secret",
+  "addAccount.machineId": "Machine ID",
+  "addAccount.machineIdPlaceholder": "Оставьте пустым для автогенерации",
 
   "import.title": "Массовый импорт аккаунтов",
   "import.jsonTab": "Импорт JSON",

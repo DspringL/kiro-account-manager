@@ -7,7 +7,7 @@ import { FileText, RefreshCw, Trash2, Save, Plus, X } from 'lucide-react'
 function SteeringPanel() {
   const { t, theme, colors } = useApp()
   const { showConfirm, showError } = useDialog()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedFile, setSelectedFile] = useState(null)
@@ -185,10 +185,10 @@ function SteeringPanel() {
         <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
           <span className={`text-sm font-medium ${colors.text}`}>Steering ({files.length})</span>
           <div className="flex gap-1">
-            <button onClick={openCreateModal} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+            <button onClick={openCreateModal} className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}>
               <Plus size={16} className={colors.textMuted} />
             </button>
-            <button onClick={loadFiles} className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+            <button onClick={loadFiles} className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}>
               <RefreshCw size={16} className={colors.textMuted} />
             </button>
           </div>
@@ -206,8 +206,8 @@ function SteeringPanel() {
                 onClick={() => handleSelect(file)}
                 className={`p-3 rounded-xl cursor-pointer transition-all group ${
                   selectedFile?.fileName === file.fileName
-                    ? (isDark ? 'bg-white/10' : 'bg-blue-50')
-                    : (isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50')
+                    ? (isLightTheme ? 'bg-blue-50' : 'bg-white/10')
+                    : (isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5')
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -243,7 +243,7 @@ function SteeringPanel() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                   hasChanges
                     ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : (isDark ? 'bg-white/5 text-gray-500' : 'bg-gray-100 text-gray-400')
+                    : (isLightTheme ? 'bg-gray-100 text-gray-400' : 'bg-white/5 text-gray-500')
                 } disabled:opacity-50`}
               >
                 <Save size={14} />
@@ -272,7 +272,7 @@ function SteeringPanel() {
                     value={editFilePattern}
                     onChange={(e) => handleFilePatternChange(e.target.value)}
                     placeholder="**/*.jsx"
-                    className={`px-2 py-1 border rounded-lg text-xs w-32 ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-1 focus:ring-blue-500/30`}
+                    className={`px-2 py-1 border rounded-lg text-xs w-32 ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-1 focus:ring-blue-500/30`}
                   />
                 </div>
               )}
@@ -282,7 +282,7 @@ function SteeringPanel() {
               <textarea
                 value={editContent}
                 onChange={handleContentChange}
-                className={`w-full h-full p-4 rounded-xl border ${colors.cardBorder} ${isDark ? 'bg-white/5' : 'bg-gray-50'} ${colors.text} text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30`}
+                className={`w-full h-full p-4 rounded-xl border ${colors.cardBorder} ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} ${colors.text} text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30`}
                 placeholder={t('steering.contentPlaceholder')}
               />
             </div>
@@ -306,14 +306,14 @@ function SteeringPanel() {
             style={{ animation: 'dialogIn 0.2s ease-out' }}
           >
             {/* Header */}
-            <div className={`flex items-center justify-between px-5 py-4 ${isDark ? 'bg-white/[0.02]' : 'bg-gray-50/50'}`}>
+            <div className={`flex items-center justify-between px-5 py-4 ${isLightTheme ? 'bg-gray-50/50' : 'bg-white/[0.02]'}`}>
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-blue-500/15' : 'bg-blue-50'} flex items-center justify-center`}>
+                <div className={`w-10 h-10 rounded-xl ${isLightTheme ? 'bg-blue-50' : 'bg-blue-500/15'} flex items-center justify-center`}>
                   <FileText size={20} className="text-blue-500" />
                 </div>
                 <h2 className={`text-base font-semibold ${colors.text}`}>{t('steering.newSteering')}</h2>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>
+              <button onClick={() => setShowCreateModal(false)} className={`p-1.5 rounded-lg transition-colors ${isLightTheme ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
                 <X size={18} className={colors.textMuted} />
               </button>
             </div>
@@ -327,7 +327,7 @@ function SteeringPanel() {
                   placeholder={t('steering.fileNamePlaceholder')}
                   value={newFileName}
                   onChange={(e) => setNewFileName(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`}
+                  className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`}
                 />
                 <p className={`text-xs ${colors.textMuted} mt-1`}>{t('steering.fileNameHint')}</p>
               </div>
@@ -355,7 +355,7 @@ function SteeringPanel() {
                     placeholder={t('steering.filePatternPlaceholder')}
                     value={newFilePattern}
                     onChange={(e) => setNewFilePattern(e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`}
+                    className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`}
                   />
                 </div>
               )}

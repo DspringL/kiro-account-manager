@@ -25,7 +25,7 @@ const AccountCard = memo(function AccountCard({
 }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [contextMenu, setContextMenu] = useState(null)
 
   // 右键菜单处理
@@ -50,6 +50,7 @@ const AccountCard = memo(function AccountCard({
       ...(account.region && { region: account.region }),
       ...(account.label && { label: account.label }),
       ...(account.tags?.length && { tags: account.tags }),
+      ...(account.machineId && { machineId: account.machineId }),
     }
     onCopy(JSON.stringify(exportData, null, 2), account.id)
   }, [account, onCopy])
@@ -97,14 +98,14 @@ const AccountCard = memo(function AccountCard({
       onContextMenu={handleContextMenu}
       className={`relative rounded-2xl border transition-all duration-200 hover:shadow-lg flex flex-col min-h-[320px] ${glowColor} ${
       isSelected 
-        ? (isDark ? 'border-purple-500 bg-purple-500/10' : 'border-purple-400 bg-purple-50') 
+        ? (isLightTheme ? 'border-purple-400 bg-purple-50' : 'border-purple-500 bg-purple-500/10') 
         : isCurrentAccount
-          ? (isDark ? 'border-green-500/50 bg-green-500/5' : 'border-green-400 bg-green-50/50')
+          ? (isLightTheme ? 'border-green-400 bg-green-50/50' : 'border-green-500/50 bg-green-500/5')
           : isBanned
-            ? (isDark ? 'border-red-500/50 bg-red-500/5' : 'border-red-300 bg-red-50/50')
+            ? (isLightTheme ? 'border-red-300 bg-red-50/50' : 'border-red-500/50 bg-red-500/5')
             : !isNormal
-              ? (isDark ? 'border-orange-500/50 bg-orange-500/5' : 'border-orange-300 bg-orange-50/50')
-              : (isDark ? 'border-gray-700 bg-gray-800/50 hover:border-gray-600' : 'border-gray-200 bg-white hover:border-gray-300')
+              ? (isLightTheme ? 'border-orange-300 bg-orange-50/50' : 'border-orange-500/50 bg-orange-500/5')
+              : (isLightTheme ? 'border-gray-200 bg-white hover:border-gray-300' : 'border-gray-700 bg-gray-800/50 hover:border-gray-600')
     }`}>
       {/* 右键菜单 */}
       {contextMenu && (
@@ -113,7 +114,7 @@ const AccountCard = memo(function AccountCard({
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
           items={menuItems}
-          isDark={isDark}
+          isLightTheme={isLightTheme}
         />
       )}
       {/* 选择框和当前使用标记 */}
@@ -130,10 +131,10 @@ const AccountCard = memo(function AccountCard({
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
           account.status === 'active' || account.status === '正常' || account.status === '有效'
-            ? (isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')
+            ? (isLightTheme ? 'bg-green-100 text-green-700' : 'bg-green-500/20 text-green-400')
             : account.status === 'banned' || account.status === '封禁' || account.status === '已封禁'
-              ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600')
-              : (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600')
+              ? (isLightTheme ? 'bg-red-100 text-red-600' : 'bg-red-500/20 text-red-400')
+              : (isLightTheme ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400')
         }`}>{isNormal ? t('accounts.active') : isBanned ? t('accounts.banned') : account.status}</span>
       </div>
 
@@ -141,9 +142,9 @@ const AccountCard = memo(function AccountCard({
         {/* 头像和邮箱 */}
         <div className="flex items-start gap-3 mb-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm ${
-            account.provider === 'Google' ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600') :
-            account.provider === 'Github' ? (isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700') :
-            (isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600')
+            account.provider === 'Google' ? (isLightTheme ? 'bg-red-100 text-red-600' : 'bg-red-500/20 text-red-400') :
+            account.provider === 'Github' ? (isLightTheme ? 'bg-gray-200 text-gray-700' : 'bg-gray-600 text-gray-200') :
+            (isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-400')
           }`}>
             {account.email[0].toUpperCase()}
           </div>
@@ -168,15 +169,15 @@ const AccountCard = memo(function AccountCard({
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
               : (subType.includes('PRO') || subPlan.includes('PRO'))
                 ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm'
-                : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                : isLightTheme ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-300'
           }`}>
             {subPlan || 'Free'}
           </span>
           <span className={`text-xs px-2 py-1 rounded-lg ${
-            account.provider === 'Google' ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600')
-              : account.provider === 'GitHub' ? (isDark ? 'bg-gray-600 text-gray-200' : 'bg-gray-200 text-gray-700')
-              : account.provider === 'BuilderId' ? (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600')
-              : (isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500')
+            account.provider === 'Google' ? (isLightTheme ? 'bg-red-100 text-red-600' : 'bg-red-500/20 text-red-400')
+              : account.provider === 'GitHub' ? (isLightTheme ? 'bg-gray-200 text-gray-700' : 'bg-gray-600 text-gray-200')
+              : account.provider === 'BuilderId' ? (isLightTheme ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400')
+              : (isLightTheme ? 'bg-gray-100 text-gray-500' : 'bg-gray-700 text-gray-400')
           }`}>
             {account.provider || t('common.unknown')}
           </span>
@@ -207,26 +208,26 @@ const AccountCard = memo(function AccountCard({
         )}
 
         {/* 配额进度 */}
-        <div className={`p-3 rounded-xl mb-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+        <div className={`p-3 rounded-xl mb-3 ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
           <div className="flex items-center justify-between text-xs mb-2">
             <span className={colors.textMuted}>{t('common.usage')}</span>
             <span className={`font-semibold ${percent > 80 ? 'text-red-500' : percent > 50 ? 'text-yellow-500' : 'text-green-500'}`}>
               {Math.round(percent)}%
             </span>
           </div>
-          <div className={`h-2 ${isDark ? 'bg-white/10' : 'bg-gray-200'} rounded-full overflow-hidden mb-2`}>
+          <div className={`h-2 ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'} rounded-full overflow-hidden mb-2`}>
             <div 
               className={`h-full rounded-full transition-all duration-500 ${getProgressBarColor(percent)}`} 
               style={{ width: `${Math.min(percent, 100)}%` }} 
             />
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className={`font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{Math.round(used * 100) / 100} / {quota}</span>
+            <span className={`font-medium ${isLightTheme ? 'text-gray-700' : 'text-gray-300'}`}>{Math.round(used * 100) / 100} / {quota}</span>
             <span className={colors.textMuted}>{t('common.remaining')} {Math.round((quota - used) * 100) / 100}</span>
           </div>
           {/* 日期信息 - 单行紧凑显示 */}
           {(nextDateReset || (breakdown?.freeTrialInfo?.freeTrialExpiry && breakdown.freeTrialInfo.freeTrialStatus === 'ACTIVE') || breakdown?.bonuses?.some(b => b.status === 'ACTIVE' && b.expiresAt)) && (
-            <div className={`mt-2 pt-2 border-t ${isDark ? 'border-white/10' : 'border-gray-200'} flex items-center gap-2 flex-wrap text-[10px]`}>
+            <div className={`mt-2 pt-2 border-t ${isLightTheme ? 'border-gray-200' : 'border-white/10'} flex items-center gap-2 flex-wrap text-[10px]`}>
               <Clock size={10} className={colors.textMuted} />
               {nextDateReset && (
                 <span className={colors.textMuted}>{t('common.reset')} {new Date(nextDateReset * 1000).toLocaleDateString()}</span>
@@ -247,6 +248,20 @@ const AccountCard = memo(function AccountCard({
             <Clock size={12} />
             Token: {account.expiresAt}
             {isExpired && <span className="text-red-500 font-medium ml-1">{t('accountCard.tokenExpired')}</span>}
+          </div>
+        )}
+
+        {/* 机器码 - 红色高亮 */}
+        {account.machineId && (
+          <div className={`text-xs flex items-center gap-1.5 mt-2 px-2 py-1 rounded-lg ${isLightTheme ? 'bg-red-50' : 'bg-red-500/10'}`}>
+            <span className={`font-medium shrink-0 ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>机器码:</span>
+            <span className={`font-mono text-[10px] break-all ${isLightTheme ? 'text-red-700' : 'text-red-300'}`}>{account.machineId}</span>
+            <button 
+              onClick={() => onCopy(account.machineId, `${account.id}-mid`)} 
+              className={`btn-icon p-0.5 rounded flex-shrink-0 ${isLightTheme ? 'hover:bg-red-100' : 'hover:bg-red-500/20'}`}
+            >
+              {copiedId === `${account.id}-mid` ? <Check size={10} className="text-green-500" /> : <Copy size={10} className={isLightTheme ? 'text-red-500' : 'text-red-400'} />}
+            </button>
           </div>
         )}
 

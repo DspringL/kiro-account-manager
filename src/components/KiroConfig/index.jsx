@@ -6,7 +6,7 @@ import SteeringPanel from './SteeringPanel'
 
 function KiroConfig() {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [activeTab, setActiveTab] = useState('mcp')
 
   const TABS = [
@@ -41,8 +41,8 @@ function KiroConfig() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   isActive
-                    ? (isDark ? 'bg-white/10 text-white' : 'bg-gray-100 text-gray-900')
-                    : (isDark ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50')
+                    ? (isLightTheme ? 'bg-gray-100 text-gray-900' : 'bg-white/10 text-white')
+                    : (isLightTheme ? 'text-gray-500 hover:text-gray-900 hover:bg-gray-50' : 'text-gray-400 hover:text-white hover:bg-white/5')
                 }`}
               >
                 <Icon size={16} />

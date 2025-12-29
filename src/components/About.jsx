@@ -11,7 +11,7 @@ import wechatQR from '../assets/donate/wechat.jpg'
 function About() {
   const { t, theme, colors } = useApp()
   const { showUpdate, showInfo } = useDialog()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [version, setVersion] = useState('')
   const [checking, setChecking] = useState(false)
   const [previewImg, setPreviewImg] = useState(null)
@@ -82,13 +82,13 @@ function About() {
           <h1 className={`text-2xl font-bold ${colors.text} mb-3`}>{t('about.appName')}</h1>
           
           <div className="flex items-center justify-center gap-3 mb-4">
-            <span className={`px-3 py-1 ${isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600'} rounded-full text-sm font-medium`}>
+            <span className={`px-3 py-1 ${isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-400'} rounded-full text-sm font-medium`}>
               v{version || '...'}
             </span>
             <button
               onClick={checkUpdate}
               disabled={checking}
-              className={`btn-icon px-3 py-1 ${isDark ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-green-100 text-green-600 hover:bg-green-200'} rounded-full text-sm font-medium flex items-center gap-1.5 transition-colors`}
+              className={`btn-icon px-3 py-1 ${isLightTheme ? 'bg-green-100 text-green-600 hover:bg-green-200' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'} rounded-full text-sm font-medium flex items-center gap-1.5 transition-colors`}
             >
               <RefreshCw size={12} className={checking ? 'animate-spin' : ''} />
               {checking ? t('about.checking') : t('about.checkUpdate')}
@@ -100,7 +100,7 @@ function About() {
           {/* 技术栈 */}
           <div className="flex items-center justify-center gap-4 flex-wrap">
             {techStack.map(({ icon: Icon, label, value, color }) => (
-              <div key={label} className={`flex items-center gap-1.5 px-3 py-1.5 ${isDark ? 'bg-white/5' : 'bg-gray-100'} rounded-full`}>
+              <div key={label} className={`flex items-center gap-1.5 px-3 py-1.5 ${colors.cardSecondary} rounded-full`}>
                 <Icon size={14} className={color} />
                 <span className={`text-xs ${colors.textMuted}`}>{value}</span>
               </div>
@@ -116,7 +116,7 @@ function About() {
               href="https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc" 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex items-center gap-3 ${isDark ? 'bg-purple-600 hover:bg-purple-500' : 'bg-purple-500 hover:bg-purple-600'} rounded-xl p-3 transition-colors group`}
+              className={`flex items-center gap-3 ${isLightTheme ? 'bg-purple-500 hover:bg-purple-600' : 'bg-purple-600 hover:bg-purple-500'} rounded-xl p-3 transition-colors group`}
             >
               <BookOpen size={18} className="text-white" />
               <span className="text-white text-sm font-medium">{t('about.tutorial')}</span>
@@ -126,7 +126,7 @@ function About() {
               href="https://github.com/hj01857655/kiro-account-manager" 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex items-center gap-3 ${isDark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-900 hover:bg-gray-800'} rounded-xl p-3 transition-colors group`}
+              className={`flex items-center gap-3 ${isLightTheme ? 'bg-gray-900 hover:bg-gray-800' : 'bg-gray-800 hover:bg-gray-700'} rounded-xl p-3 transition-colors group`}
             >
               <Github size={18} className="text-white" />
               <span className="text-white text-sm font-medium">GitHub</span>
@@ -136,7 +136,7 @@ function About() {
               href="https://qm.qq.com/q/T9L311vb2s" 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex items-center gap-3 ${isDark ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-600'} rounded-xl p-3 transition-colors group`}
+              className={`flex items-center gap-3 ${isLightTheme ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-500'} rounded-xl p-3 transition-colors group`}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
                 <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-1.77 1.182 0 .686 4.078.43 6.29.43 2.213 0 6.29.256 6.29-.43 0-.687-1.77-1.182-1.77-1.182 2.085-1.77 1.905-3.967 1.905-3.967.845 1.588 1.634 2.072 1.746 2.072.111 0 .283-.36.283-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.29 3.364 14.268 2 12.003 2z"/>
@@ -148,7 +148,7 @@ function About() {
               href="https://pay.ldxp.cn/shop/hj01857655" 
               target="_blank" 
               rel="noopener noreferrer"
-              className={`flex items-center gap-3 ${isDark ? 'bg-amber-600 hover:bg-amber-500' : 'bg-amber-500 hover:bg-amber-600'} rounded-xl p-3 transition-colors group`}
+              className={`flex items-center gap-3 ${isLightTheme ? 'bg-amber-500 hover:bg-amber-600' : 'bg-amber-600 hover:bg-amber-500'} rounded-xl p-3 transition-colors group`}
             >
               <ShoppingCart size={18} className="text-white" />
               <span className="text-white text-sm font-medium">{t('about.shop')}</span>

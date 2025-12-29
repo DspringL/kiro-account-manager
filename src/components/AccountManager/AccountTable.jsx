@@ -33,7 +33,7 @@ function AccountTable({
   tagDefinitions = [],
 }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const containerRef = useRef(null)
   const scrollRef = useRef(null)
   const [columns, setColumns] = useState(4)
@@ -68,7 +68,7 @@ function AccountTable({
 
   const renderCard = useCallback((item) => {
     if (item._isAddButton) {
-      return <AddButton key="add" onClick={onAdd} isDark={isDark} colors={colors} t={t} />
+      return <AddButton key="add" onClick={onAdd} isLightTheme={isLightTheme} colors={colors} t={t} />
     }
     return (
       <AccountCard
@@ -90,7 +90,7 @@ function AccountTable({
         tagDefinitions={tagDefinitions}
       />
     )
-  }, [selectedIds, copiedId, onCopy, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onAdd, refreshingId, switchingId, localToken, isDark, colors, t, onSelectOne, tagDefinitions])
+  }, [selectedIds, copiedId, onCopy, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onAdd, refreshingId, switchingId, localToken, isLightTheme, colors, t, onSelectOne, tagDefinitions])
 
   return (
     <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-6">
@@ -115,12 +115,12 @@ function AccountTable({
 
       {accounts.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 ${colors.textMuted}`}>
-          <div className={`w-20 h-20 rounded-full ${isDark ? 'bg-white/5' : 'bg-gray-100'} flex items-center justify-center animate-float mb-4`}>
+          <div className={`w-20 h-20 rounded-full ${isLightTheme ? 'bg-gray-100' : 'bg-white/5'} flex items-center justify-center animate-float mb-4`}>
             <Users size={40} strokeWidth={1} className="opacity-50" />
           </div>
           <p className="font-medium mb-1">{t('common.noAccounts')}</p>
           <p className="text-sm opacity-75">{t('common.addAccountHint')}</p>
-          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}>
+          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/10 hover:bg-white/20'} transition-colors`}>
             <Plus size={16} className="inline mr-1" />
             {t('common.addAccount')}
           </button>
@@ -151,13 +151,13 @@ function AccountTable({
   )
 }
 
-const AddButton = memo(function AddButton({ onClick, isDark, colors, t }) {
+const AddButton = memo(function AddButton({ onClick, isLightTheme, colors, t }) {
   return (
     <button
       onClick={onClick}
-      className={`rounded-2xl border-2 border-dashed transition-all duration-200 min-h-[320px] flex flex-col items-center justify-center gap-3 ${isDark ? 'border-gray-700 hover:border-gray-500 hover:bg-white/5' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}`}
+      className={`rounded-2xl border-2 border-dashed transition-all duration-200 min-h-[320px] flex flex-col items-center justify-center gap-3 ${isLightTheme ? 'border-gray-300 hover:border-gray-400 hover:bg-gray-50' : 'border-gray-700 hover:border-gray-500 hover:bg-white/5'}`}
     >
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isLightTheme ? 'bg-gray-100' : 'bg-white/10'}`}>
         <Plus size={24} className={colors.textMuted} />
       </div>
       <span className={`text-sm font-medium ${colors.textMuted}`}>{t('common.addAccount')}</span>

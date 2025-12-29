@@ -9,9 +9,9 @@ const STATUS_OPTIONS = ['normal', 'banned', 'expired']
 const PROVIDER_OPTIONS = ['Google', 'GitHub', 'BuilderId']
 
 function FilterDropdown({ filters, onFiltersChange }) {
-  const { theme, colors } = useTheme()
+  const { colors, theme } = useTheme()
+  const isLightTheme = theme === 'light'
   const { t } = useTranslation()
-  const isDark = theme === 'dark'
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -83,7 +83,7 @@ function FilterDropdown({ filters, onFiltersChange }) {
       {/* 触发按钮 */}
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-all ${activeCount > 0 ? 'border-blue-500/50' : ''}`}
+        className={`flex items-center gap-2 px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} transition-all ${activeCount > 0 ? 'border-blue-500/50' : ''}`}
       >
         <Filter size={16} className={activeCount > 0 ? 'text-blue-500' : colors.textMuted} />
         <span className={`text-sm ${activeCount > 0 ? 'text-blue-500 font-medium' : colors.textMuted}`}>
@@ -99,9 +99,9 @@ function FilterDropdown({ filters, onFiltersChange }) {
 
       {/* 弹出面板 */}
       {open && (
-        <div className={`absolute right-0 top-full mt-2 w-80 ${isDark ? 'bg-[#1a1a2e]' : 'bg-white'} border ${colors.cardBorder} rounded-2xl shadow-2xl z-50 overflow-hidden`}>
+        <div className={`absolute right-0 top-full mt-2 w-80 ${colors.card} border ${colors.cardBorder} rounded-2xl shadow-2xl z-50 overflow-hidden`}>
           {/* 头部 */}
-          <div className={`flex items-center justify-between px-4 py-3 border-b ${colors.cardBorder} ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+          <div className={`flex items-center justify-between px-4 py-3 border-b ${colors.cardBorder} ${colors.cardHover}`}>
             <div className="flex items-center gap-2">
               <Filter size={16} className="text-blue-500" />
               <span className={`text-sm font-medium ${colors.text}`}>{t('filter.title')}</span>
@@ -133,7 +133,7 @@ function FilterDropdown({ filters, onFiltersChange }) {
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         isActive
                           ? `bg-gradient-to-r ${getSubColor(sub)} text-white shadow-lg`
-                          : `${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'} ${colors.text}`
+                          : `${colors.input} ${colors.text}`
                       }`}
                     >
                       {sub}
@@ -158,7 +158,7 @@ function FilterDropdown({ filters, onFiltersChange }) {
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                         isActive
                           ? `${getStatusColor(status)} text-white shadow-lg`
-                          : `${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'} ${colors.text}`
+                          : `${colors.input} ${colors.text}`
                       }`}
                     >
                       <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-white/50' : getStatusColor(status)}`} />
@@ -184,7 +184,7 @@ function FilterDropdown({ filters, onFiltersChange }) {
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
                         isActive
                           ? `${getProviderColor(provider)} text-white shadow-lg`
-                          : `${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'} ${colors.text}`
+                          : `${colors.input} ${colors.text}`
                       }`}
                     >
                       {provider}
@@ -214,7 +214,7 @@ function FilterDropdown({ filters, onFiltersChange }) {
                       className={`px-2 py-2 rounded-lg text-xs font-medium transition-all text-center ${
                         isActive
                           ? `bg-gradient-to-r ${rangeColor} text-white shadow-lg`
-                          : `${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-100 hover:bg-gray-200'} ${colors.text}`
+                          : `${colors.input} ${colors.text}`
                       }`}
                     >
                       {range.label}
@@ -227,7 +227,7 @@ function FilterDropdown({ filters, onFiltersChange }) {
 
           {/* 底部提示 */}
           {activeCount > 0 && (
-            <div className={`px-4 py-2 border-t ${colors.cardBorder} ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+            <div className={`px-4 py-2 border-t ${colors.cardBorder} bg-blue-500/10`}>
               <p className="text-xs text-blue-500">
                 {t('common.selected')}: {activeCount} {t('common.filter').toLowerCase()}
               </p>

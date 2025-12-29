@@ -2,6 +2,7 @@
 
 import re
 import time
+import random
 import requests
 import urllib3
 import threading
@@ -13,6 +14,14 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # 全局锁，用于并发邮箱生成
 _email_lock = threading.Lock()
 
+# User-Agent 池
+_USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0',
+]
+
 
 class GPTMailHandler:
     """GPTMail 临时邮箱处理器。
@@ -22,14 +31,15 @@ class GPTMailHandler:
     
     BASE_URL = 'https://mail.chatgpt.org.uk'
     
-    def __init__(self):
-        """初始化邮箱处理器。"""
+    def __init__(self, proxy: Optional[str] = None):
+        """初始化邮箱处理器。
+        
+        Args:
+            proxy: 代理地址，如 'socks5://127.0.0.1:7897'
+        """
         self.session = requests.Session()
         self.session.headers.update({
-            'user-agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                'AppleWebKit/537.36'
-            ),
+            'user-agent': random.choice(_USER_AGENTS),
             'accept': 'application/json',
             'content-type': 'application/json',
             'referer': 'https://mail.chatgpt.org.uk/',
@@ -37,6 +47,9 @@ class GPTMailHandler:
         })
         # 禁用 SSL 验证
         self.session.verify = False
+        # 设置代理
+        if proxy:
+            self.session.proxies = {'http': proxy, 'https': proxy}
         self.current_email = None
     
     def generate_email(self, prefix: Optional[str] = None) -> Optional[str]:
@@ -82,8 +95,14 @@ class GPTMailHandler:
         except Exception:
             return []
     
-    def get_verification_code(self, email: str, timeout: int = 300) -> Optional[str]:
-        """等待并获取验证码。"""
+    def get_verification_code(self, email: str, timeout: int = 300, min_wait: int = 10) -> Optional[str]:
+        """等待并获取验证码。
+        
+        Args:
+            email: 邮箱地址
+            timeout: 超时时间（秒）
+            min_wait: 最少等待时间（秒），在此之前不判定失败
+        """
         start_time = time.time()
         checked_ids = set()
         poll_interval = 1.5
@@ -94,21 +113,28 @@ class GPTMailHandler:
         while time.time() - start_time < timeout:
             try:
                 emails = self.get_emails(email)
+                elapsed = time.time() - start_time
+                print(f"[MAIL] Found {len(emails)} emails in inbox ({elapsed:.0f}s)")
+                
+                # 超过最少等待时间后，如果还是空邮箱就直接失败
+                if len(emails) == 0 and elapsed >= min_wait:
+                    print(f"[X] No emails after {min_wait}s, skipping...")
+                    return None
+                
                 new_emails = [m for m in emails if m.get('id') not in checked_ids]
                 
                 for mail in new_emails:
                     checked_ids.add(mail.get('id'))
-                    subject = mail.get('subject', '').lower()
-                    if not any(kw in subject for kw in ['verif', 'code', 'confirm', 'aws', 'amazon']):
-                        continue
+                    subject = mail.get('subject', '')
+                    print(f"[MAIL] Checking email: {subject[:50]}...")
                     
+                    # 直接尝试提取验证码，不过滤主题
                     code = self._extract_code(mail)
                     if code:
                         print(f"[OK] Verification code: {code}")
                         self.clear_inbox(email)
                         return code
                 
-                elapsed = time.time() - start_time
                 if elapsed < 15:
                     poll_interval = 1.5
                 elif elapsed < 60:
@@ -127,10 +153,13 @@ class GPTMailHandler:
     def _extract_code(self, mail: dict) -> Optional[str]:
         """从邮件中提取6位验证码。"""
         priority_patterns = [
+            r'验证码[:：\s]*[:：]?\s*(\d{6})',  # 中文：验证码：: 123456
             r'verification code[:：\s]*(\d{6})',
             r'code is[:：\s]*(\d{6})',
+            r'code[:：]\s*(\d{6})',
         ]
         general_patterns = [
+            r'class="code"[^>]*>(\d{6})<',  # HTML: <div class="code">123456</div>
             r'>(\d{6})<',
             r'\b(\d{6})\b',
         ]
@@ -138,6 +167,7 @@ class GPTMailHandler:
         texts = [mail.get('subject', ''), mail.get('content', '')]
         html = mail.get('html_content', '')
         if html:
+            texts.append(html)  # 保留原始 HTML 用于匹配 class="code"
             texts.append(re.sub(r'<[^>]+>', ' ', html))
         
         combined = ' '.join(texts)

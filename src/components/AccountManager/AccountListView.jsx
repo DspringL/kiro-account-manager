@@ -24,7 +24,7 @@ function AccountListView({
 }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const scrollRef = useRef(null)
 
   const rowVirtualizer = useVirtualizer({
@@ -59,7 +59,7 @@ function AccountListView({
     const getTagInfo = (tagId) => tagDefinitions.find(t => t.id === tagId)
 
     return (
-      <div className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? (isDark ? 'bg-blue-500/10' : 'bg-blue-50') : ''} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-colors`}>
+      <div className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? (isLightTheme ? 'bg-blue-50' : 'bg-blue-500/10') : ''} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} transition-colors`}>
         {/* 选择框 */}
         <input
           type="checkbox"
@@ -69,42 +69,52 @@ function AccountListView({
         />
 
         {/* 邮箱 */}
-        <div className="w-52 shrink-0">
+        <div className="w-44 shrink-0">
           <div className="flex items-center gap-2">
             <span className={`text-sm font-medium truncate ${colors.text}`}>{maskEmail(account.email)}</span>
             {isCurrent && <span className="text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded shrink-0">当前</span>}
           </div>
-          <div className="flex items-center gap-1">
-            {account.label && <span className={`text-xs ${colors.textMuted} truncate`}>{account.label}</span>}
-            {hasTags && (
-              <div className="flex items-center gap-1 ml-1">
-                {account.tags.slice(0, 2).map(tagId => {
-                  const tag = getTagInfo(tagId)
-                  if (!tag) return null
-                  return (
-                    <span 
-                      key={tagId} 
-                      className="text-[10px] px-1.5 py-0.5 rounded-full text-white"
-                      style={{ backgroundColor: tag.color || '#8b5cf6' }}
-                    >
-                      {tag.name}
-                    </span>
-                  )
-                })}
-                {account.tags.length > 2 && (
-                  <span className={`text-[10px] ${colors.textMuted}`}>+{account.tags.length - 2}</span>
-                )}
-              </div>
-            )}
-          </div>
+          {account.label && <span className={`text-xs ${colors.textMuted} truncate block mt-0.5`}>{account.label}</span>}
+        </div>
+
+        {/* 标签 */}
+        <div className="w-28 shrink-0">
+          {hasTags ? (
+            <div className="flex items-center gap-1 flex-wrap">
+              {account.tags.slice(0, 2).map(tagId => {
+                const tag = getTagInfo(tagId)
+                if (!tag) return null
+                return (
+                  <span 
+                    key={tagId} 
+                    className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                    style={{ 
+                      backgroundColor: `${tag.color || '#8b5cf6'}20`,
+                      color: tag.color || '#8b5cf6',
+                      border: `1px solid ${tag.color || '#8b5cf6'}40`
+                    }}
+                  >
+                    {tag.name}
+                  </span>
+                )
+              })}
+              {account.tags.length > 2 && (
+                <span className={`text-[10px] px-1 py-0.5 rounded ${isLightTheme ? 'bg-gray-100 text-gray-500' : 'bg-white/10 text-gray-400'}`}>
+                  +{account.tags.length - 2}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className={`text-xs ${colors.textMuted}`}>-</span>
+          )}
         </div>
 
         {/* 提供商 */}
         <span className={`text-xs px-2 py-1 rounded w-20 text-center shrink-0 ${
-          account.provider === 'Google' ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600')
-            : account.provider === 'GitHub' ? (isDark ? 'bg-gray-500/20 text-gray-300' : 'bg-gray-200 text-gray-700')
-            : account.provider === 'BuilderId' ? (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600')
-            : (isDark ? 'bg-white/10' : 'bg-gray-100') + ' ' + colors.textMuted
+          account.provider === 'Google' ? (isLightTheme ? 'bg-red-100 text-red-600' : 'bg-red-500/20 text-red-400')
+            : account.provider === 'GitHub' ? (isLightTheme ? 'bg-gray-200 text-gray-700' : 'bg-gray-500/20 text-gray-300')
+            : account.provider === 'BuilderId' ? (isLightTheme ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400')
+            : (isLightTheme ? 'bg-gray-100' : 'bg-white/10') + ' ' + colors.textMuted
         }`}>
           {account.provider || 'Unknown'}
         </span>
@@ -113,7 +123,7 @@ function AccountListView({
         <span className={`text-xs px-2 py-1 rounded w-20 text-center shrink-0 ${
           account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO') 
             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-            : (isDark ? 'bg-white/10' : 'bg-gray-100') + ' ' + colors.textMuted
+            : (isLightTheme ? 'bg-gray-100' : 'bg-white/10') + ' ' + colors.textMuted
         }`}>
           {account.usageData?.subscriptionInfo?.subscriptionTitle || 'Free'}
         </span>
@@ -123,7 +133,7 @@ function AccountListView({
           <div className={`text-xs ${remaining > 0 ? 'text-green-500' : 'text-red-500'}`}>
             {used}/{limit}
           </div>
-          <div className={`h-1 rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'} mt-1`}>
+          <div className={`h-1 rounded-full ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'} mt-1`}>
             <div
               className={`h-full rounded-full ${remaining > 0 ? 'bg-green-500' : 'bg-red-500'}`}
               style={{ width: `${Math.min((used / limit) * 100, 100)}%` }}
@@ -133,11 +143,16 @@ function AccountListView({
 
         {/* 状态 */}
         <span className={`text-xs px-2 py-1 rounded w-14 text-center shrink-0 ${
-          isBanned ? (isDark ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-600')
-            : isActive ? (isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-700')
-            : (isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600')
+          isBanned ? (isLightTheme ? 'bg-red-100 text-red-600' : 'bg-red-500/20 text-red-400')
+            : isActive ? (isLightTheme ? 'bg-green-100 text-green-700' : 'bg-green-500/20 text-green-400')
+            : (isLightTheme ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400')
         }`}>
           {isBanned ? t('accounts.banned') : isActive ? t('accounts.active') : account.status}
+        </span>
+
+        {/* 机器码 - 红色高亮 */}
+        <span className={`text-xs font-mono w-20 text-center shrink-0 ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>
+          {account.machineId ? account.machineId.slice(0, 8) : '-'}
         </span>
 
         {/* 过期时间 */}
@@ -145,18 +160,25 @@ function AccountListView({
           {account.expiresAt ? account.expiresAt.replace(/^\d{4}\//, '') : '-'}
         </span>
 
+        {/* 试用到期 */}
+        <span className={`text-xs w-20 text-center shrink-0 ${colors.textMuted}`}>
+          {account.usageData?.usageBreakdownList?.[0]?.freeTrialInfo?.freeTrialExpiry 
+            ? new Date(account.usageData.usageBreakdownList[0].freeTrialInfo.freeTrialExpiry * 1000).toLocaleDateString().replace(/^\d{4}\//, '')
+            : '-'}
+        </span>
+
         {/* 操作按钮 */}
         <div className="flex items-center gap-1 w-32 justify-center ml-auto">
           <button
             onClick={() => onEdit(account)}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
+            className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}
             title={t('accounts.detail')}
           >
             <Eye size={14} className={colors.textMuted} />
           </button>
           <button
             onClick={() => onEditLabel(account)}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
+            className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}
             title={t('accountCard.editRemark')}
           >
             <Edit2 size={14} className={colors.textMuted} />
@@ -164,7 +186,7 @@ function AccountListView({
           <button
             onClick={() => onRefresh(account.id)}
             disabled={isRefreshing}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} disabled:opacity-50`}
+            className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} disabled:opacity-50`}
             title={t('accounts.refresh')}
           >
             <RefreshCw size={14} className={`${colors.textMuted} ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -172,14 +194,14 @@ function AccountListView({
           <button
             onClick={() => onSwitch(account)}
             disabled={isSwitching || isBanned}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} disabled:opacity-50`}
+            className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} disabled:opacity-50`}
             title={t('accounts.switch')}
           >
             {isSwitching ? <RefreshCw size={14} className="animate-spin text-blue-500" /> : <ArrowRightLeft size={14} className={colors.textMuted} />}
           </button>
           <button
             onClick={() => onDelete(account.id)}
-            className={`p-1.5 rounded-lg ${isDark ? 'hover:bg-red-500/20' : 'hover:bg-red-50'}`}
+            className={`p-1.5 rounded-lg ${isLightTheme ? 'hover:bg-red-50' : 'hover:bg-red-500/20'}`}
             title={t('common.delete')}
           >
             <Trash2 size={14} className="text-red-500" />
@@ -187,7 +209,7 @@ function AccountListView({
         </div>
       </div>
     )
-  }, [colors, isDark, t, refreshingId, switchingId, getQuotaInfo, getStatus, onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, tagDefinitions, maskEmail])
+  }, [colors, isLightTheme, t, refreshingId, switchingId, getQuotaInfo, getStatus, onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, tagDefinitions, maskEmail])
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden p-6">
@@ -212,26 +234,29 @@ function AccountListView({
 
       {/* 表头 */}
       {accounts.length > 0 && (
-        <div className={`flex items-center gap-3 px-4 py-3 ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-t-xl ${colors.textMuted} text-xs font-semibold uppercase tracking-wider`}>
+        <div className={`flex items-center gap-3 px-4 py-3 ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-t-xl ${colors.textMuted} text-xs font-semibold uppercase tracking-wider`}>
           <div className="w-4" />
-          <div className="w-52">邮箱</div>
+          <div className="w-44">邮箱</div>
+          <div className="w-28">标签</div>
           <div className="w-20 text-center">提供商</div>
           <div className="w-20 text-center">订阅类型</div>
           <div className="w-20">配额</div>
           <div className="w-14 text-center">状态</div>
+          <div className={`w-20 text-center ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>机器码</div>
           <div className="w-24 text-center">过期时间</div>
+          <div className="w-20 text-center">试用到期</div>
           <div className="w-32 text-center ml-auto">操作</div>
         </div>
       )}
 
       {accounts.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 ${colors.textMuted}`}>
-          <div className={`w-20 h-20 rounded-full ${isDark ? 'bg-white/5' : 'bg-gray-100'} flex items-center justify-center mb-4`}>
+          <div className={`w-20 h-20 rounded-full ${isLightTheme ? 'bg-gray-100' : 'bg-white/5'} flex items-center justify-center mb-4`}>
             <Users size={40} strokeWidth={1} className="opacity-50" />
           </div>
           <p className="font-medium mb-1">{t('common.noAccounts')}</p>
           <p className="text-sm opacity-75">{t('common.addAccountHint')}</p>
-          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}>
+          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/10 hover:bg-white/20'}`}>
             <Plus size={16} className="inline mr-1" />
             {t('common.addAccount')}
           </button>

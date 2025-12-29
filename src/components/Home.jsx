@@ -48,17 +48,17 @@ function Home() {
     }
   }
 
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
 
   if (loading) {
     return <LoadingSkeleton colors={colors} />
   }
 
   const statCards = [
-    { icon: Users, iconBg: isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600', value: stats.total, label: t('home.totalAccounts'), delay: 'delay-100' },
-    { icon: Shield, iconBg: isDark ? 'bg-green-500/20 text-green-400' : 'bg-green-100 text-green-600', value: `${stats.active}/${stats.banned}`, label: t('home.activeVsBanned'), delay: 'delay-200' },
-    { icon: Zap, iconBg: isDark ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600', value: stats.proPlus + stats.pro, label: t('home.proAccounts'), delay: 'delay-300' },
-    { icon: TrendingUp, iconBg: isDark ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-600', value: `${stats.usagePercent}%`, label: t('home.usagePercent'), delay: 'delay-400' },
+    { icon: Users, iconBg: isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-400', value: stats.total, label: t('home.totalAccounts'), delay: 'delay-100' },
+    { icon: Shield, iconBg: isLightTheme ? 'bg-green-100 text-green-600' : 'bg-green-500/20 text-green-400', value: `${stats.active}/${stats.banned}`, label: t('home.activeVsBanned'), delay: 'delay-200' },
+    { icon: Zap, iconBg: isLightTheme ? 'bg-purple-100 text-purple-600' : 'bg-purple-500/20 text-purple-400', value: stats.proPlus + stats.pro, label: t('home.proAccounts'), delay: 'delay-300' },
+    { icon: TrendingUp, iconBg: isLightTheme ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400', value: `${stats.usagePercent}%`, label: t('home.usagePercent'), delay: 'delay-400' },
   ]
 
   return (
@@ -82,7 +82,7 @@ function Home() {
         {/* 统计卡片 */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {statCards.map((card, index) => (
-            <StatCard key={index} {...card} isDark={isDark} />
+            <StatCard key={index} {...card} isLightTheme={isLightTheme} />
           ))}
         </div>
 
@@ -92,7 +92,7 @@ function Home() {
             localToken={localToken}
             refreshing={refreshing}
             handleRefresh={handleRefresh}
-            isDark={isDark}
+            isLightTheme={isLightTheme}
             colors={colors}
             t={t}
           />
@@ -100,7 +100,7 @@ function Home() {
           {/* 配额总览 */}
           <QuotaOverviewCard 
             stats={stats}
-            isDark={isDark}
+            isLightTheme={isLightTheme}
             colors={colors}
             t={t}
           />
@@ -114,7 +114,7 @@ function Home() {
             refreshingAccount={refreshingAccount}
             handleRefreshCurrentAccount={handleRefreshCurrentAccount}
             maskEmail={maskEmail}
-            isDark={isDark}
+            isLightTheme={isLightTheme}
             colors={colors}
             t={t}
           />
@@ -124,7 +124,7 @@ function Home() {
         {tokens.length > 0 && (
           <UsageDistribution 
             tokens={tokens}
-            isDark={isDark}
+            isLightTheme={isLightTheme}
             colors={colors}
             t={t}
           />

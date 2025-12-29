@@ -23,16 +23,16 @@ export function useSwitchAccount(onLocalTokenChange) {
     
     try {
       if (bindMachineIdToAccount) {
-        // 绑定模式：使用账号绑定的机器码
-        let boundMachineId = await invoke('get_bound_machine_id', { accountId: account.id }).catch(() => null)
+        // 绑定模式：使用账号自带的 machineId，没有则生成新的并保存
+        let machineId = account.machineId
         
-        if (!boundMachineId) {
-          // 首次切换，生成新的并绑定
-          boundMachineId = await invoke('generate_machine_guid')
-          await invoke('bind_machine_id_to_account', { accountId: account.id, machineId: boundMachineId })
+        if (!machineId) {
+          machineId = await invoke('generate_machine_guid')
+          // 保存到账号
+          await invoke('update_account', { id: account.id, machineId })
         }
         
-        await invoke('set_custom_machine_guid', { newGuid: boundMachineId })
+        await invoke('set_custom_machine_guid', { newGuid: machineId })
       } else {
         // 随机模式：每次生成新的机器码
         const newMachineId = await invoke('generate_machine_guid')

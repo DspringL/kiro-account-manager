@@ -7,7 +7,7 @@ const ANNOUNCEMENT_VERSION = '2'
 
 export default function AnnouncementModal() {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark' || theme === 'purple'
+  const isLightTheme = theme === 'light' || theme === 'purple'
   const [show, setShow] = useState(false)
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function AnnouncementModal() {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className={`relative w-[480px] max-w-[90vw] rounded-2xl shadow-2xl border ${
-        isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200'
+        isLightTheme ? 'bg-white border-gray-200' : 'bg-gray-900 border-gray-700'
       } overflow-hidden animate-fade-in-up`}>
         {/* 顶部警告条 */}
         <div className="bg-gradient-to-r from-red-500 to-orange-500 px-6 py-4 flex items-center gap-3">
@@ -59,7 +59,7 @@ export default function AnnouncementModal() {
           </div>
 
           {/* 官方链接 */}
-          <div className={`mt-5 p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+          <div className={`mt-5 p-4 rounded-xl ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
             <p className={`text-sm font-medium mb-2 ${colors.text}`}>{t('announcement.official')}</p>
             <a 
               href="https://github.com/hj01857655/kiro-account-manager" 
@@ -73,7 +73,7 @@ export default function AnnouncementModal() {
           </div>
 
           {/* QQ 群 */}
-          <div className={`mt-3 p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+          <div className={`mt-3 p-4 rounded-xl ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
             <p className={`text-sm font-medium mb-2 ${colors.text}`}>{t('announcement.qqGroup')}</p>
             <a 
               href="https://qm.qq.com/q/JjXJiVCiAw" 
@@ -93,7 +93,7 @@ export default function AnnouncementModal() {
           <button
             onClick={handleDontRemind}
             className={`flex-1 py-3 rounded-xl border ${
-              isDark ? 'border-gray-600 text-gray-300 hover:bg-white/5' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              isLightTheme ? 'border-gray-300 text-gray-600 hover:bg-gray-50' : 'border-gray-600 text-gray-300 hover:bg-white/5'
             } font-medium transition-colors`}
           >
             {t('announcement.dontRemind')}

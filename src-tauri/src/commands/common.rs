@@ -21,6 +21,7 @@ pub struct RefreshResult {
 pub struct UsageResult {
     pub usage_data: serde_json::Value,
     pub is_banned: bool,
+    pub is_auth_error: bool,  // 401/认证错误，需要刷新 token
 }
 
 /// 根据 provider 刷新 token
@@ -78,7 +79,7 @@ pub async fn get_usage_by_provider(
     parse_usage_result(usage_call)
 }
 
-/// 解析 usage 结果，提取封禁状态
+/// 解析 usage 结果，提取封禁状态和认证错误
 fn parse_usage_result<T: serde::Serialize>(
     result: Result<T, String>,
 ) -> UsageResult {
@@ -86,14 +87,23 @@ fn parse_usage_result<T: serde::Serialize>(
         Ok(usage) => UsageResult {
             usage_data: serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null),
             is_banned: false,
+            is_auth_error: false,
         },
         Err(e) if e.starts_with("BANNED:") => UsageResult {
             usage_data: serde_json::Value::Null,
             is_banned: true,
+            is_auth_error: false,
+        },
+        // 401 或认证相关错误
+        Err(e) if e.contains("401") || e.contains("Unauthorized") || e.contains("expired") || e.contains("invalid token") => UsageResult {
+            usage_data: serde_json::Value::Null,
+            is_banned: false,
+            is_auth_error: true,
         },
         Err(_) => UsageResult {
             usage_data: serde_json::Value::Null,
             is_banned: false,
+            is_auth_error: false,
         },
     }
 }
@@ -160,16 +170,4 @@ pub fn extract_quota(usage: &crate::providers::web_oauth::GetUserUsageAndLimitsR
         .unwrap_or((None, None));
     let sub_type = usage.subscription_info.as_ref().and_then(|s| s.subscription_type.clone());
     (q, u, sub_type)
-}
-
-/// 更新账号的 token 和 usage 字段（sync_account 用）
-pub fn apply_refresh_result(account: &mut Account, result: &RefreshResult, usage: &UsageResult) {
-    account.access_token = Some(result.access_token.clone());
-    if let Some(ref rt) = result.refresh_token { account.refresh_token = Some(rt.clone()); }
-    if let Some(ref arn) = result.profile_arn { account.profile_arn = Some(arn.clone()); }
-    if let Some(ref id_token) = result.id_token { account.id_token = Some(id_token.clone()); }
-    if let Some(ref session_id) = result.sso_session_id { account.sso_session_id = Some(session_id.clone()); }
-    account.expires_at = Some(calc_expires_at(result.expires_in));
-    account.usage_data = Some(usage.usage_data.clone());
-    account.status = calc_status(usage.is_banned);
 }

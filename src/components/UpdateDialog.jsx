@@ -5,7 +5,7 @@ import { useApp } from '../hooks/useApp'
 
 function UpdateDialog({ updateInfo, update, onClose }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [installing, setInstalling] = useState(false)
   const [downloadComplete, setDownloadComplete] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(null)
@@ -79,7 +79,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleClose}>
       <div
-        className={`${isDark ? 'bg-[#1e1e2e]' : 'bg-white'} rounded-xl w-[480px] shadow-2xl overflow-hidden`}
+        className={`${colors.card} rounded-xl w-[480px] shadow-2xl overflow-hidden border ${colors.cardBorder}`}
         onClick={e => e.stopPropagation()}
       >
         {/* 顶部横幅 */}
@@ -116,7 +116,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={onClose}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-white/10 hover:bg-white/5 text-gray-300' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${colors.card} ${colors.cardHover} ${colors.text} border ${colors.cardBorder}`}
                 >
                   {t('update.installLater')}
                 </button>
@@ -135,7 +135,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
                 <span className={colors.text}>{t('update.downloading')}...</span>
                 <span className="text-blue-500 font-medium">{downloadProgress.percent}%</span>
               </div>
-              <div className={`h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-gray-100'}`}>
+              <div className={`h-2 rounded-full overflow-hidden ${colors.cardSecondary}`}>
                 <div
                   className="h-full bg-blue-500 rounded-full transition-all duration-200"
                   style={{ width: `${downloadProgress.percent}%` }}
@@ -158,7 +158,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
                     <FileText size={16} />
                     {t('update.releaseNotes')}
                   </div>
-                  <div className={`text-sm ${colors.textMuted} max-h-40 overflow-y-auto p-3 rounded-lg whitespace-pre-wrap leading-relaxed ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                  <div className={`text-sm ${colors.textMuted} max-h-40 overflow-y-auto p-3 rounded-lg whitespace-pre-wrap leading-relaxed ${colors.cardSecondary}`}>
                     {updateInfo.body}
                   </div>
                 </div>
@@ -166,7 +166,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={onClose}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${isDark ? 'border-white/10 hover:bg-white/5 text-gray-300' : 'border-gray-200 hover:bg-gray-50 text-gray-600'}`}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border transition-colors ${colors.card} ${colors.cardHover} ${colors.text} border ${colors.cardBorder}`}
                 >
                   {t('update.later')}
                 </button>
@@ -182,7 +182,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
           )}
 
           {error && (
-            <div className={`mt-4 text-sm text-red-500 p-3 rounded-lg ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
+            <div className={`mt-4 text-sm text-red-500 p-3 rounded-lg ${colors.error}`}>
               {error}
             </div>
           )}

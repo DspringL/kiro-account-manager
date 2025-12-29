@@ -3,7 +3,7 @@ import { useApp } from '../../hooks/useApp'
 
 function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const isDisabled = config.disabled
 
   const commandStr = [config.command, ...(config.args || [])].join(' ')
@@ -17,8 +17,8 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
           {/* 状态指示器 */}
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
             isDisabled 
-              ? (isDark ? 'bg-gray-500/20' : 'bg-gray-100') 
-              : (isDark ? 'bg-green-500/20' : 'bg-green-50')
+              ? (isLightTheme ? 'bg-gray-100' : 'bg-gray-500/20') 
+              : (isLightTheme ? 'bg-green-50' : 'bg-green-500/20')
           }`}>
             <Server size={20} className={isDisabled ? 'text-gray-400' : 'text-green-500'} />
           </div>
@@ -28,7 +28,7 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
             <div className="flex items-center gap-2">
               <h3 className={`font-semibold ${colors.text} ${isDisabled ? 'opacity-50' : ''}`}>{name}</h3>
               {isDisabled && (
-                <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-gray-500/30 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-gray-200 text-gray-500' : 'bg-gray-500/30 text-gray-400'}`}>
                   {t('mcpManager.disabled')}
                 </span>
               )}
@@ -43,12 +43,12 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
             {/* 标签 */}
             <div className="flex items-center gap-2 mt-2">
               {autoApproveCount > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-50 text-blue-600'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/20 text-blue-300'}`}>
                   {t('mcpManager.autoApprove')}: {autoApproveCount} {t('mcpManager.tools')}
                 </span>
               )}
               {envCount > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-purple-500/20 text-purple-300' : 'bg-purple-50 text-purple-600'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-purple-50 text-purple-600' : 'bg-purple-500/20 text-purple-300'}`}>
                   {t('mcpManager.envVars')}: {envCount}
                 </span>
               )}
@@ -63,7 +63,7 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
             onClick={() => onToggle(!isDisabled)}
             className={`relative w-11 h-6 rounded-full transition-colors ${
               isDisabled 
-                ? (isDark ? 'bg-gray-600' : 'bg-gray-300') 
+                ? (isLightTheme ? 'bg-gray-300' : 'bg-gray-600') 
                 : 'bg-green-500'
             }`}
           >
@@ -74,7 +74,7 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
           
           <button
             onClick={onEdit}
-            className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} transition-colors`}
+            className={`p-2 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} transition-colors`}
             title={t('common.edit')}
           >
             <Edit2 size={16} className={colors.textMuted} />

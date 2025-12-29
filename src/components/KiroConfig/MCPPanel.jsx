@@ -8,7 +8,7 @@ import EditMCPModal from '../MCPManager/EditMCPModal'
 
 function MCPPanel() {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const { showConfirm } = useDialog()
   const [servers, setServers] = useState({})
   const [loading, setLoading] = useState(true)
@@ -91,7 +91,7 @@ function MCPPanel() {
                 key={name}
                 name={name}
                 config={config}
-                isDark={isDark}
+                isLightTheme={isLightTheme}
                 colors={colors}
                 t={t}
                 onToggle={(disabled) => handleToggle(name, disabled)}
@@ -118,14 +118,14 @@ function MCPPanel() {
   )
 }
 
-function MCPServerItem({ name, config, isDark, colors, onToggle, onEdit, onDelete, t }) {
+function MCPServerItem({ name, config, isLightTheme, colors, onToggle, onEdit, onDelete, t }) {
   const isDisabled = config.disabled
   const commandStr = [config.command, ...(config.args || [])].join(' ')
 
   return (
     <div className={`${colors.card} border ${colors.cardBorder} rounded-xl p-4 flex items-center gap-4`}>
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-        isDisabled ? (isDark ? 'bg-gray-500/20' : 'bg-gray-100') : (isDark ? 'bg-green-500/20' : 'bg-green-50')
+        isDisabled ? (isLightTheme ? 'bg-gray-100' : 'bg-gray-500/20') : (isLightTheme ? 'bg-green-50' : 'bg-green-500/20')
       }`}>
         <Server size={20} className={isDisabled ? 'text-gray-400' : 'text-green-500'} />
       </div>
@@ -134,7 +134,7 @@ function MCPServerItem({ name, config, isDark, colors, onToggle, onEdit, onDelet
         <div className="flex items-center gap-2">
           <h3 className={`font-semibold ${colors.text} ${isDisabled ? 'opacity-50' : ''}`}>{name}</h3>
           {isDisabled && (
-            <span className={`text-xs px-2 py-0.5 rounded ${isDark ? 'bg-gray-500/30 text-gray-400' : 'bg-gray-200 text-gray-500'}`}>{t('mcp.disabled')}</span>
+            <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-gray-200 text-gray-500' : 'bg-gray-500/30 text-gray-400'}`}>{t('mcp.disabled')}</span>
           )}
         </div>
         <div className={`flex items-center gap-1.5 text-sm ${colors.textMuted} ${isDisabled ? 'opacity-50' : ''}`}>
@@ -146,11 +146,11 @@ function MCPServerItem({ name, config, isDark, colors, onToggle, onEdit, onDelet
       <div className="flex items-center gap-2">
         <button
           onClick={() => onToggle(!isDisabled)}
-          className={`relative w-10 h-5 rounded-full transition-colors ${isDisabled ? (isDark ? 'bg-gray-600' : 'bg-gray-300') : 'bg-green-500'}`}
+          className={`relative w-10 h-5 rounded-full transition-colors ${isDisabled ? (isLightTheme ? 'bg-gray-300' : 'bg-gray-600') : 'bg-green-500'}`}
         >
           <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${isDisabled ? 'left-0.5' : 'left-5'}`} />
         </button>
-        <button onClick={onEdit} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+        <button onClick={onEdit} className={`p-2 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}>
           <Edit2 size={16} className={colors.textMuted} />
         </button>
         <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-500/10">

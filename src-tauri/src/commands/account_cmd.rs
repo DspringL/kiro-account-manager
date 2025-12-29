@@ -62,12 +62,34 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
     }.ok_or("Account not found")?;
 
     let provider_str = account.provider.as_deref().unwrap_or("Google");
-    let refresh_result = refresh_token_by_provider(&account).await?;
-    let usage_result = get_usage_by_provider(provider_str, &refresh_result.access_token).await;
+    let access_token = account.access_token.as_ref().ok_or("No access token")?;
+    
+    // 先尝试用现有 token 获取配额
+    let mut usage_result = get_usage_by_provider(provider_str, access_token).await;
+    let mut refresh_result: Option<RefreshResult> = None;
+    
+    // 如果 401 认证错误，刷新 token 后重试
+    if usage_result.is_auth_error {
+        let refreshed = refresh_token_by_provider(&account).await?;
+        usage_result = get_usage_by_provider(provider_str, &refreshed.access_token).await;
+        refresh_result = Some(refreshed);
+    }
 
     let mut store = state.store.lock().unwrap();
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
-        apply_refresh_result(a, &refresh_result, &usage_result);
+        // 如果刷新了 token，更新 token 相关字段
+        if let Some(ref result) = refresh_result {
+            a.access_token = Some(result.access_token.clone());
+            if let Some(ref rt) = result.refresh_token { a.refresh_token = Some(rt.clone()); }
+            if let Some(ref arn) = result.profile_arn { a.profile_arn = Some(arn.clone()); }
+            if let Some(ref id_token) = result.id_token { a.id_token = Some(id_token.clone()); }
+            if let Some(ref session_id) = result.sso_session_id { a.sso_session_id = Some(session_id.clone()); }
+            a.expires_at = Some(calc_expires_at(result.expires_in));
+        }
+        // 更新 usage 数据
+        a.usage_data = Some(usage_result.usage_data.clone());
+        a.status = calc_status(usage_result.is_banned);
+        
         let result = a.clone();
         store.save_to_file();
         return Ok(result);
@@ -168,6 +190,7 @@ pub async fn add_account_by_social(
     state: State<'_, AppState>,
     refresh_token: String,
     provider: Option<String>,
+    machine_id: Option<String>,
 ) -> Result<Account, String> {
     {
         let store = state.store.lock().unwrap();
@@ -213,6 +236,8 @@ pub async fn add_account_by_social(
         account.user_id = user_id;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned);
+        // 使用传入的 machine_id，没有则自动生成
+        account.machine_id = Some(machine_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string().to_lowercase()));
         store.accounts.insert(0, account.clone());
         account
     };
@@ -285,12 +310,14 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<Accoun
             client_reg.client_id,
             client_reg.client_secret,
             Some(region),
+            None, // 本地导入不指定 machine_id，自动生成
         ).await
     } else {
         add_account_by_social(
             state,
             refresh_token,
             Some(provider),
+            None, // 本地导入不指定 machine_id，自动生成
         ).await
     }
 }
@@ -303,6 +330,7 @@ pub async fn add_account_by_idc(
     client_id: String,
     client_secret: String,
     region: Option<String>,
+    machine_id: Option<String>,
 ) -> Result<Account, String> {
     {
         let store = state.store.lock().unwrap();
@@ -362,6 +390,8 @@ pub async fn add_account_by_idc(
         account.sso_session_id = auth_result.sso_session_id;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned);
+        // 使用传入的 machine_id，没有则自动生成
+        account.machine_id = Some(machine_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string().to_lowercase()));
         store.accounts.insert(0, account.clone());
         account
     };
@@ -370,7 +400,7 @@ pub async fn add_account_by_idc(
     Ok(account)
 }
 
-/// 更新账号信息（支持修改 label、token、SSO Client ID/Secret）
+/// 更新账号信息（支持修改 label、token、SSO Client ID/Secret、machineId）
 #[tauri::command]
 pub fn update_account(
     state: State<AppState>,
@@ -381,6 +411,8 @@ pub fn update_account(
     // BuilderId SSO 字段
     client_id: Option<String>,
     client_secret: Option<String>,
+    // 机器码
+    machine_id: Option<String>,
 ) -> Result<Account, String> {
     let mut store = state.store.lock().unwrap();
     
@@ -403,6 +435,10 @@ pub fn update_account(
         }
         if let Some(csec) = client_secret {
             store.accounts[idx].client_secret = Some(csec);
+        }
+        // 机器码
+        if let Some(mid) = machine_id {
+            store.accounts[idx].machine_id = Some(mid);
         }
         let result = store.accounts[idx].clone();
         store.save_to_file();

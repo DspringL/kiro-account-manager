@@ -9,7 +9,7 @@ import { TagSelector } from './GroupTagManager'
 function EditAccountModal({ account, onClose, onSuccess }) {
   const { t, theme, colors } = useApp()
   const { showError } = useDialog()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   
   const [form, setForm] = useState({
     label: account.label || '',
@@ -17,6 +17,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
     refreshToken: account.refreshToken || '',
     clientId: account.clientId || '',
     clientSecret: account.clientSecret || '',
+    machineId: account.machineId || '',
   })
   const [selectedTagIds, setSelectedTagIds] = useState(account.tags || [])
   const [saving, setSaving] = useState(false)
@@ -50,6 +51,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         label: form.label || null,
         accessToken: form.accessToken || null,
         refreshToken: form.refreshToken || null,
+        machineId: form.machineId || null,
       }
       // BuilderId 专用字段
       if (account.provider === 'BuilderId') {
@@ -71,15 +73,15 @@ function EditAccountModal({ account, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className={`${isDark ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-xl w-full max-w-lg shadow-2xl max-h-[85vh] overflow-hidden flex flex-col`}
+        className={`${isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'} rounded-xl w-full max-w-lg shadow-2xl max-h-[85vh] overflow-hidden flex flex-col`}
         onClick={e => e.stopPropagation()}
       >
         <div className={`flex items-center justify-between px-5 py-4 border-b ${colors.cardBorder}`}>
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              account.provider === 'Google' ? (isDark ? 'bg-red-500/20' : 'bg-red-100') :
-              account.provider === 'Github' ? (isDark ? 'bg-gray-600' : 'bg-gray-200') :
-              (isDark ? 'bg-blue-500/20' : 'bg-blue-100')
+              account.provider === 'Google' ? (isLightTheme ? 'bg-red-100' : 'bg-red-500/20') :
+              account.provider === 'Github' ? (isLightTheme ? 'bg-gray-200' : 'bg-gray-600') :
+              (isLightTheme ? 'bg-blue-100' : 'bg-blue-500/20')
             }`}>
               <span className="text-sm font-bold">{account.email[0].toUpperCase()}</span>
             </div>
@@ -88,7 +90,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
               <p className={`text-xs ${colors.textMuted}`}>{account.email}</p>
             </div>
           </div>
-          <button onClick={onClose} className={`p-1.5 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-lg`}>
+          <button onClick={onClose} className={`p-1.5 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}>
             <X size={18} className={colors.textMuted} />
           </button>
         </div>
@@ -106,6 +108,27 @@ function EditAccountModal({ account, onClose, onSuccess }) {
             />
           </div>
 
+          {/* 机器码 */}
+          <div>
+            <label className={`block text-sm font-medium ${colors.textMuted} mb-2`}>{t('addAccount.machineId')}</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={form.machineId}
+                onChange={(e) => setForm({ ...form, machineId: e.target.value })}
+                placeholder={t('addAccount.machineIdPlaceholder')}
+                className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${colors.input} ${colors.text}`}
+              />
+              <button
+                type="button"
+                onClick={() => handleCopy(form.machineId, 'machineId')}
+                className={`px-3 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg transition-colors`}
+              >
+                {copied === 'machineId' ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
+              </button>
+            </div>
+          </div>
+
           {/* 标签管理 */}
           <TagSelector 
             selectedTagIds={selectedTagIds} 
@@ -115,7 +138,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
           {/* Token 凭证 */}
           <div className={`${colors.card} rounded-xl shadow-sm overflow-hidden`}>
             <div 
-              className={`flex items-center justify-between px-4 py-3 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-colors`} 
+              className={`flex items-center justify-between px-4 py-3 cursor-pointer ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} transition-colors`} 
               onClick={() => setShowTokens(!showTokens)}
             >
               <div className="flex items-center gap-2">
@@ -146,7 +169,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                     value={form.accessToken} 
                     onChange={(e) => setForm({ ...form, accessToken: e.target.value })} 
                     placeholder="eyJ..."
-                    className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} 
+                    className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} 
                   />
                 </div>
                 <div>
@@ -161,7 +184,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                     value={form.refreshToken} 
                     onChange={(e) => setForm({ ...form, refreshToken: e.target.value })} 
                     placeholder="aor..."
-                    className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} 
+                    className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} 
                   />
                 </div>
                 
@@ -179,16 +202,16 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                           {copied === 'clientIdHash' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                         </button>
                       </div>
-                      <input type="text" value={account.clientIdHash || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                      <input type="text" value={account.clientIdHash || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className={`block text-xs ${colors.textMuted} mb-1`}>Region</label>
-                        <input type="text" value={account.region || 'us-east-1'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                        <input type="text" value={account.region || 'us-east-1'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                       </div>
                       <div>
                         <label className={`block text-xs ${colors.textMuted} mb-1`}>Session ID</label>
-                        <input type="text" value={account.ssoSessionId || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60 truncate`} />
+                        <input type="text" value={account.ssoSessionId || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60 truncate`} />
                       </div>
                     </div>
                     <div>
@@ -202,7 +225,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                         type="text" 
                         value={form.clientId} 
                         onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-                        className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} 
+                        className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} 
                       />
                     </div>
                     <div>
@@ -215,7 +238,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                       <textarea 
                         value={form.clientSecret} 
                         onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
-                        className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg resize-none h-14 ${colors.text} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} 
+                        className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg resize-none h-14 ${colors.text} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} 
                       />
                     </div>
                   </div>
@@ -235,7 +258,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                         type="text" 
                         value={account.profileArn} 
                         readOnly
-                        className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} 
+                        className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} 
                       />
                     </div>
                   </div>
@@ -246,7 +269,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         </div>
         
         <div className={`flex justify-end gap-3 px-5 py-4 border-t ${colors.cardBorder}`}>
-          <button onClick={onClose} className={`px-4 py-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-lg text-sm ${colors.text}`}>
+          <button onClick={onClose} className={`px-4 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg text-sm ${colors.text}`}>
             {t('common.cancel')}
           </button>
           <button 

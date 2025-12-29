@@ -7,7 +7,7 @@ import { useDialog } from '../contexts/DialogContext'
 function AccountDetailModal({ account, onClose }) {
   const { t, theme, colors } = useApp()
   const { showError } = useDialog()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const initQuota = account.usageData?.usageBreakdownList?.[0]?.usageLimit ?? account.quota ?? 50
   const initUsed = account.usageData?.usageBreakdownList?.[0]?.currentUsage ?? account.used ?? 0
   const [form, setForm] = useState({
@@ -73,35 +73,47 @@ function AccountDetailModal({ account, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
       <div 
-        className={`${isDark ? 'bg-[#1a1a2e]' : 'bg-gray-50'} rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col`} 
+        className={`${colors.card} rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col`} 
         onClick={e => e.stopPropagation()}
         style={{ animation: 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
       >
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 ${colors.card} border-b ${colors.cardBorder}`}>
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${account.provider === 'Google' ? (isDark ? 'bg-red-500/20' : 'bg-red-100') : account.provider === 'Github' ? (isDark ? 'bg-gray-600' : 'bg-gray-200') : (isDark ? 'bg-blue-500/20' : 'bg-blue-100')}`}>
-              <User size={24} className={account.provider === 'Google' ? (isDark ? 'text-red-400' : 'text-red-600') : account.provider === 'Github' ? (isDark ? 'text-gray-300' : 'text-gray-700') : (isDark ? 'text-blue-400' : 'text-blue-600')} />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${account.provider === 'Google' ? (isLightTheme ? 'bg-red-100' : 'bg-red-500/20') : account.provider === 'Github' ? (isLightTheme ? 'bg-gray-200' : 'bg-gray-600') : (isLightTheme ? 'bg-blue-100' : 'bg-blue-500/20')}`}>
+              <User size={24} className={account.provider === 'Google' ? (isLightTheme ? 'text-red-600' : 'text-red-400') : account.provider === 'Github' ? (isLightTheme ? 'text-gray-700' : 'text-gray-300') : (isLightTheme ? 'text-blue-600' : 'text-blue-400')} />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className={`text-lg font-semibold ${colors.text}`}>{account.email}</h2>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${(account.usageData?.subscriptionInfo?.type?.includes('PRO+') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO+')) ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : (account.usageData?.subscriptionInfo?.type?.includes('PRO') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO')) ? 'bg-blue-500 text-white' : (isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-600')}`}>
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${(account.usageData?.subscriptionInfo?.type?.includes('PRO+') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO+')) ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : (account.usageData?.subscriptionInfo?.type?.includes('PRO') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO')) ? 'bg-blue-500 text-white' : (isLightTheme ? 'bg-gray-200 text-gray-600' : 'bg-gray-700 text-gray-300')}`}>
                   {account.usageData?.subscriptionInfo?.subscriptionTitle || 'Free'}
                 </span>
               </div>
               <p className={`text-sm ${colors.textMuted}`}>
                 <span className={`${
                   account.provider === 'Google' ? 'text-red-500'
-                    : account.provider === 'GitHub' ? (isDark ? 'text-gray-300' : 'text-gray-700')
+                    : account.provider === 'GitHub' ? (isLightTheme ? 'text-gray-700' : 'text-gray-300')
                     : account.provider === 'BuilderId' ? 'text-orange-500'
                     : colors.textMuted
                 }`}>{account.provider || t('common.unknown')}</span>
                 {' · '}{t('detail.addedAt')} {account.addedAt?.split(' ')[0]}
               </p>
+              {/* 机器码 - 显眼位置 */}
+              {account.machineId && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-xs ${colors.textMuted}`}>ID:</span>
+                  <code className={`text-xs font-mono px-2 py-0.5 rounded ${isLightTheme ? 'bg-red-100 text-red-700' : 'bg-red-500/20 text-red-300'}`}>
+                    {account.machineId}
+                  </code>
+                  <button type="button" onClick={() => handleCopy(account.machineId, 'machineId')} className={`p-1 rounded ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}>
+                    {copied === 'machineId' ? <Check size={12} className="text-green-500" /> : <Copy size={12} className={colors.textMuted} />}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-          <button onClick={onClose} className={`p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-xl transition-all`}>
+          <button onClick={onClose} className={`p-2 ${colors.cardHover} rounded-xl transition-all`}>
             <X size={20} className={colors.textMuted} />
           </button>
         </div>
@@ -115,7 +127,7 @@ function AccountDetailModal({ account, onClose }) {
                   <CreditCard size={18} className={colors.textMuted} />
                   <span className={`font-medium ${colors.text}`}>{t('detail.quotaOverview')}</span>
                 </div>
-                <button type="button" onClick={handleRefresh} disabled={refreshing} className={`p-2 ${isDark ? 'bg-blue-500/20 hover:bg-blue-500/30' : 'bg-blue-50 hover:bg-blue-100'} rounded-lg transition-colors disabled:opacity-50`} title={t('detail.syncQuota')}>
+                <button type="button" onClick={handleRefresh} disabled={refreshing} className={`p-2 ${isLightTheme ? 'bg-blue-50 hover:bg-blue-100' : 'bg-blue-500/20 hover:bg-blue-500/30'} rounded-lg transition-colors disabled:opacity-50`} title={t('detail.syncQuota')}>
                   <RefreshCw size={16} className={`text-blue-500 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
@@ -130,13 +142,13 @@ function AccountDetailModal({ account, onClose }) {
                     {totalPercent.toFixed(0)}% {t('detail.used')}
                   </span>
                 </div>
-                <div className={`h-3 ${isDark ? 'bg-white/10' : 'bg-gray-100'} rounded-full overflow-hidden`}>
+                <div className={`h-3 ${colors.cardSecondary} rounded-full overflow-hidden`}>
                   <div className={`h-full rounded-full transition-all duration-500 ${totalPercent > 80 ? 'bg-gradient-to-r from-red-400 to-red-500' : totalPercent > 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' : 'bg-gradient-to-r from-green-400 to-emerald-500'}`} style={{ width: `${totalPercent}%` }} />
                 </div>
               </div>
               
               <div className="grid grid-cols-3 gap-3">
-                <div className={`${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-lg p-3`}>
+                <div className={`${colors.cardSecondary} rounded-lg p-3`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.mainQuota')}</span>
@@ -145,7 +157,7 @@ function AccountDetailModal({ account, onClose }) {
                   {breakdown?.nextDateReset && <div className={`text-xs ${colors.textMuted} mt-1`}>{new Date(breakdown.nextDateReset * 1000).toLocaleDateString()} {t('detail.reset')}</div>}
                 </div>
                 
-                <div className={`rounded-lg p-3 ${freeTrialQuota && freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? (isDark ? 'bg-cyan-500/20' : 'bg-cyan-50') : (isDark ? 'bg-white/5' : 'bg-gray-50')}`}>
+                <div className={`rounded-lg p-3 ${freeTrialQuota && freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? (isLightTheme ? 'bg-cyan-50' : 'bg-cyan-500/20') : colors.cardSecondary}`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className={`w-2 h-2 rounded-full ${freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500' : 'bg-gray-300'}`}></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.freeTrial')}</span>
@@ -155,7 +167,7 @@ function AccountDetailModal({ account, onClose }) {
                   {freeTrialInfo?.freeTrialExpiry && <div className={`text-xs ${colors.textMuted} mt-1`}>{new Date(freeTrialInfo.freeTrialExpiry * 1000).toLocaleDateString()} {t('detail.expires')}</div>}
                 </div>
                 
-                <div className={`rounded-lg p-3 ${bonusQuota ? (isDark ? 'bg-purple-500/20' : 'bg-purple-50') : (isDark ? 'bg-white/5' : 'bg-gray-50')}`}>
+                <div className={`rounded-lg p-3 ${bonusQuota ? (isLightTheme ? 'bg-purple-50' : 'bg-purple-500/20') : colors.cardSecondary}`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className={`w-2 h-2 rounded-full ${bonusQuota ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.bonusTotal')}</span>
@@ -171,7 +183,7 @@ function AccountDetailModal({ account, onClose }) {
                   <div className={`text-xs font-medium ${colors.textMuted} mb-2`}>{t('detail.bonusDetails')}</div>
                   <div className="space-y-2">
                     {bonuses.map((bonus, idx) => (
-                      <div key={idx} className={`flex items-center justify-between p-2.5 rounded-lg ${bonus.status === 'ACTIVE' ? (isDark ? 'bg-purple-500/10' : 'bg-purple-50') : bonus.status === 'EXHAUSTED' ? (isDark ? 'bg-gray-500/10' : 'bg-gray-100') : (isDark ? 'bg-white/5' : 'bg-gray-50')}`}>
+                      <div key={idx} className={`flex items-center justify-between p-2.5 rounded-lg ${bonus.status === 'ACTIVE' ? (isLightTheme ? 'bg-purple-50' : 'bg-purple-500/10') : bonus.status === 'EXHAUSTED' ? (isLightTheme ? 'bg-gray-100' : 'bg-gray-500/10') : colors.cardSecondary}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-medium ${colors.text}`}>{bonus.displayName || bonus.bonusCode}</span>
@@ -236,7 +248,7 @@ function AccountDetailModal({ account, onClose }) {
 
             {/* account */}
             <div className={`${colors.card} rounded-xl shadow-sm overflow-hidden`}>
-              <div className={`flex items-center justify-between px-5 py-4 cursor-pointer ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} transition-colors`} onClick={() => setShowTokens(!showTokens)}>
+              <div className={`flex items-center justify-between px-5 py-4 cursor-pointer ${colors.cardHover} transition-colors`} onClick={() => setShowTokens(!showTokens)}>
                 <div className="flex items-center gap-2">
                   <Key size={18} className={colors.textMuted} />
                   <span className={`font-medium ${colors.text}`}>{t('detail.tokenCredentials')}</span>
@@ -257,7 +269,7 @@ function AccountDetailModal({ account, onClose }) {
                           {copied === 'access' ? t('common.copied') : t('common.copy')}
                         </button>
                       </div>
-                      <textarea value={form.accessToken} onChange={(e) => setForm({ ...form, accessToken: e.target.value })} placeholder={account.provider === 'BuilderId' ? t('detail.aoaPrefix') : t('detail.eyjPrefix')} className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} />
+                      <textarea value={form.accessToken} onChange={(e) => setForm({ ...form, accessToken: e.target.value })} placeholder={account.provider === 'BuilderId' ? t('detail.aoaPrefix') : t('detail.eyjPrefix')} className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} />
                     </div>
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
@@ -267,7 +279,7 @@ function AccountDetailModal({ account, onClose }) {
                           {copied === 'refresh' ? t('common.copied') : t('common.copy')}
                         </button>
                       </div>
-                      <textarea value={form.refreshToken} onChange={(e) => setForm({ ...form, refreshToken: e.target.value })} placeholder={account.provider === 'BuilderId' ? t('detail.aorPrefix') : 'refresh token'} className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} />
+                      <textarea value={form.refreshToken} onChange={(e) => setForm({ ...form, refreshToken: e.target.value })} placeholder={account.provider === 'BuilderId' ? t('detail.aorPrefix') : 'refresh token'} className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} />
                     </div>
                     
                     {/* IdC (BuilderId) 专用字段 */}
@@ -284,16 +296,16 @@ function AccountDetailModal({ account, onClose }) {
                               {copied === 'clientIdHash' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                             </button>
                           </div>
-                          <input type="text" value={account.clientIdHash || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                          <input type="text" value={account.clientIdHash || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className={`block text-xs ${colors.textMuted} mb-1`}>Region</label>
-                            <input type="text" value={account.region || 'us-east-1'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                            <input type="text" value={account.region || 'us-east-1'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                           </div>
                           <div>
                             <label className={`block text-xs ${colors.textMuted} mb-1`}>Session ID</label>
-                            <input type="text" value={account.ssoSessionId || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60 truncate`} />
+                            <input type="text" value={account.ssoSessionId || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60 truncate`} />
                           </div>
                         </div>
                         <div>
@@ -303,7 +315,7 @@ function AccountDetailModal({ account, onClose }) {
                               {copied === 'clientId' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                             </button>
                           </div>
-                          <input type="text" value={account.clientId || ''} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                          <input type="text" value={account.clientId || ''} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
@@ -312,7 +324,7 @@ function AccountDetailModal({ account, onClose }) {
                               {copied === 'clientSecret' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                             </button>
                           </div>
-                          <textarea value={account.clientSecret || ''} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg resize-none h-14 ${colors.text} opacity-60`} />
+                          <textarea value={account.clientSecret || ''} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg resize-none h-14 ${colors.text} opacity-60`} />
                         </div>
                       </div>
                     )}
@@ -328,7 +340,7 @@ function AccountDetailModal({ account, onClose }) {
                                 {copied === 'profileArn' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                               </button>
                             </div>
-                            <input type="text" value={account.profileArn} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                            <input type="text" value={account.profileArn} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                           </div>
                         )}
                         {account.csrfToken && (
@@ -339,7 +351,7 @@ function AccountDetailModal({ account, onClose }) {
                                 {copied === 'csrfToken' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                               </button>
                             </div>
-                            <input type="text" value={account.csrfToken} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                            <input type="text" value={account.csrfToken} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                           </div>
                         )}
                         {account.sessionToken && (
@@ -350,7 +362,7 @@ function AccountDetailModal({ account, onClose }) {
                                 {copied === 'sessionToken' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                               </button>
                             </div>
-                            <input type="text" value={account.sessionToken} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isDark ? 'bg-white/5' : 'bg-gray-50'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
+                            <input type="text" value={account.sessionToken} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
                           </div>
                         )}
                       </div>

@@ -263,7 +263,7 @@ pub async fn add_kiro_account(
     let usage_result = if !access_token.is_empty() {
         get_usage_by_provider(&idp, &access_token).await
     } else {
-        crate::commands::common::UsageResult { usage_data: serde_json::Value::Null, is_banned: false }
+        crate::commands::common::UsageResult { usage_data: serde_json::Value::Null, is_banned: false, is_auth_error: false }
     };
     let usage: Option<crate::providers::web_oauth::GetUserUsageAndLimitsResponse> = 
         serde_json::from_value(usage_result.usage_data.clone()).ok();

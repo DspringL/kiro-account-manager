@@ -321,6 +321,7 @@
 
   "common.save": "Save",
   "common.cancel": "Cancel",
+  "common.optional": "Optional",
   "common.confirm": "Confirm",
   "common.delete": "Delete",
   "common.edit": "Edit",
@@ -402,6 +403,8 @@
   "addAccount.errorSocialFormat": "Google/GitHub Token format error, should start with aor",
   "addAccount.errorIdcFormat": "BuilderId/Enterprise Token format error, should start with aor",
   "addAccount.errorNoClientId": "Please enter Client ID and Client Secret",
+  "addAccount.machineId": "Machine ID",
+  "addAccount.machineIdPlaceholder": "Leave empty to auto-generate",
 
   "import.title": "Batch Import Accounts",
   "import.jsonTab": "JSON Credentials Import",

@@ -6,7 +6,7 @@ import { useApp } from '../hooks/useApp'
 
 function Login({ onLogin }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [loadingProvider, setLoadingProvider] = useState(null)
   const [error, setError] = useState('')
 
@@ -81,14 +81,14 @@ function Login({ onLogin }) {
     <div className={`h-full flex flex-col items-center justify-center ${colors.main} relative overflow-hidden`}>
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full ${isDark ? 'bg-purple-500/10' : 'bg-purple-100'} blur-3xl`} />
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full ${isDark ? 'bg-blue-500/10' : 'bg-blue-100'} blur-3xl`} />
+        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full ${isLightTheme ? 'bg-purple-100' : 'bg-purple-500/10'} blur-3xl`} />
+        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full ${isLightTheme ? 'bg-blue-100' : 'bg-blue-500/10'} blur-3xl`} />
       </div>
 
       <div className="relative z-10 w-full max-w-sm px-6">
         {/* Logo */}
         <div className="flex flex-col items-center mb-10 animate-bounce-in">
-          <div className={`w-16 h-16 rounded-2xl ${isDark ? 'bg-gradient-to-br from-purple-500 to-blue-600' : 'bg-gradient-to-br from-purple-400 to-blue-500'} flex items-center justify-center mb-4 shadow-lg shadow-purple-500/25 animate-float`}>
+          <div className={`w-16 h-16 rounded-2xl ${isLightTheme ? 'bg-gradient-to-br from-purple-400 to-blue-500' : 'bg-gradient-to-br from-purple-500 to-blue-600'} flex items-center justify-center mb-4 shadow-lg shadow-purple-500/25 animate-float`}>
             <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
               <path d="M20 4C12 4 6 10 6 18C6 22 8 25 8 25C8 25 7 28 7 30C7 32 8 34 10 34C11 34 12 33 13 32C14 33 16 34 20 34C24 34 26 33 27 32C28 33 29 34 30 34C32 34 33 32 33 30C33 28 32 25 32 25C32 25 34 22 34 18C34 10 28 4 20 4ZM14 20C12.5 20 11 18.5 11 17C11 15.5 12.5 14 14 14C15.5 14 17 15.5 17 17C17 18.5 15.5 20 14 20ZM26 20C24.5 20 23 18.5 23 17C23 15.5 24.5 14 26 14C27.5 14 29 15.5 29 17C29 18.5 27.5 20 26 20Z" fill="white"/>
             </svg>
@@ -99,7 +99,7 @@ function Login({ onLogin }) {
 
         {/* Error */}
         {error && (
-          <div className={`mb-6 px-4 py-3 ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'} text-red-500 border rounded-xl text-sm flex items-center gap-2`}>
+          <div className={`mb-6 px-4 py-3 ${colors.error} border ${colors.errorBorder} rounded-xl text-sm flex items-center gap-2`}>
             <X size={16} />
             <span className="flex-1">{error}</span>
           </div>
@@ -112,7 +112,7 @@ function Login({ onLogin }) {
               key={provider.id}
               onClick={() => handleLogin(provider.id)}
               disabled={!!loadingProvider}
-              className={`group w-full relative flex items-center justify-center gap-3 px-5 py-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} border rounded-xl transition-all duration-200 disabled:opacity-50 ${provider.color} hover:shadow-lg active:scale-[0.98]`}
+              className={`group w-full relative flex items-center justify-center gap-3 px-5 py-4 ${colors.card} border ${colors.cardBorder} rounded-xl transition-all duration-200 disabled:opacity-50 ${provider.color} hover:shadow-lg active:scale-[0.98]`}
             >
               {loadingProvider === provider.id ? (
                 <Loader size={20} className="animate-spin text-purple-500" />
@@ -130,7 +130,7 @@ function Login({ onLogin }) {
           {loadingProvider && (
             <button
               onClick={handleCancel}
-              className={`w-full px-5 py-3 ${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-gray-200 hover:bg-gray-50'} border rounded-xl transition-colors text-sm ${colors.text}`}
+              className={`w-full px-5 py-3 ${colors.card} ${colors.cardHover} border ${colors.cardBorder} rounded-xl transition-colors text-sm ${colors.text}`}
             >
               {t('login.cancel')}
             </button>

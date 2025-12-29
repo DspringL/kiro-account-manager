@@ -5,7 +5,7 @@ import { useApp } from '../../hooks/useApp'
 
 function AddAccountModal({ onClose, onSuccess }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [addLoading, setAddLoading] = useState(false)
   const [addError, setAddError] = useState('')
   const [accountType, setAccountType] = useState('social') // 'social' | 'idc'
@@ -14,6 +14,7 @@ function AddAccountModal({ onClose, onSuccess }) {
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [region, setRegion] = useState('us-east-1')
+  const [machineId, setMachineId] = useState('')
 
   const awsRegions = [
     { value: 'us-east-1', label: 'us-east-1 (N. Virginia)' },
@@ -57,10 +58,20 @@ function AddAccountModal({ onClose, onSuccess }) {
           setAddLoading(false)
           return
         }
-        await invoke('add_account_by_idc', { refreshToken, clientId, clientSecret, region })
+        await invoke('add_account_by_idc', { 
+          refreshToken, 
+          clientId, 
+          clientSecret, 
+          region,
+          machineId: machineId.trim() || null
+        })
       } else {
         // Social 账号，使用用户选择的 provider
-        await invoke('add_account_by_social', { refreshToken, provider: socialProvider })
+        await invoke('add_account_by_social', { 
+          refreshToken, 
+          provider: socialProvider,
+          machineId: machineId.trim() || null
+        })
       }
       onSuccess()
       onClose()
@@ -79,14 +90,14 @@ function AddAccountModal({ onClose, onSuccess }) {
         style={{ animation: 'dialogIn 0.2s ease-out' }}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between px-5 py-4 ${isDark ? 'bg-white/[0.02]' : 'bg-gray-50/50'}`}>
+        <div className={`flex items-center justify-between px-5 py-4 ${isLightTheme ? 'bg-gray-50/50' : 'bg-white/[0.02]'}`}>
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-blue-500/15' : 'bg-blue-50'} flex items-center justify-center`}>
+            <div className={`w-10 h-10 rounded-xl ${isLightTheme ? 'bg-blue-50' : 'bg-blue-500/15'} flex items-center justify-center`}>
               <Key size={20} className="text-blue-500" />
             </div>
             <h2 className={`text-base font-semibold ${colors.text}`}>{t('addAccount.title')}</h2>
           </div>
-          <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg transition-colors ${isLightTheme ? 'hover:bg-black/5' : 'hover:bg-white/10'}`}>
             <X size={18} className={colors.textMuted} />
           </button>
         </div>
@@ -96,9 +107,9 @@ function AddAccountModal({ onClose, onSuccess }) {
           <button 
             onClick={handleSaveLocal} 
             disabled={addLoading} 
-            className={`w-full flex items-center gap-4 px-4 py-4 ${isDark ? 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/15' : 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'} border rounded-xl transition-all disabled:opacity-50 active:scale-[0.98]`}
+            className={`w-full flex items-center gap-4 px-4 py-4 ${isLightTheme ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100' : 'bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/15'} border rounded-xl transition-all disabled:opacity-50 active:scale-[0.98]`}
           >
-            <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-emerald-500/20' : 'bg-emerald-100'} flex items-center justify-center`}>
+            <div className={`w-10 h-10 rounded-xl ${isLightTheme ? 'bg-emerald-100' : 'bg-emerald-500/20'} flex items-center justify-center`}>
               <Download size={20} className="text-emerald-500" />
             </div>
             <div className="text-left">
@@ -109,13 +120,13 @@ function AddAccountModal({ onClose, onSuccess }) {
 
           {/* 分隔线 */}
           <div className="flex items-center gap-3">
-            <div className={`flex-1 h-px ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}></div>
+            <div className={`flex-1 h-px ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'}`}></div>
             <span className={`text-xs ${colors.textMuted}`}>{t('addAccount.orManual')}</span>
-            <div className={`flex-1 h-px ${isDark ? 'bg-white/10' : 'bg-gray-200'}`}></div>
+            <div className={`flex-1 h-px ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'}`}></div>
           </div>
 
           {/* 账号类型选择 */}
-          <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-100'}`}>
+          <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl ${isLightTheme ? 'bg-gray-100' : 'bg-white/5'}`}>
             <button 
               type="button" 
               onClick={() => setAccountType('social')} 
@@ -147,7 +158,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border ${
                       socialProvider === 'Google'
                         ? 'bg-blue-500/10 border-blue-500 text-blue-500'
-                        : `${isDark ? 'border-white/10 hover:border-white/20' : 'border-gray-200 hover:border-gray-300'} ${colors.text}`
+                        : `${isLightTheme ? 'border-gray-200 hover:border-gray-300' : 'border-white/10 hover:border-white/20'} ${colors.text}`
                     }`}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -164,7 +175,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all border ${
                       socialProvider === 'Github'
                         ? 'bg-blue-500/10 border-blue-500 text-blue-500'
-                        : `${isDark ? 'border-white/10 hover:border-white/20' : 'border-gray-200 hover:border-gray-300'} ${colors.text}`
+                        : `${isLightTheme ? 'border-gray-200 hover:border-gray-300' : 'border-white/10 hover:border-white/20'} ${colors.text}`
                     }`}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -183,7 +194,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                 placeholder={accountType === 'idc' ? t('addAccount.idcPlaceholder') : t('addAccount.socialPlaceholder')}
                 value={refreshToken} 
                 onChange={(e) => setRefreshToken(e.target.value)} 
-                className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`} 
+                className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`} 
               />
             </div>
 
@@ -196,7 +207,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                     placeholder="OIDC Client ID" 
                     value={clientId} 
                     onChange={(e) => setClientId(e.target.value)} 
-                    className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`} 
+                    className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`} 
                   />
                 </div>
                 <div>
@@ -206,7 +217,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                     placeholder="OIDC Client Secret" 
                     value={clientSecret} 
                     onChange={(e) => setClientSecret(e.target.value)} 
-                    className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`} 
+                    className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all`} 
                   />
                 </div>
                 <div>
@@ -215,7 +226,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                     <select 
                       value={region} 
                       onChange={(e) => setRegion(e.target.value)} 
-                      className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all appearance-none cursor-pointer`}
+                      className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all appearance-none cursor-pointer`}
                     >
                       {awsRegions.map((r) => (<option key={r.value} value={r.value} className="text-gray-900 bg-white">{r.label}</option>))}
                     </select>
@@ -224,6 +235,20 @@ function AddAccountModal({ onClose, onSuccess }) {
                 </div>
               </>
             )}
+
+            {/* 机器码（可选） */}
+            <div>
+              <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>
+                {t('addAccount.machineId')} <span className="opacity-50">({t('common.optional')})</span>
+              </label>
+              <input 
+                type="text" 
+                placeholder={t('addAccount.machineIdPlaceholder')}
+                value={machineId} 
+                onChange={(e) => setMachineId(e.target.value)} 
+                className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${isLightTheme ? 'bg-white border-gray-200' : 'bg-white/5 border-white/10'} focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all font-mono`} 
+              />
+            </div>
 
             <button 
               onClick={handleAddManual} 
@@ -236,7 +261,7 @@ function AddAccountModal({ onClose, onSuccess }) {
 
           {/* Error */}
           {addError && (
-            <div className={`text-sm text-red-500 ${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'} border px-4 py-3 rounded-xl`}>
+            <div className={`text-sm text-red-500 ${isLightTheme ? 'bg-red-50 border-red-200' : 'bg-red-500/10 border-red-500/20'} border px-4 py-3 rounded-xl`}>
               {addError}
             </div>
           )}

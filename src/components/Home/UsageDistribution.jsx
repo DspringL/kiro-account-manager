@@ -2,7 +2,7 @@ import { PieChart, BarChart2 } from 'lucide-react'
 import { usePrivacy } from '../../contexts/PrivacyContext'
 
 // 使用率分布统计
-function UsageDistribution({ tokens, isDark, colors, t }) {
+function UsageDistribution({ tokens, isLightTheme, colors, t }) {
   const { maskEmail } = usePrivacy()
   
   // 计算使用率分组
@@ -51,7 +51,7 @@ function UsageDistribution({ tokens, isDark, colors, t }) {
                   <span className={`text-sm ${colors.text}`}>{item.label} <span className={colors.textMuted}>({item.desc})</span></span>
                   <span className={`text-sm font-medium ${colors.text}`}>{item.value} {t('stats.accounts')}</span>
                 </div>
-                <div className={`h-3 rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-100'} overflow-hidden`}>
+                <div className={`h-3 rounded-full ${isLightTheme ? 'bg-gray-100' : 'bg-white/10'} overflow-hidden`}>
                   <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${percent}%` }} />
                 </div>
               </div>
@@ -77,7 +77,7 @@ function UsageDistribution({ tokens, isDark, colors, t }) {
                   <span className={`text-xs ${colors.text} truncate max-w-[140px]`}>{maskEmail(account.email).split('@')[0]}</span>
                   <span className={`text-xs ${colors.textMuted}`}>{account.used}/{account.limit} ({account.percent}%)</span>
                 </div>
-                <div className={`h-2 rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-100'} overflow-hidden`}>
+                <div className={`h-2 rounded-full ${isLightTheme ? 'bg-gray-100' : 'bg-white/10'} overflow-hidden`}>
                   <div className={`h-full bg-gradient-to-r ${usageColor} rounded-full transition-all duration-500`} style={{ width: `${account.percent}%` }} />
                 </div>
               </div>

@@ -16,6 +16,8 @@ export const themes = {
     main: 'bg-gradient-to-br from-gray-50 to-gray-100',
     card: 'bg-white',
     cardBorder: 'border-gray-100',
+    cardHover: 'hover:bg-gray-50',
+    cardSecondary: 'bg-gray-50/50',
     text: 'text-gray-800',
     textMuted: 'text-gray-500',
     input: 'bg-white border-gray-200',
@@ -25,6 +27,18 @@ export const themes = {
     // 下拉菜单样式
     menuHover: 'hover:bg-gray-100',
     primary: 'text-blue-600',
+    // 错误样式
+    error: 'bg-red-50 text-red-600',
+    errorBorder: 'border-red-200',
+    // 警告样式
+    warning: 'bg-orange-50',
+    warningBorder: 'border-orange-200',
+    // 信息样式
+    info: 'bg-blue-50',
+    infoBorder: 'border-blue-200',
+    // 危险按钮样式
+    danger: 'bg-red-100 text-red-600',
+    dangerHover: 'hover:bg-red-200',
   },
   dark: {
     nameKey: 'theme.dark',
@@ -38,6 +52,8 @@ export const themes = {
     main: 'bg-[#0f0f1a]',
     card: 'bg-[#1a1a2e]',
     cardBorder: 'border-gray-800',
+    cardHover: 'hover:bg-white/10',
+    cardSecondary: 'bg-white/[0.02]',
     text: 'text-gray-100',
     textMuted: 'text-gray-400',
     input: 'bg-[#252540] border-gray-700',
@@ -47,6 +63,18 @@ export const themes = {
     // 下拉菜单样式
     menuHover: 'hover:bg-white/10',
     primary: 'text-blue-400',
+    // 错误样式
+    error: 'bg-red-500/10 text-red-400',
+    errorBorder: 'border-red-500/20',
+    // 警告样式
+    warning: 'bg-orange-500/10',
+    warningBorder: 'border-orange-500/20',
+    // 信息样式
+    info: 'bg-blue-500/10',
+    infoBorder: 'border-blue-500/20',
+    // 危险按钮样式
+    danger: 'bg-red-500/20 text-red-400',
+    dangerHover: 'hover:bg-red-500/30',
   },
   purple: {
     nameKey: 'theme.purple',
@@ -60,6 +88,8 @@ export const themes = {
     main: 'bg-gradient-to-br from-purple-50 via-violet-50 to-fuchsia-50',
     card: 'bg-white/90 backdrop-blur-sm',
     cardBorder: 'border-purple-200/60',
+    cardHover: 'hover:bg-purple-50',
+    cardSecondary: 'bg-purple-50/30',
     text: 'text-purple-900',
     textMuted: 'text-purple-500',
     input: 'bg-purple-50/50 border-purple-200',
@@ -71,6 +101,18 @@ export const themes = {
     // 下拉菜单样式
     menuHover: 'hover:bg-purple-100',
     primary: 'text-purple-600',
+    // 错误样式
+    error: 'bg-red-100 text-red-600',
+    errorBorder: 'border-red-300',
+    // 警告样式
+    warning: 'bg-orange-100',
+    warningBorder: 'border-orange-300',
+    // 信息样式
+    info: 'bg-blue-100',
+    infoBorder: 'border-blue-300',
+    // 危险按钮样式
+    danger: 'bg-red-100 text-red-600',
+    dangerHover: 'hover:bg-red-200',
   },
   green: {
     nameKey: 'theme.green',
@@ -84,6 +126,8 @@ export const themes = {
     main: 'bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50',
     card: 'bg-white/90 backdrop-blur-sm',
     cardBorder: 'border-emerald-200/60',
+    cardHover: 'hover:bg-emerald-50',
+    cardSecondary: 'bg-emerald-50/30',
     text: 'text-emerald-900',
     textMuted: 'text-emerald-600',
     input: 'bg-emerald-50/50 border-emerald-200',
@@ -95,6 +139,18 @@ export const themes = {
     // 下拉菜单样式
     menuHover: 'hover:bg-emerald-100',
     primary: 'text-emerald-600',
+    // 错误样式
+    error: 'bg-red-100 text-red-600',
+    errorBorder: 'border-red-300',
+    // 警告样式
+    warning: 'bg-orange-100',
+    warningBorder: 'border-orange-300',
+    // 信息样式
+    info: 'bg-blue-100',
+    infoBorder: 'border-blue-300',
+    // 危险按钮样式
+    danger: 'bg-red-100 text-red-600',
+    dangerHover: 'hover:bg-red-200',
   },
 }
 

@@ -10,7 +10,7 @@ function AccountPagination({
   onPageChange,
 }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
 
   if (totalCount === 0) return null
 
@@ -30,17 +30,17 @@ function AccountPagination({
         <span>{t('pagination.totalItems', { count: totalCount })}</span>
       </div>
       <div className="flex items-center gap-1">
-        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className={`p-2 border ${colors.cardBorder} rounded-lg ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-40`} title={t('pagination.first')}>
+        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className={`p-2 border ${colors.cardBorder} rounded-lg ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} disabled:opacity-40`} title={t('pagination.first')}>
           <ChevronsLeft size={16} className={colors.textMuted} />
         </button>
-        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className={`p-2 border ${colors.cardBorder} rounded-lg ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-40`} title={t('pagination.prev')}>
+        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className={`p-2 border ${colors.cardBorder} rounded-lg ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} disabled:opacity-40`} title={t('pagination.prev')}>
           <ChevronLeft size={16} className={colors.textMuted} />
         </button>
         <span className={`px-4 py-1.5 text-sm ${colors.text} font-medium`}>{currentPage} / {totalPages}</span>
-        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`p-2 border ${colors.cardBorder} rounded-lg ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-40`} title={t('pagination.next')}>
+        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`p-2 border ${colors.cardBorder} rounded-lg ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} disabled:opacity-40`} title={t('pagination.next')}>
           <ChevronRight size={16} className={colors.textMuted} />
         </button>
-        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className={`p-2 border ${colors.cardBorder} rounded-lg ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} disabled:opacity-40`} title={t('pagination.last')}>
+        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className={`p-2 border ${colors.cardBorder} rounded-lg ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} disabled:opacity-40`} title={t('pagination.last')}>
           <ChevronsRight size={16} className={colors.textMuted} />
         </button>
       </div>

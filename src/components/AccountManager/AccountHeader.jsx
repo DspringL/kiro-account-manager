@@ -21,13 +21,15 @@ function AccountHeader({
   onTagFilter,
   selectedStatus,
   onStatusFilter,
+  sortBy = 'default',
+  onSortChange,
   viewMode = 'card',
   onViewModeChange,
   advancedFilters = {},
   onAdvancedFiltersChange,
 }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [showMore, setShowMore] = useState(false)
   const moreRef = useRef(null)
 
@@ -66,7 +68,7 @@ function AccountHeader({
               placeholder={t('accounts.search')}
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className={`pl-9 pr-3 py-2 ${isDark ? 'bg-white/5' : 'bg-gray-50'} border-0 rounded-xl text-sm w-40 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
+              className={`pl-9 pr-3 py-2 ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border-0 rounded-xl text-sm w-40 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
             />
           </div>
 
@@ -93,18 +95,32 @@ function AccountHeader({
             </select>
           )}
 
+          {/* 排序 */}
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            className={`px-3 py-2 ${colors.input} border rounded-xl text-sm focus:outline-none ${colors.text} cursor-pointer`}
+          >
+            <option value="default">{t('sort.default')}</option>
+            <option value="trialExpiry">{t('sort.trialExpiry')}</option>
+            <option value="usageAsc">{t('sort.usageAsc')}</option>
+            <option value="usageDesc">{t('sort.usageDesc')}</option>
+            <option value="addedAsc">{t('sort.addedAsc')}</option>
+            <option value="addedDesc">{t('sort.addedDesc')}</option>
+          </select>
+
           {/* 视图切换 */}
           <div className={`flex rounded-xl border ${colors.cardBorder} overflow-hidden`}>
             <button
               onClick={() => onViewModeChange('card')}
-              className={`p-2 ${viewMode === 'card' ? 'bg-blue-500 text-white' : `${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.textMuted}`}`}
+              className={`p-2 ${viewMode === 'card' ? 'bg-blue-500 text-white' : `${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} ${colors.textMuted}`}`}
               title={t('accounts.cardView')}
             >
               <LayoutGrid size={16} />
             </button>
             <button
               onClick={() => onViewModeChange('table')}
-              className={`p-2 ${viewMode === 'table' ? 'bg-blue-500 text-white' : `${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.textMuted}`}`}
+              className={`p-2 ${viewMode === 'table' ? 'bg-blue-500 text-white' : `${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} ${colors.textMuted}`}`}
               title={t('accounts.tableView')}
             >
               <List size={16} />
@@ -152,7 +168,7 @@ function AccountHeader({
           <div ref={moreRef} className="relative">
             <button
               onClick={() => setShowMore(!showMore)}
-              className={`p-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+              className={`p-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`}
             >
               <MoreHorizontal size={18} className={colors.textMuted} />
             </button>
@@ -161,14 +177,14 @@ function AccountHeader({
               <div className={`absolute right-0 top-full mt-2 w-40 py-1 ${colors.card} border ${colors.cardBorder} rounded-xl shadow-xl z-50`}>
                 <button
                   onClick={() => { onImport(); setShowMore(false) }}
-                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text}`}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} ${colors.text}`}
                 >
                   <Upload size={14} />
                   {t('accounts.import')}
                 </button>
                 <button
                   onClick={() => { onExport(); setShowMore(false) }}
-                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text}`}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} ${colors.text}`}
                 >
                   <Download size={14} />
                   {t('accounts.export')}
@@ -176,7 +192,7 @@ function AccountHeader({
                 <div className={`my-1 border-t ${colors.cardBorder}`} />
                 <button
                   onClick={() => { onRefresh(); setShowMore(false) }}
-                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text}`}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} ${colors.text}`}
                 >
                   <RefreshCw size={14} />
                   {t('accounts.refreshList')}
@@ -184,7 +200,7 @@ function AccountHeader({
                 <button
                   onClick={() => { onRefreshAll(); setShowMore(false) }}
                   disabled={autoRefreshing}
-                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'} ${colors.text} disabled:opacity-50`}
+                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} ${colors.text} disabled:opacity-50`}
                 >
                   <RefreshCw size={14} className={autoRefreshing ? 'animate-spin' : ''} />
                   {t('accounts.refreshAll')}
@@ -198,7 +214,7 @@ function AccountHeader({
       {/* 刷新进度条 */}
       {autoRefreshing && refreshProgress.total > 0 && (
         <div className="mt-3 flex items-center gap-3">
-          <div className={`flex-1 h-1.5 ${isDark ? 'bg-white/10' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+          <div className={`flex-1 h-1.5 ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'} rounded-full overflow-hidden`}>
             <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all" style={{ width: `${(refreshProgress.current / refreshProgress.total) * 100}%` }} />
           </div>
           <span className="text-xs text-blue-500 font-medium">{refreshProgress.current}/{refreshProgress.total}</span>

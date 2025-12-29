@@ -144,6 +144,9 @@ pub struct Account {
     // 详细额度分解
     #[serde(default)]
     pub usage_breakdown: Option<UsageBreakdown>,
+    // 绑定的机器码
+    #[serde(default)]
+    pub machine_id: Option<String>,
 }
 
 impl Account {
@@ -173,6 +176,7 @@ impl Account {
             group_id: None,
             tags: Vec::new(),
             usage_breakdown: None,
+            machine_id: None,
         }
     }
 
@@ -273,12 +277,16 @@ impl AccountStore {
         match serde_json::from_str::<Vec<Account>>(json) {
             Ok(imported) => {
                 let mut added = 0;
-                for account in imported {
+                for mut account in imported {
                     let exists = self.accounts.iter().any(|a| {
                         a.id == account.id || 
                         (a.email == account.email && a.provider == account.provider)
                     });
                     if !exists {
+                        // 如果没有 machine_id，生成一个
+                        if account.machine_id.is_none() {
+                            account.machine_id = Some(uuid::Uuid::new_v4().to_string().to_lowercase());
+                        }
                         self.accounts.push(account);
                         added += 1;
                     }

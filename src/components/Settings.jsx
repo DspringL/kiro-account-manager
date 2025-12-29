@@ -12,7 +12,8 @@ function Settings() {
     const { showConfirm, showError, showSuccess } = useDialog()
     const { updateSettings: updateAppSettings } = useAppSettings()
     const { privacyMode, setPrivacyMode } = usePrivacy()
-    const isDark = theme === 'dark'
+    // 用于 SVG 箭头颜色（浅色主题用深色）
+    const isLightTheme = theme === 'light'
 
     const [aiModel, setAiModel] = useState('claude-sonnet-4.5')
     const [lockModel, setLockModel] = useState(true)
@@ -345,16 +346,16 @@ function Settings() {
 
     // 信息项组件
     const InfoItem = ({ label, value, copyable = false, fieldKey }) => (
-        <div className={`flex items-center justify-between py-2 ${isDark ? 'border-white/5' : 'border-gray-100'} border-b last:border-0`}>
+        <div className={`flex items-center justify-between py-2 ${colors.cardBorder} border-b last:border-0`}>
             <span className={`text-sm ${colors.textMuted}`}>{label}</span>
             <div className="flex items-center gap-2">
-                <code className={`text-xs ${isDark ? 'bg-white/10' : 'bg-gray-100'} px-2 py-1 rounded-lg font-mono ${colors.text} max-w-[200px] truncate`}>
+                <code className={`text-xs ${colors.cardSecondary} px-2 py-1 rounded-lg font-mono ${colors.text} max-w-[200px] truncate`}>
                     {value || '-'}
                 </code>
                 {copyable && value && (
                     <button
                         onClick={() => copyToClipboard(value, fieldKey)}
-                        className={`btn-icon p-1 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} transition-colors`}
+                        className={`btn-icon p-1 rounded-lg ${colors.cardHover} transition-colors`}
                     >
                         {copiedField === fieldKey ? (
                             <Check size={14} className="text-green-500" />
@@ -402,7 +403,7 @@ function Settings() {
                                     onClick={() => setTheme(opt.key)}
                                     className={`relative p-4 rounded-xl border-2 transition-all hover:scale-105 ${isActive
                                         ? 'border-blue-500 shadow-lg shadow-blue-500/20'
-                                        : `${isDark ? 'border-gray-700 hover:border-gray-600' : 'border-gray-200 hover:border-gray-300'}`
+                                        : `${colors.cardBorder} ${colors.cardHover}`
                                         }`}
                                     style={{ animationDelay: `${index * 0.05}s` }}
                                 >
@@ -450,13 +451,13 @@ function Settings() {
                                 </select>
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                        <path d="M2.5 4.5L6 8L9.5 4.5" stroke={isDark ? '#888' : '#666'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M2.5 4.5L6 8L9.5 4.5" stroke={isLightTheme ? '#666' : '#888'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                 </div>
                             </div>
                             <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border transition-all ${lockModel
                                 ? 'bg-blue-500/20 border-blue-500/50 text-blue-500'
-                                : `${isDark ? 'border-gray-700 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'} ${colors.text}`
+                                : `${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text}`
                                 }`} title={t('settings.lockModelDesc')}>
                                 <input
                                     type="checkbox"
@@ -471,7 +472,7 @@ function Settings() {
                     </div>
 
                     {/* 代码库索引 */}
-                    <label className={`flex items-start gap-3 cursor-pointer ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-4 transition-all hover:scale-[1.01] mb-3`}>
+                    <label className={`flex items-start gap-3 cursor-pointer ${colors.cardSecondary} ${colors.cardHover} rounded-xl p-4 transition-all hover:scale-[1.01] mb-3`}>
                         <input
                             type="checkbox"
                             checked={enableCodebaseIndexing}
@@ -486,7 +487,7 @@ function Settings() {
                     </label>
 
                     {/* 信任所有命令 */}
-                    <label className={`flex items-start gap-3 cursor-pointer ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'} rounded-xl p-4 transition-all hover:scale-[1.01] mb-3`}>
+                    <label className={`flex items-start gap-3 cursor-pointer ${colors.cardSecondary} ${colors.cardHover} rounded-xl p-4 transition-all hover:scale-[1.01] mb-3`}>
                         <input
                             type="checkbox"
                             checked={trustAllCommands}
@@ -501,7 +502,7 @@ function Settings() {
                     </label>
 
                     {/* HTTP 代理 */}
-                    <div className="mt-5 pt-5 border-t border-dashed" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                    <div className={`mt-5 pt-5 border-t border-dashed ${colors.cardBorder}`}>
                         <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.httpProxy')}</label>
                         <div className="flex gap-3">
                             <input
@@ -514,7 +515,7 @@ function Settings() {
                             <button
                                 onClick={handleDetectProxy}
                                 disabled={detectingProxy}
-                                className={`btn-icon px-4 py-3 border rounded-xl ${isDark ? 'border-gray-700 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'} ${colors.text} transition-all flex items-center gap-2`}
+                                className={`btn-icon px-4 py-3 border rounded-xl ${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text} transition-all flex items-center gap-2`}
                                 title={t('settings.detectProxyTitle')}
                             >
                                 {detectingProxy ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
@@ -525,7 +526,7 @@ function Settings() {
                                 disabled={savingProxy || !proxyChanged}
                                 className={`btn-icon px-5 py-3 rounded-xl flex items-center gap-2 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all ${proxyChanged
                                     ? 'bg-blue-500 text-white hover:bg-blue-600'
-                                    : `${isDark ? 'bg-white/10 text-white/50' : 'bg-gray-200 text-gray-400'}`
+                                    : `${colors.cardSecondary} ${colors.textMuted}`
                                     }`}
                             >
                                 {savingProxy ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} />}
@@ -545,7 +546,7 @@ function Settings() {
                     <div className="flex items-center gap-3 mb-4">
                         <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border transition-all flex-shrink-0 ${autoRefresh
                             ? 'bg-blue-500/20 border-blue-500/50 text-blue-500'
-                            : `${isDark ? 'border-gray-700 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'} ${colors.text}`
+                            : `${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text}`
                             }`} title={t('settings.autoRefreshDesc')}>
                             <input
                                 type="checkbox"
@@ -570,7 +571,7 @@ function Settings() {
                             </select>
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke={isDark ? '#888' : '#666'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke={isLightTheme ? '#666' : '#888'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                             </div>
                         </div>
@@ -580,7 +581,7 @@ function Settings() {
                     <div className="flex items-center gap-3 mb-4">
                         <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border transition-all flex-shrink-0 ${autoChangeMachineId
                             ? 'bg-blue-500/20 border-blue-500/50 text-blue-500'
-                            : `${isDark ? 'border-gray-700 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'} ${colors.text}`
+                            : `${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text}`
                             }`} title={t('settings.autoChangeMachineIdDesc')}>
                             <input
                                 type="checkbox"
@@ -603,7 +604,7 @@ function Settings() {
                             </select>
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke={isDark ? '#888' : '#666'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke={isLightTheme ? '#666' : '#888'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
                             </div>
                         </div>
@@ -612,7 +613,7 @@ function Settings() {
                     {/* 隐私模式 */}
                     <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border transition-all ${privacyMode
                         ? 'bg-blue-500/20 border-blue-500/50 text-blue-500'
-                        : `${isDark ? 'border-gray-700 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'} ${colors.text}`
+                        : `${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text}`
                         }`} title={t('settings.privacyModeDesc')}>
                         <input
                             type="checkbox"
@@ -648,7 +649,7 @@ function Settings() {
                             />
                             <button
                                 onClick={handleDetectBrowsers}
-                                className={`btn-icon px-4 py-3 border rounded-xl ${isDark ? 'border-gray-700 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-50'} ${colors.text} transition-all flex items-center gap-2`}
+                                className={`btn-icon px-4 py-3 border rounded-xl ${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text} transition-all flex items-center gap-2`}
                                 title={t('settings.detectBrowsersTitle')}
                             >
                                 <Search size={16} />
@@ -659,7 +660,7 @@ function Settings() {
                                 disabled={savingBrowser || !browserChanged}
                                 className={`btn-icon px-5 py-3 rounded-xl flex items-center gap-2 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all ${browserChanged
                                     ? 'bg-blue-500 text-white hover:bg-blue-600'
-                                    : `${isDark ? 'bg-white/10 text-white/50' : 'bg-gray-200 text-gray-400'}`
+                                    : `${colors.cardSecondary} ${colors.textMuted}`
                                     }`}
                             >
                                 {savingBrowser ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} />}
@@ -670,7 +671,7 @@ function Settings() {
 
                     {/* 检测到的浏览器列表 */}
                     {showBrowserList && detectedBrowsers.length > 0 && (
-                        <div className={`mt-4 p-4 rounded-xl ${isDark ? 'bg-white/5' : 'bg-gray-50'}`}>
+                        <div className={`mt-4 p-4 rounded-xl ${colors.cardSecondary}`}>
                             <div className="flex items-center justify-between mb-3">
                                 <span className={`text-sm font-medium ${colors.text}`}>{t('settings.detectedBrowsers')}</span>
                                 <button
@@ -682,7 +683,7 @@ function Settings() {
                             </div>
                             <div className="space-y-2">
                                 {detectedBrowsers.map((browser, index) => (
-                                    <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-white hover:bg-gray-100'} transition-colors`}>
+                                    <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${colors.card} ${colors.cardHover} transition-colors`}>
                                         <div className="flex-1 min-w-0">
                                             <div className={`text-sm font-medium ${colors.text}`}>{browser.name}</div>
                                             <div className={`text-xs ${colors.textMuted} truncate`}>{browser.path}</div>
@@ -698,7 +699,7 @@ function Settings() {
                                             )}
                                             <button
                                                 onClick={() => handleSelectBrowser(browser, false)}
-                                                className={`btn-icon px-3 py-1.5 text-xs rounded-lg transition-colors ${isDark ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'} ${colors.text}`}
+                                                className={`btn-icon px-3 py-1.5 text-xs rounded-lg transition-colors ${colors.cardSecondary} ${colors.cardHover} ${colors.text}`}
                                             >
                                                 {t('settings.normalMode')}
                                             </button>
@@ -720,7 +721,7 @@ function Settings() {
                         <Shield size={18} className="text-orange-500" />
                         <h2 className={`text-lg font-semibold ${colors.text}`}>{t('settings.systemMachineGuid')}</h2>
                         {systemMachineInfo?.osType && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10' : 'bg-gray-200'} ${colors.textMuted}`}>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${colors.cardSecondary} ${colors.textMuted}`}>
                                 {systemMachineInfo.osType === 'windows' ? 'Windows' : systemMachineInfo.osType === 'macos' ? 'macOS' : 'Linux'}
                             </span>
                         )}
@@ -734,25 +735,25 @@ function Settings() {
                     </p>
 
                     {/* 当前值 */}
-                    <div className={`${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 mb-4`}>
+                    <div className={`${colors.cardSecondary} rounded-xl p-4 mb-4`}>
                         <div className="flex items-center justify-between mb-3">
                             <span className={`text-sm font-medium ${colors.text}`}>{t('settings.currentMachineGuid')}</span>
                             <button
                                 onClick={loadSettings}
                                 disabled={loading}
-                                className={`btn-icon p-1.5 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-200'} transition-colors`}
+                                className={`btn-icon p-1.5 rounded-lg ${colors.cardHover} transition-colors`}
                             >
                                 <RefreshCw size={14} className={`${colors.textMuted} ${loading ? 'animate-spin' : ''}`} />
                             </button>
                         </div>
                         <div className="flex items-center gap-2">
-                            <code className={`flex-1 text-sm ${isDark ? 'bg-white/10' : 'bg-gray-100'} px-3 py-2 rounded-lg font-mono ${colors.text}`}>
+                            <code className={`flex-1 text-sm ${colors.cardSecondary} px-3 py-2 rounded-lg font-mono ${colors.text}`}>
                                 {systemMachineInfo?.machineGuid || t('common.loading')}
                             </code>
                             {systemMachineInfo?.machineGuid && (
                                 <button
                                     onClick={() => copyToClipboard(systemMachineInfo.machineGuid, 'sysMachineGuid')}
-                                    className={`btn-icon p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} transition-colors`}
+                                    className={`btn-icon p-2 rounded-lg ${colors.cardHover} transition-colors`}
                                 >
                                     {copiedField === 'sysMachineGuid' ? (
                                         <Check size={16} className="text-green-500" />
@@ -766,7 +767,7 @@ function Settings() {
 
                     {/* 警告提示 - 需要管理员权限时显示 */}
                     {systemMachineInfo?.requiresAdmin && (
-                        <div className={`flex items-start gap-3 ${isDark ? 'bg-orange-500/10' : 'bg-orange-50'} rounded-xl p-4 mb-4 border ${isDark ? 'border-orange-500/20' : 'border-orange-200'}`}>
+                        <div className={`flex items-start gap-3 ${colors.warning} rounded-xl p-4 mb-4 border ${colors.warningBorder}`}>
                             <AlertTriangle size={18} className="text-orange-500 flex-shrink-0 mt-0.5" />
                             <div className={`text-xs ${colors.textMuted}`}>
                                 <p className="font-medium text-orange-500 mb-1">{t('settings.adminWarningTitle')}</p>
@@ -781,7 +782,7 @@ function Settings() {
 
                     {/* macOS 提示 */}
                     {systemMachineInfo?.osType === 'macos' && (
-                        <div className={`flex items-start gap-3 ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'} rounded-xl p-4 mb-4 border ${isDark ? 'border-blue-500/20' : 'border-blue-200'}`}>
+                        <div className={`flex items-start gap-3 ${colors.info} rounded-xl p-4 mb-4 border ${colors.infoBorder}`}>
                             <Shield size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
                             <div className={`text-xs ${colors.textMuted}`}>
                                 <p className="font-medium text-blue-500 mb-1">{t('settings.macOSNote')}</p>
@@ -795,8 +796,7 @@ function Settings() {
                         <button
                             onClick={handleResetSystemMachineGuid}
                             disabled={machineGuidAction !== null}
-                            className={`w-full btn-icon px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-all ${isDark ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-red-100 text-red-600 hover:bg-red-200'
-                                } disabled:opacity-50`}
+                            className={`w-full btn-icon px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium transition-all ${colors.danger} ${colors.dangerHover} disabled:opacity-50`}
                         >
                             {machineGuidAction === 'reset' ? <RefreshCw size={16} className="animate-spin" /> : <Shuffle size={16} />}
                             {t('common.reset')}

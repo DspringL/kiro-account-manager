@@ -22,7 +22,7 @@ function ConfirmDialog({
   loading = false,
 }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   
   // Use i18n defaults if not provided
   const finalConfirmText = confirmText || t('common.ok')
@@ -77,10 +77,10 @@ function ConfirmDialog({
       <div 
         className={`
           relative overflow-hidden
-          ${isDark ? 'bg-[#1a1a1a]' : 'bg-white'} 
+          ${isLightTheme ? 'bg-white' : 'bg-[#1a1a1a]'} 
           rounded-2xl w-full max-w-[400px] 
-          shadow-2xl ${isDark ? 'shadow-black/50' : 'shadow-gray-200/50'}
-          border ${isDark ? 'border-white/10' : 'border-gray-200'}
+          shadow-2xl ${isLightTheme ? 'shadow-gray-200/50' : 'shadow-black/50'}
+          border ${isLightTheme ? 'border-gray-200' : 'border-white/10'}
         `}
         onClick={e => e.stopPropagation()}
         style={{ animation: 'dialogSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
@@ -98,7 +98,7 @@ function ConfirmDialog({
               <div className={`
                 w-12 h-12 rounded-2xl ${iconBg} 
                 flex items-center justify-center
-                ring-1 ${isDark ? 'ring-white/10' : 'ring-black/5'}
+                ring-1 ${isLightTheme ? 'ring-black/5' : 'ring-white/10'}
                 shadow-lg
               `}>
                 <Icon size={24} className={iconColor} strokeWidth={2} />
@@ -111,7 +111,7 @@ function ConfirmDialog({
               onClick={onCancel} 
               className={`
                 p-2 rounded-xl transition-all duration-200
-                ${isDark ? 'hover:bg-white/10 active:bg-white/5' : 'hover:bg-gray-100 active:bg-gray-50'}
+                ${isLightTheme ? 'hover:bg-gray-100 active:bg-gray-50' : 'hover:bg-white/10 active:bg-white/5'}
               `}
             >
               <X size={18} className={colors.textMuted} />
@@ -129,7 +129,7 @@ function ConfirmDialog({
         {/* Footer */}
         <div className={`
           relative px-6 py-5 
-          ${isDark ? 'bg-white/[0.02] border-t border-white/5' : 'bg-gray-50/80 border-t border-gray-100'}
+          ${isLightTheme ? 'bg-gray-50/80 border-t border-gray-100' : 'bg-white/[0.02] border-t border-white/5'}
           flex justify-end gap-3
         `}>
           {type === 'confirm' && (
@@ -137,7 +137,7 @@ function ConfirmDialog({
               onClick={onCancel}
               className={`
                 px-5 py-2.5 text-sm font-medium rounded-xl 
-                ${isDark ? 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10' : 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200'}
+                ${isLightTheme ? 'bg-white hover:bg-gray-50 text-gray-700 border border-gray-200' : 'bg-white/5 hover:bg-white/10 text-white/80 border border-white/10'}
                 transition-all duration-200 active:scale-[0.98]
               `}
             >

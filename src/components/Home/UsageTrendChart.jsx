@@ -6,7 +6,7 @@ import { useApp } from '../../hooks/useApp'
 
 export default function UsageTrendChart({ accounts, stats }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const [usageHistory, setUsageHistory] = useState([])
 
   // 加载并保存历史记录
@@ -62,7 +62,7 @@ export default function UsageTrendChart({ accounts, stats }) {
             <line
               key={i}
               x1="40" y1={y} x2="390" y2={y}
-              stroke={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
+              stroke={isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}
               strokeDasharray="2,2"
             />
           ))}
@@ -73,7 +73,7 @@ export default function UsageTrendChart({ accounts, stats }) {
               key={i}
               x="35" y={140 - ratio * 140 + 4}
               textAnchor="end"
-              className={`text-[10px] ${isDark ? 'fill-gray-400' : 'fill-gray-500'}`}
+              className={`text-[10px] ${isLightTheme ? 'fill-gray-500' : 'fill-gray-400'}`}
             >
               {Math.round(maxUsed * ratio)}
             </text>
@@ -143,7 +143,7 @@ export default function UsageTrendChart({ accounts, stats }) {
                   key={h.date}
                   x={x} y="138"
                   textAnchor="middle"
-                  className={`text-[9px] ${isDark ? 'fill-gray-400' : 'fill-gray-500'}`}
+                  className={`text-[9px] ${isLightTheme ? 'fill-gray-500' : 'fill-gray-400'}`}
                 >
                   {h.date.slice(5)}
                 </text>

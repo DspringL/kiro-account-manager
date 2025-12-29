@@ -39,6 +39,7 @@ function AccountManager() {
     providers: [],
     usageRange: null
   })
+  const [sortBy, setSortBy] = useState('default')
   
   // 当前登录的本地 token
   const [localToken, setLocalToken] = useState(null)
@@ -109,6 +110,26 @@ function AccountManager() {
     }
   }, [allTags, selectedTag])
 
+  // 获取试用到期时间戳
+  const getTrialExpiry = (account) => {
+    const expiry = account.quota_breakdown?.freeTrialInfo?.freeTrialExpiry
+    if (!expiry) return Infinity // 没有试用的排最后
+    return expiry
+  }
+
+  // 获取使用率
+  const getUsagePercent = (account) => {
+    const breakdown = account.quota_breakdown
+    if (!breakdown) return 0
+    const total = (breakdown.mainQuota?.usageLimit || 0) + 
+                  (breakdown.freeTrialInfo?.usageLimit || 0) +
+                  (breakdown.bonuses?.reduce((sum, b) => sum + (b.usageLimit || 0), 0) || 0)
+    const used = (breakdown.mainQuota?.currentUsage || 0) + 
+                 (breakdown.freeTrialInfo?.currentUsage || 0) +
+                 (breakdown.bonuses?.reduce((sum, b) => sum + (b.currentUsage || 0), 0) || 0)
+    return total > 0 ? (used / total) : 0
+  }
+
   const filteredAccounts = useMemo(() => {
     let result = accounts.filter(a => {
       const term = searchTerm.toLowerCase()
@@ -126,8 +147,29 @@ function AccountManager() {
       return matchSearch && matchTag && matchStatus
     })
     // 应用高级筛选
-    return applyFilters(result, advancedFilters)
-  }, [accounts, searchTerm, selectedTag, selectedStatus, tagDefinitions, advancedFilters])
+    result = applyFilters(result, advancedFilters)
+    
+    // 排序
+    if (sortBy !== 'default') {
+      result = [...result].sort((a, b) => {
+        switch (sortBy) {
+          case 'trialExpiry':
+            return getTrialExpiry(a) - getTrialExpiry(b)
+          case 'usageAsc':
+            return getUsagePercent(a) - getUsagePercent(b)
+          case 'usageDesc':
+            return getUsagePercent(b) - getUsagePercent(a)
+          case 'addedAsc':
+            return new Date(a.added_at || 0) - new Date(b.added_at || 0)
+          case 'addedDesc':
+            return new Date(b.added_at || 0) - new Date(a.added_at || 0)
+          default:
+            return 0
+        }
+      })
+    }
+    return result
+  }, [accounts, searchTerm, selectedTag, selectedStatus, tagDefinitions, advancedFilters, sortBy])
 
   const handleSearchChange = useCallback((term) => { setSearchTerm(term) }, [])
   const handleTagFilter = useCallback((tag) => { setSelectedTag(tag) }, [])
@@ -151,12 +193,6 @@ function AccountManager() {
   const handleDelete = useCallback(async (id) => {
     const confirmed = await showConfirm(t('accounts.delete'), t('accounts.confirmDelete'))
     if (confirmed) {
-      // 删除账号前，清理绑定的机器码
-      try {
-        await invoke('unbind_machine_id_from_account', { accountId: id }).catch(() => {})
-      } catch (e) {
-        console.error('清理机器码绑定失败:', e)
-      }
       await invoke('delete_account', { id })
       loadAccounts()
     }
@@ -171,8 +207,6 @@ function AccountManager() {
     if (confirmed) {
       try {
         await invoke('delete_account_remote', { id: account.id, deleteLocal: true })
-        // 清理绑定的机器码
-        await invoke('unbind_machine_id_from_account', { accountId: account.id }).catch(() => {})
         loadAccounts()
       } catch (e) {
         console.error('远程删除账号失败:', e)
@@ -185,14 +219,6 @@ function AccountManager() {
     if (selectedIds.length === 0) return
     const confirmed = await showConfirm(t('accounts.batchDelete'), t('accounts.confirmDeleteMultiple', { count: selectedIds.length }))
     if (confirmed) {
-      // 删除账号前，清理所有绑定的机器码
-      try {
-        await Promise.all(
-          selectedIds.map(id => invoke('unbind_machine_id_from_account', { accountId: id }).catch(() => {}))
-        )
-      } catch (e) {
-        console.error('清理机器码绑定失败:', e)
-      }
       await invoke('delete_accounts', { ids: selectedIds })
       setSelectedIds([])
       loadAccounts()
@@ -220,6 +246,8 @@ function AccountManager() {
         onTagFilter={handleTagFilter}
         selectedStatus={selectedStatus}
         onStatusFilter={handleStatusFilter}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
         advancedFilters={advancedFilters}

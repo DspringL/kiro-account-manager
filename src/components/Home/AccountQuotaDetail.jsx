@@ -7,7 +7,7 @@ function AccountQuotaDetail({
   refreshingAccount, 
   handleRefreshCurrentAccount, 
   maskEmail,
-  isDark, 
+  isLightTheme, 
   colors, 
   t 
 }) {
@@ -55,7 +55,7 @@ function AccountQuotaDetail({
         refreshingAccount={refreshingAccount}
         handleRefreshCurrentAccount={handleRefreshCurrentAccount}
         maskEmail={maskEmail}
-        isDark={isDark}
+        isLightTheme={isLightTheme}
         colors={colors}
         t={t}
       />
@@ -66,7 +66,7 @@ function AccountQuotaDetail({
           currentPercent={currentPercent}
           currentUsed={currentUsed}
           currentQuota={currentQuota}
-          isDark={isDark}
+          isLightTheme={isLightTheme}
           colors={colors}
           t={t}
         />
@@ -77,7 +77,7 @@ function AccountQuotaDetail({
             <SubscriptionDetails 
               subInfo={subInfo}
               overageConfig={overageConfig}
-              isDark={isDark}
+              isLightTheme={isLightTheme}
               colors={colors}
               t={t}
             />
@@ -87,7 +87,7 @@ function AccountQuotaDetail({
             userInfo={userInfo}
             breakdown={breakdown}
             nextDateReset={nextDateReset}
-            isDark={isDark}
+            isLightTheme={isLightTheme}
             colors={colors}
             t={t}
           />
@@ -100,7 +100,7 @@ function AccountQuotaDetail({
           mainPercent={mainPercent}
           freeTrial={freeTrial}
           bonuses={bonuses}
-          isDark={isDark}
+          isLightTheme={isLightTheme}
           colors={colors}
           t={t}
         />
@@ -110,7 +110,7 @@ function AccountQuotaDetail({
 }
 
 // 账号头部
-function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refreshingAccount, handleRefreshCurrentAccount, maskEmail, isDark, colors, t }) {
+function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refreshingAccount, handleRefreshCurrentAccount, maskEmail, isLightTheme, colors, t }) {
   return (
     <div className={`px-5 py-4 border-b ${colors.cardBorder} flex items-center gap-4`}>
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md ${
@@ -127,7 +127,7 @@ function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refr
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${
               subInfo.type.includes('PRO+') ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' :
               subInfo.type.includes('PRO') ? 'bg-blue-500 text-white' :
-              (isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-700')
+              (isLightTheme ? 'bg-gray-200 text-gray-700' : 'bg-gray-600 text-gray-300')
             }`}>
               {subInfo.subscriptionTitle || 'Free'}
             </span>
@@ -141,7 +141,7 @@ function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refr
       <button 
         onClick={handleRefreshCurrentAccount}
         disabled={refreshingAccount}
-        className={`btn-icon p-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-xl disabled:opacity-50 transition-all`}
+        className={`btn-icon p-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-xl disabled:opacity-50 transition-all`}
         title={t('home.refreshAccount')}
       >
         <RefreshCw size={16} className={`${colors.textMuted} ${refreshingAccount ? 'animate-spin' : ''}`} />
@@ -151,19 +151,19 @@ function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refr
 }
 
 // 本月用量进度
-function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isDark, colors, t }) {
+function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isLightTheme, colors, t }) {
   return (
-    <div className={`${isDark ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10' : 'bg-gradient-to-r from-blue-50 to-purple-50'} rounded-xl p-4 mb-4`}>
+    <div className={`${isLightTheme ? 'bg-gradient-to-r from-blue-50 to-purple-50' : 'bg-gradient-to-r from-blue-500/10 to-purple-500/10'} rounded-xl p-4 mb-4`}>
       <div className="flex items-center justify-between mb-2">
         <span className={`text-sm font-medium ${colors.text}`}>{t('home.monthlyUsage')}</span>
         <div className="flex items-center gap-2">
           <span className={`text-lg font-bold ${
-            currentPercent > 80 ? 'text-red-500' : currentPercent > 50 ? 'text-amber-500' : (isDark ? 'text-blue-400' : 'text-blue-600')
+            currentPercent > 80 ? 'text-red-500' : currentPercent > 50 ? 'text-amber-500' : (isLightTheme ? 'text-blue-600' : 'text-blue-400')
           }`}>{currentPercent}%</span>
           <span className={`text-xs ${colors.textMuted}`}>{currentUsed} / {currentQuota}</span>
         </div>
       </div>
-      <div className={`h-2.5 ${isDark ? 'bg-white/10' : 'bg-white'} rounded-full overflow-hidden shadow-inner`}>
+      <div className={`h-2.5 ${isLightTheme ? 'bg-white' : 'bg-white/10'} rounded-full overflow-hidden shadow-inner`}>
         <div 
           className={`h-full rounded-full transition-all duration-500 ${
             currentPercent > 80 ? 'bg-gradient-to-r from-red-400 to-red-500' : 
@@ -178,10 +178,10 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isDar
 }
 
 // 订阅详情
-function SubscriptionDetails({ subInfo, overageConfig, isDark, colors, t }) {
+function SubscriptionDetails({ subInfo, overageConfig, isLightTheme, colors, t }) {
   return (
-    <div className={`${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-lg p-3`}>
-      <div className={`text-[10px] font-medium ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-2 uppercase tracking-wide`}>{t('home.subscriptionDetails')}</div>
+    <div className={`${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} rounded-lg p-3`}>
+      <div className={`text-[10px] font-medium ${isLightTheme ? 'text-blue-600' : 'text-blue-400'} mb-2 uppercase tracking-wide`}>{t('home.subscriptionDetails')}</div>
       <div className="space-y-1.5 text-xs">
         <div className="flex justify-between">
           <span className={colors.textMuted}>{t('home.type')}</span>
@@ -213,10 +213,10 @@ function SubscriptionDetails({ subInfo, overageConfig, isDark, colors, t }) {
 }
 
 // 账户信息
-function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, isDark, colors, t }) {
+function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, isLightTheme, colors, t }) {
   return (
-    <div className={`${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-lg p-3`}>
-      <div className={`text-[10px] font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'} mb-2 uppercase tracking-wide`}>{t('home.accountInfo')}</div>
+    <div className={`${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} rounded-lg p-3`}>
+      <div className={`text-[10px] font-medium ${isLightTheme ? 'text-purple-600' : 'text-purple-400'} mb-2 uppercase tracking-wide`}>{t('home.accountInfo')}</div>
       <div className="space-y-1.5 text-xs">
         <div className="flex justify-between">
           <span className={colors.textMuted}>IDP</span>
@@ -242,13 +242,13 @@ function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, isDar
 }
 
 // 额度明细
-function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, isDark, colors, t }) {
+function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, isLightTheme, colors, t }) {
   return (
-    <div className={`${isDark ? 'bg-white/5' : 'bg-gray-50'} rounded-lg p-3`}>
+    <div className={`${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} rounded-lg p-3`}>
       <div className={`text-[10px] font-medium ${colors.text} mb-2 uppercase tracking-wide`}>{t('home.quotaDetails')}</div>
       <div className="space-y-2">
         {/* 基础额度 */}
-        <QuotaRow label={t('home.base')} used={mainUsed} limit={mainLimit} percent={mainPercent} color="blue" isDark={isDark} colors={colors} />
+        <QuotaRow label={t('home.base')} used={mainUsed} limit={mainLimit} percent={mainPercent} color="blue" isLightTheme={isLightTheme} colors={colors} />
 
         {/* 试用额度 */}
         {freeTrial && freeTrial.usageLimit > 0 && (
@@ -259,7 +259,7 @@ function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, 
             percent={freeTrial.usageLimit > 0 ? ((freeTrial.currentUsage ?? 0) / freeTrial.usageLimit * 100) : 0}
             color="purple" 
             expiry={freeTrial.freeTrialExpiry}
-            isDark={isDark} 
+            isLightTheme={isLightTheme} 
             colors={colors}
             t={t}
           />
@@ -275,7 +275,7 @@ function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, 
             percent={bonus.usageLimit > 0 ? ((bonus.currentUsage ?? 0) / bonus.usageLimit * 100) : 0}
             color="amber" 
             expiry={bonus.expiresAt}
-            isDark={isDark} 
+            isLightTheme={isLightTheme} 
             colors={colors}
             t={t}
           />
@@ -286,11 +286,11 @@ function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, 
 }
 
 // 额度行
-function QuotaRow({ label, used, limit, percent, color, expiry, isDark, colors, t }) {
+function QuotaRow({ label, used, limit, percent, color, expiry, isLightTheme, colors, t }) {
   const colorMap = {
-    blue: { dot: 'bg-blue-500', bar: 'bg-blue-500', text: colors.textMuted, barBg: isDark ? 'bg-white/10' : 'bg-gray-200' },
-    purple: { dot: 'bg-purple-500', bar: 'bg-purple-500', text: 'text-purple-500', barBg: isDark ? 'bg-purple-500/20' : 'bg-purple-100' },
-    amber: { dot: 'bg-amber-500', bar: 'bg-amber-500', text: 'text-amber-600', barBg: isDark ? 'bg-amber-500/20' : 'bg-amber-100' }
+    blue: { dot: 'bg-blue-500', bar: 'bg-blue-500', text: colors.textMuted, barBg: isLightTheme ? 'bg-gray-200' : 'bg-white/10' },
+    purple: { dot: 'bg-purple-500', bar: 'bg-purple-500', text: 'text-purple-500', barBg: isLightTheme ? 'bg-purple-100' : 'bg-purple-500/20' },
+    amber: { dot: 'bg-amber-500', bar: 'bg-amber-500', text: 'text-amber-600', barBg: isLightTheme ? 'bg-amber-100' : 'bg-amber-500/20' }
   }
   const c = colorMap[color] || colorMap.blue
   const expiryStr = expiry ? new Date(expiry * 1000).toLocaleDateString() : null

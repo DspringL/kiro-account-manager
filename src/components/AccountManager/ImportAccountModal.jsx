@@ -56,7 +56,7 @@ function validateAccount(item, index) {
 
 function ImportAccountModal({ onClose, onSuccess }) {
   const { t, theme, colors } = useApp()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   const fileInputRef = useRef(null)
   
   // Tab 状态
@@ -72,6 +72,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
   // SSO Token 导入状态
   const [ssoToken, setSsoToken] = useState('')
   const [ssoRegion, setSsoRegion] = useState('us-east-1')
+  const [ssoMachineId, setSsoMachineId] = useState('')
   const [ssoImporting, setSsoImporting] = useState(false)
   const [ssoProgress, setSsoProgress] = useState({ current: 0, total: 0 })
   const [ssoResult, setSsoResult] = useState(null)
@@ -181,14 +182,16 @@ function ImportAccountModal({ onClose, onSuccess }) {
         if (item._type === 'social') {
           account = await invoke('add_account_by_social', {
             refreshToken: item.refreshToken,
-            provider: provider
+            provider: provider,
+            machineId: item.machineId || null
           })
         } else {
           account = await invoke('add_account_by_idc', {
             refreshToken: item.refreshToken,
             clientId: item.clientId,
             clientSecret: item.clientSecret,
-            region: item.region || null
+            region: item.region || null,
+            machineId: item.machineId || null
           })
         }
         return { success: true, index: item._index + 1, email: account.email }
@@ -311,29 +314,29 @@ function ImportAccountModal({ onClose, onSuccess }) {
   // 渲染结果
   const renderResult = (result) => (
     <div className="space-y-4">
-      <div className={`p-4 rounded-xl ${isDark ? 'bg-green-500/20' : 'bg-green-50'}`}>
+      <div className={`p-4 rounded-xl ${isLightTheme ? 'bg-green-50' : 'bg-green-500/20'}`}>
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle size={20} className="text-green-500" />
-          <span className={`font-medium ${isDark ? 'text-green-300' : 'text-green-700'}`}>
+          <span className={`font-medium ${isLightTheme ? 'text-green-700' : 'text-green-300'}`}>
             {t('import.successCount', { count: result.success.length })}
           </span>
         </div>
         {result.success.length > 0 && (
-          <div className={`text-sm ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+          <div className={`text-sm ${isLightTheme ? 'text-green-600' : 'text-green-400'}`}>
             {result.success.map(s => s.email).join(', ')}
           </div>
         )}
       </div>
       
       {result.failed.length > 0 && (
-        <div className={`p-4 rounded-xl ${isDark ? 'bg-red-500/20' : 'bg-red-50'}`}>
+        <div className={`p-4 rounded-xl ${isLightTheme ? 'bg-red-50' : 'bg-red-500/20'}`}>
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle size={20} className="text-red-500" />
-            <span className={`font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>
+            <span className={`font-medium ${isLightTheme ? 'text-red-700' : 'text-red-300'}`}>
               {t('import.failedCount', { count: result.failed.length })}
             </span>
           </div>
-          <div className={`text-sm space-y-1 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+          <div className={`text-sm space-y-1 ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>
             {result.failed.map((f, i) => (
               <div key={i}>#{f.index}: {f.error}</div>
             ))}
@@ -350,7 +353,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
         <Loader2 size={20} className="text-blue-500 animate-spin" />
         <span className={colors.text}>{isSSO ? t('import.ssoImporting') : t('import.importing')}</span>
       </div>
-      <div className={`h-2 ${isDark ? 'bg-white/10' : 'bg-gray-200'} rounded-full overflow-hidden`}>
+      <div className={`h-2 ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'} rounded-full overflow-hidden`}>
         <div 
           className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-300"
           style={{ width: `${(progress.current / progress.total) * 100}%` }}
@@ -374,7 +377,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
           <button 
             onClick={handleClose}
             disabled={importing || ssoImporting}
-            className={`p-1 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} transition-colors disabled:opacity-50`}
+            className={`p-1 rounded-lg ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} transition-colors disabled:opacity-50`}
           >
             <X size={20} className={colors.textMuted} />
           </button>
@@ -435,7 +438,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className={`flex items-center gap-2 px-4 py-2 ${isDark ? 'bg-white/10 hover:bg-white/15' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl transition-colors`}
+                  className={`flex items-center gap-2 px-4 py-2 ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/10 hover:bg-white/15'} rounded-xl transition-colors`}
                 >
                   <FileJson size={18} className={colors.textMuted} />
                   <span className={colors.text}>{t('import.selectFile')}</span>
@@ -444,11 +447,12 @@ function ImportAccountModal({ onClose, onSuccess }) {
                   onClick={() => {
                     const template = JSON.stringify([{
                       refreshToken: "",
-                      provider: "Google"
+                      provider: "Google",
+                      machineId: ""
                     }], null, 2)
                     setJsonText(template)
                   }}
-                  className={`flex items-center gap-2 px-3 py-2 ${isDark ? 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'} rounded-xl transition-colors text-sm`}
+                  className={`flex items-center gap-2 px-3 py-2 ${isLightTheme ? 'bg-blue-50 hover:bg-blue-100 text-blue-600' : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-300'} rounded-xl transition-colors text-sm`}
                 >
                   <FileCode size={16} />
                   {t('import.socialTemplate')}
@@ -460,11 +464,12 @@ function ImportAccountModal({ onClose, onSuccess }) {
                       clientId: "",
                       clientSecret: "",
                       region: "us-east-1",
-                      provider: "BuilderId"
+                      provider: "BuilderId",
+                      machineId: ""
                     }], null, 2)
                     setJsonText(template)
                   }}
-                  className={`flex items-center gap-2 px-3 py-2 ${isDark ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300' : 'bg-purple-50 hover:bg-purple-100 text-purple-600'} rounded-xl transition-colors text-sm`}
+                  className={`flex items-center gap-2 px-3 py-2 ${isLightTheme ? 'bg-purple-50 hover:bg-purple-100 text-purple-600' : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300'} rounded-xl transition-colors text-sm`}
                 >
                   <FileCode size={16} />
                   {t('import.idcTemplate')}
@@ -482,37 +487,39 @@ function ImportAccountModal({ onClose, onSuccess }) {
                   placeholder={`[
   {
     "refreshToken": "aorxxxxxxxx",
-    "provider": "Google"
+    "provider": "Google",
+    "machineId": "可选，不填自动生成"
   },
   {
     "refreshToken": "aorxxxxxxxx",
     "clientId": "xxxxxxxx",
     "clientSecret": "xxxxxxxx",
     "region": "us-east-1",
-    "provider": "BuilderId"
+    "provider": "BuilderId",
+    "machineId": "可选，不填自动生成"
   }
 ]`}
-                  className={`w-full px-3 py-2 rounded-xl border ${colors.cardBorder} ${isDark ? 'bg-white/5' : 'bg-gray-50'} ${colors.text} text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none`}
+                  className={`w-full px-3 py-2 rounded-xl border ${colors.cardBorder} ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} ${colors.text} text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none`}
                 />
               </div>
 
               {parseResult && (
                 <div className="space-y-2">
                   {parseResult.valid.length > 0 && (
-                    <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-green-400' : 'text-green-600'}`}>
+                    <div className={`flex items-center gap-2 text-sm ${isLightTheme ? 'text-green-600' : 'text-green-400'}`}>
                       <CheckCircle size={16} />
                       <span>{t('import.parseSuccess')}: {parseResult.valid.length} {t('import.validRecords')}</span>
                     </div>
                   )}
                   {parseResult.errors.length > 0 && (
-                    <div className={`p-3 rounded-lg ${isDark ? 'bg-red-500/10' : 'bg-red-50'}`}>
+                    <div className={`p-3 rounded-lg ${isLightTheme ? 'bg-red-50' : 'bg-red-500/10'}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <AlertCircle size={16} className="text-red-500" />
-                        <span className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                        <span className={`text-sm font-medium ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>
                           {t('import.validationError')}
                         </span>
                       </div>
-                      <div className={`text-xs space-y-0.5 ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+                      <div className={`text-xs space-y-0.5 ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>
                         {parseResult.errors.slice(0, 5).map((err, i) => (
                           <div key={i}>{err}</div>
                         ))}
@@ -530,8 +537,8 @@ function ImportAccountModal({ onClose, onSuccess }) {
           {/* SSO Token 导入输入区 */}
           {!importResult && !ssoResult && !importing && !ssoImporting && activeTab === 'sso' && (
             <>
-              <div className={`p-3 rounded-xl ${isDark ? 'bg-blue-500/10' : 'bg-blue-50'} border ${isDark ? 'border-blue-500/20' : 'border-blue-200'}`}>
-                <div className={`text-sm ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
+              <div className={`p-3 rounded-xl ${isLightTheme ? 'bg-blue-50' : 'bg-blue-500/10'} border ${isLightTheme ? 'border-blue-200' : 'border-blue-500/20'}`}>
+                <div className={`text-sm ${isLightTheme ? 'text-blue-700' : 'text-blue-300'}`}>
                   <p className="font-medium mb-1">{t('import.ssoGuide')}</p>
                   <ol className="list-decimal list-inside space-y-0.5 text-xs">
                     <li>{t('import.ssoStep1')}</li>
@@ -552,7 +559,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
                   onChange={(e) => setSsoToken(e.target.value)}
                   rows={6}
                   placeholder={t('import.ssoTokenPlaceholder')}
-                  className={`w-full px-3 py-2 rounded-xl border ${colors.cardBorder} ${isDark ? 'bg-white/5' : 'bg-gray-50'} ${colors.text} text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none`}
+                  className={`w-full px-3 py-2 rounded-xl border ${colors.cardBorder} ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} ${colors.text} text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none`}
                 />
               </div>
 
@@ -563,17 +570,17 @@ function ImportAccountModal({ onClose, onSuccess }) {
                 <select
                   value={ssoRegion}
                   onChange={(e) => setSsoRegion(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-xl border ${colors.cardBorder} ${isDark ? 'bg-zinc-800 text-white' : 'bg-gray-50 text-gray-900'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30`}
+                  className={`w-full px-3 py-2 rounded-xl border ${colors.cardBorder} ${isLightTheme ? 'bg-gray-50 text-gray-900' : 'bg-zinc-800 text-white'} text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30`}
                 >
-                  <option value="us-east-1" className={isDark ? 'bg-zinc-800' : ''}>us-east-1</option>
-                  <option value="us-west-2" className={isDark ? 'bg-zinc-800' : ''}>us-west-2</option>
-                  <option value="eu-west-1" className={isDark ? 'bg-zinc-800' : ''}>eu-west-1</option>
-                  <option value="ap-northeast-1" className={isDark ? 'bg-zinc-800' : ''}>ap-northeast-1</option>
+                  <option value="us-east-1" className={!isLightTheme ? 'bg-zinc-800' : ''}>us-east-1</option>
+                  <option value="us-west-2" className={!isLightTheme ? 'bg-zinc-800' : ''}>us-west-2</option>
+                  <option value="eu-west-1" className={!isLightTheme ? 'bg-zinc-800' : ''}>eu-west-1</option>
+                  <option value="ap-northeast-1" className={!isLightTheme ? 'bg-zinc-800' : ''}>ap-northeast-1</option>
                 </select>
               </div>
 
               {ssoToken.trim() && (
-                <div className={`flex items-center gap-2 text-sm ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+                <div className={`flex items-center gap-2 text-sm ${isLightTheme ? 'text-blue-600' : 'text-blue-400'}`}>
                   <CheckCircle size={16} />
                   <span>{t('import.detectedTokens', { count: ssoToken.split('\n').filter(t => t.trim()).length })}</span>
                 </div>
@@ -588,7 +595,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
             <>
               <button
                 onClick={handleReset}
-                className={`px-4 py-2 rounded-xl ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} ${colors.text}`}
+                className={`px-4 py-2 rounded-xl ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} ${colors.text}`}
               >
                 {t('import.continueImport')}
               </button>
@@ -604,7 +611,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
               <button
                 onClick={onClose}
                 disabled={importing || ssoImporting}
-                className={`px-4 py-2 rounded-xl ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} ${colors.text} disabled:opacity-50`}
+                className={`px-4 py-2 rounded-xl ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} ${colors.text} disabled:opacity-50`}
               >
                 {t('common.cancel')}
               </button>

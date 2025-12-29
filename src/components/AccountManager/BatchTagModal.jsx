@@ -13,7 +13,7 @@ const PRESET_COLORS = [
 function BatchTagModal({ accountIds, onClose, onSuccess }) {
   const { t, theme, colors } = useApp()
   const { showError } = useDialog()
-  const isDark = theme === 'dark'
+  const isLightTheme = theme === 'light'
   
   const [tags, setTags] = useState([])
   const [selectedTagIds, setSelectedTagIds] = useState([])
@@ -67,7 +67,7 @@ function BatchTagModal({ accountIds, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className={`${isDark ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
+      <div className={`${isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'} rounded-xl w-full max-w-md shadow-2xl`} onClick={e => e.stopPropagation()}>
         {/* 头部 */}
         <div className={`flex items-center justify-between px-5 py-4 border-b ${colors.cardBorder}`}>
           <div className="flex items-center gap-2">
@@ -75,7 +75,7 @@ function BatchTagModal({ accountIds, onClose, onSuccess }) {
             <h3 className={`font-medium ${colors.text}`}>{t('tags.batchSet')}</h3>
             <span className={`text-sm ${colors.textMuted}`}>({accountIds.length})</span>
           </div>
-          <button onClick={onClose} className={`p-1.5 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-lg`}>
+          <button onClick={onClose} className={`p-1.5 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}>
             <X size={18} className={colors.textMuted} />
           </button>
         </div>
@@ -143,7 +143,7 @@ function BatchTagModal({ accountIds, onClose, onSuccess }) {
 
         {/* 底部 */}
         <div className={`flex justify-end gap-3 px-5 py-4 border-t ${colors.cardBorder}`}>
-          <button onClick={onClose} className={`px-4 py-2 ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} rounded-lg text-sm ${colors.text}`}>
+          <button onClick={onClose} className={`px-4 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg text-sm ${colors.text}`}>
             {t('common.cancel')}
           </button>
           <button onClick={handleSubmit} disabled={loading}
