@@ -193,11 +193,6 @@ pub async fn add_account_by_social(
     machine_id: Option<String>,
     access_token: Option<String>,
 ) -> Result<Account, String> {
-    {
-        let store = state.store.lock().unwrap();
-        check_account_limit(store.accounts.len())?;
-    }
-    
     let idp = provider.clone().unwrap_or_else(|| "Google".to_string());
     
     // 先尝试用传入的 access_token 获取配额
@@ -349,11 +344,6 @@ pub async fn add_account_by_idc(
     machine_id: Option<String>,
     access_token: Option<String>,
 ) -> Result<Account, String> {
-    {
-        let store = state.store.lock().unwrap();
-        check_account_limit(store.accounts.len())?;
-    }
-    
     let region = region.unwrap_or_else(|| "us-east-1".to_string());
     
     // 先尝试用传入的 access_token 获取配额

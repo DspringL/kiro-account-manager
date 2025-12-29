@@ -77,8 +77,18 @@ function ImportAccountModal({ onClose, onSuccess }) {
   const [ssoProgress, setSsoProgress] = useState({ current: 0, total: 0 })
   const [ssoResult, setSsoResult] = useState(null)
 
-  // 最大导入数量限制
-  const MAX_IMPORT_COUNT = 100
+  // 导入数量不再限制
+
+  // 根据数量动态调整并发数
+  const getConcurrency = (count) => {
+    if (count <= 10) return 3
+    if (count <= 50) return 5
+    if (count <= 100) return 10
+    if (count <= 500) return 20
+    if (count <= 1000) return 30
+    if (count <= 2000) return 40
+    return 50
+  }
 
   // 解析 JSON
   const parseJson = (text) => {
@@ -91,16 +101,6 @@ function ImportAccountModal({ onClose, onSuccess }) {
       let data = JSON.parse(text)
       if (!Array.isArray(data)) {
         data = [data]
-      }
-      
-      // 检查数量限制
-      if (data.length > MAX_IMPORT_COUNT) {
-        setParseResult({ 
-          valid: [], 
-          invalid: [], 
-          errors: [t('import.exceedLimit', { max: MAX_IMPORT_COUNT, count: data.length })] 
-        })
-        return
       }
       
       const valid = []
@@ -140,16 +140,14 @@ function ImportAccountModal({ onClose, onSuccess }) {
     parseJson(text)
   }
 
-  // 并发数限制
-  const CONCURRENCY_LIMIT = 5
-
   // 分批并发执行
   const runConcurrent = async (items, handler, onProgress) => {
     const results = []
     let completed = 0
+    const concurrency = getConcurrency(items.length)
     
-    for (let i = 0; i < items.length; i += CONCURRENCY_LIMIT) {
-      const batch = items.slice(i, i + CONCURRENCY_LIMIT)
+    for (let i = 0; i < items.length; i += concurrency) {
+      const batch = items.slice(i, i + concurrency)
       const batchResults = await Promise.all(
         batch.map(async (item, batchIndex) => {
           const result = await handler(item)
@@ -236,15 +234,6 @@ function ImportAccountModal({ onClose, onSuccess }) {
     const tokens = ssoToken.split('\n').map(t => t.trim()).filter(t => t)
     if (tokens.length === 0) return
     
-    // 检查数量限制
-    if (tokens.length > MAX_IMPORT_COUNT) {
-      setSsoResult({ 
-        success: [], 
-        failed: [{ index: 0, error: t('import.exceedLimit', { max: MAX_IMPORT_COUNT, count: tokens.length }) }] 
-      })
-      return
-    }
-    
     setSsoImporting(true)
     setSsoProgress({ current: 0, total: tokens.length })
     
@@ -268,12 +257,12 @@ function ImportAccountModal({ onClose, onSuccess }) {
       }
     }
     
-    // SSO 导入并发数限制为 3（因为每个请求涉及多步骤）
-    const SSO_CONCURRENCY = 3
+    // SSO 导入并发数（根据数量动态调整）
+    const ssoConcurrency = getConcurrency(tokens.length)
     const tokensWithIndex = tokens.map((token, index) => ({ token, index }))
     
-    for (let i = 0; i < tokensWithIndex.length; i += SSO_CONCURRENCY) {
-      const batch = tokensWithIndex.slice(i, i + SSO_CONCURRENCY)
+    for (let i = 0; i < tokensWithIndex.length; i += ssoConcurrency) {
+      const batch = tokensWithIndex.slice(i, i + ssoConcurrency)
       const batchResults = await Promise.all(
         batch.map(({ token, index }) => importOne(token, index))
       )
@@ -286,7 +275,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
         }
       })
       
-      setSsoProgress({ current: Math.min(i + SSO_CONCURRENCY, tokens.length), total: tokens.length })
+      setSsoProgress({ current: Math.min(i + ssoConcurrency, tokens.length), total: tokens.length })
     }
     
     setSsoProgress({ current: tokens.length, total: tokens.length })

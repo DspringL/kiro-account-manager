@@ -5,7 +5,7 @@ use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, SocialProvide
 
 // 常量
 pub const START_URL: &str = "https://view.awsapps.com/start";
-pub const MAX_ACCOUNT_COUNT: usize = 500;
+pub const MAX_ACCOUNT_COUNT: usize = 4000;
 
 /// Token 刷新结果
 pub struct RefreshResult {
@@ -146,15 +146,6 @@ pub fn find_existing_account_idx(
         accounts.iter().position(|a| {
             a.provider.as_deref() == Some(provider) && a.refresh_token.as_ref() == Some(&refresh_token.to_string())
         })
-    }
-}
-
-/// 检查账号数量上限
-pub fn check_account_limit(count: usize) -> Result<(), String> {
-    if count >= MAX_ACCOUNT_COUNT {
-        Err(format!("账号数量已达上限 ({})，无法继续添加", MAX_ACCOUNT_COUNT))
-    } else {
-        Ok(())
     }
 }
 
