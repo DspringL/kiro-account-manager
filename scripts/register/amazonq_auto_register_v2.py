@@ -295,7 +295,9 @@ def hide_cookie_banner(sb):
 def save_account_to_file(email, password, client_id, client_secret, refresh_token, access_token):
     """保存账号信息到 JSON 文件 - 线程安全"""
     try:
-        json_file = "registered_accounts.json"
+        # 获取脚本所在目录
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        json_file = os.path.join(script_dir, "registered_accounts.json")
         machine_id = str(uuid.uuid4())
         
         account = {
@@ -874,14 +876,18 @@ def main():
     print(f"   并发窗口: {concurrent_windows} 个")
     print(f"   注册流程: 邮箱 → 用户名 → 验证码 → 密码 → 确认")
     print(f"   保存格式: JSON")
-    print(f"   保存文件: registered_accounts.json (增量存储)")
+    # 获取脚本所在目录
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    json_file = os.path.join(script_dir, "registered_accounts.json")
+    
+    print(f"   保存文件: {json_file} (增量存储)")
     print("")
 
     # 检查已有账号数量
     existing_count = 0
-    if os.path.exists("registered_accounts.json"):
+    if os.path.exists(json_file):
         try:
-            with open("registered_accounts.json", 'r', encoding='utf-8') as f:
+            with open(json_file, 'r', encoding='utf-8') as f:
                 existing_count = len(json.load(f))
         except:
             existing_count = 0
@@ -937,7 +943,7 @@ def main():
     print("="*60)
     print(f"✅ 成功: {success_count} 个账号")
     print(f"❌ 失败: {fail_count} 个账号")
-    print(f"📁 所有账号已保存到: registered_accounts.json")
+    print(f"📁 所有账号已保存到: {json_file}")
     print("="*60)
 
     print("\n👋 完成\n")
