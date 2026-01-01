@@ -116,12 +116,25 @@ def make_headers() -> Dict[str, str]:
     }
 
 
-def post_json(url: str, payload: Dict) -> requests.Response:
-    """发送JSON POST请求（不使用代理）"""
+def post_json(url: str, payload: Dict, max_retries: int = 3) -> requests.Response:
+    """发送JSON POST请求，带重试机制"""
     payload_str = json.dumps(payload, ensure_ascii=False)
-    headers = make_headers()
-    resp = requests.post(url, headers=headers, data=payload_str, timeout=(15, 60))
-    return resp
+    
+    for attempt in range(max_retries):
+        try:
+            headers = make_headers()  # 每次重试生成新的 headers
+            resp = requests.post(url, headers=headers, data=payload_str, timeout=(15, 60))
+            return resp
+        except (requests.exceptions.ConnectionError, ConnectionResetError) as e:
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 2  # 递增等待: 2s, 4s, 6s
+                print(f"   ⚠️ 连接被重置，{wait_time}秒后重试 ({attempt + 1}/{max_retries})...")
+                time.sleep(wait_time)
+            else:
+                raise e
+    
+    # 不应该到达这里，但为了类型安全
+    raise requests.exceptions.ConnectionError("重试次数已用尽")
 
 
 def register_client_min() -> Tuple[str, str]:
@@ -346,21 +359,25 @@ def register_single_account(account_num, total_accounts):
     """注册单个 Amazon Q Developer 账号"""
     mail_handler = None
     
-    print("\n\n" + "🎯"*30)
-    print(f"  [窗口 {account_num}] 开始注册账号 {account_num}/{total_accounts}")
-    print("🎯"*30 + "\n")
+    # 日志辅助函数
+    def log(msg):
+        print(f"[窗口 {account_num}] {msg}")
+    
+    log("=" * 50)
+    log(f"🎯 开始注册账号 {account_num}/{total_accounts}")
+    log("=" * 50)
 
     # 步骤1: 创建 GPTMail 邮箱
-    print(f"[窗口 {account_num}] 步骤1: 创建临时邮箱...")
+    log("步骤1: 创建临时邮箱...")
     
-    mail_handler = GPTMailHandler()
+    mail_handler = GPTMailHandler(log_prefix=f"[窗口 {account_num}]")
     email = mail_handler.generate_email()
     
     if not email:
-        print(f"❌ [窗口 {account_num}] 创建邮箱失败")
+        log("❌ 创建邮箱失败")
         return False
     
-    print(f"[窗口 {account_num}] ✅ 邮箱: {email}")
+    log(f"✅ 邮箱: {email}")
 
     # 生成随机用户名（使用常见英文名）
     first_names = [
@@ -378,7 +395,7 @@ def register_single_account(account_num, total_accounts):
         "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker"
     ]
     username = f"{random.choice(first_names)} {random.choice(last_names)}"
-    print(f"👤 用户名设置为: {username}")
+    log(f"👤 用户名: {username}")
 
     # 生成随机密码（必须包含：大写、小写、数字、符号）
     upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -398,22 +415,18 @@ def register_single_account(account_num, total_accounts):
     # 打乱顺序
     random.shuffle(password)
     password = ''.join(password)
-    print(f"🔑 密码设置为: {password}")
+    log(f"🔑 密码: {password}")
 
     # 步骤2: 调用 AWS Device Authorization API
-    print("\n" + "="*60)
-    print(f"🔑 [窗口 {account_num}] 调用 AWS Device Authorization API")
-    print("="*60)
+    log("步骤2: 调用 AWS Device Authorization API")
 
     try:
         with oidc_lock:
-            print(f"⏳ [窗口 {account_num}] 正在注册 OIDC 客户端...")
+            log("⏳ 正在注册 OIDC 客户端...")
             client_id, client_secret = register_client_min()
-            print(f"✅ [窗口 {account_num}] 客户端注册成功")
-            print(f"   Client ID: {client_id}")
-            print(f"   Client Secret: {client_secret[:20]}...")
+            log(f"✅ 客户端注册成功, Client ID: {client_id[:20]}...")
 
-            print(f"\n⏳ [窗口 {account_num}] 正在获取设备授权...")
+            log("⏳ 正在获取设备授权...")
             device_auth = device_authorize(client_id, client_secret)
             time.sleep(0.5)
 
@@ -423,21 +436,16 @@ def register_single_account(account_num, total_accounts):
         interval = device_auth.get('interval', 5)
         expires_in = device_auth.get('expiresIn', 600)
 
-        print(f"✅ [窗口 {account_num}] 设备授权成功")
-        print(f"   授权链接: {verification_uri_complete}")
-        print(f"   用户代码: {user_code}")
-        print(f"   有效期: {expires_in} 秒")
+        log(f"✅ 设备授权成功, 用户代码: {user_code}")
 
     except Exception as e:
-        print(f"❌ [窗口 {account_num}] Device Authorization 失败: {e}")
+        log(f"❌ Device Authorization 失败: {e}")
         import traceback
         traceback.print_exc()
         return False
 
     # 步骤3: 启动浏览器并打开授权链接
-    print("\n" + "="*60)
-    print(f"🌐 [窗口 {account_num}] 启动独立浏览器会话（无缓存）")
-    print("="*60)
+    log("步骤3: 启动浏览器")
 
     sb_context = None
     sb = None
@@ -450,50 +458,45 @@ def register_single_account(account_num, total_accounts):
     ]
 
     try:
-        print(f"⏳ [窗口 {account_num}] 正在启动浏览器...")
+        log("⏳ 正在启动浏览器...")
         sb_context = SB(uc=True, headless=HEADLESS_MODE, proxy=f"{PROXY_HOST}:{PROXY_PORT}", chromium_arg="--enable-logging --v=1")
         sb = sb_context.__enter__()
-        print(f"✅ [窗口 {account_num}] 浏览器启动成功 ({'无头模式' if HEADLESS_MODE else '有头模式'})")
+        log(f"✅ 浏览器启动成功 ({'无头模式' if HEADLESS_MODE else '有头模式'})")
 
-        print(f"⏳ [窗口 {account_num}] 正在打开授权链接: {verification_uri_complete}")
+        log(f"⏳ 打开授权链接...")
         sb.open(verification_uri_complete)
         sb.sleep(5)
         sb.reconnect(3)
-        print(f"✅ [窗口 {account_num}] 授权页面加载完成")
+        log("✅ 授权页面加载完成")
 
         # 等待重定向到邮箱输入页
-        print("⏳ 等待重定向...")
+        log("⏳ 等待重定向...")
         for i in range(60):
             current_page = get_current_page(sb)
             current_url = sb.get_current_url()
-            if i % 5 == 0:
-                print(f"   [{i}s] 当前页面: {current_page}, URL: {current_url[:60]}...")
+            if i % 10 == 0 and i > 0:
+                log(f"   等待中 [{i}s]...")
             if current_page == 'email':
-                print(f"   ✅ 已到达邮箱页面")
+                log("✅ 已到达邮箱页面")
                 break
             if current_page != 'unknown':
-                print(f"   ✅ 已到达页面: {current_page}")
+                log(f"✅ 已到达页面: {current_page}")
                 break
             time.sleep(1)
         else:
-            print(f"   ⚠️ 等待超时，当前URL: {sb.get_current_url()}")
+            log(f"⚠️ 等待超时")
 
         # 页面1: 输入邮箱
-        print("\n" + "="*60)
-        print("📧 页面1: 输入邮箱")
-        print("="*60)
+        log("📧 页面1: 输入邮箱")
 
         try:
-            current_page = get_current_page(sb)
-            print(f"   当前页面: {current_page}, URL: {sb.get_current_url()}")
-            
             if check_page_error(sb):
-                print("❌ AWS 服务端错误")
+                log("❌ AWS 服务端错误")
                 return False
             
             sb.wait_for_element_visible("input[placeholder='username@example.com']", timeout=20)
             sb.type("input[placeholder='username@example.com']", email)
-            print(f"✅ 已输入邮箱: {email}")
+            log(f"✅ 已输入邮箱: {email}")
 
             hide_cookie_banner(sb)
             sb.sleep(1)
@@ -503,7 +506,7 @@ def register_single_account(account_num, total_accounts):
                 try:
                     if sb.is_element_visible(selector):
                         sb.click(selector)
-                        print("✅ 已点击'继续'")
+                        log("✅ 已点击'继续'")
                         break
                 except:
                     continue
@@ -511,33 +514,37 @@ def register_single_account(account_num, total_accounts):
             sb.reconnect(3)
             
             if check_page_error(sb):
-                print("❌ 邮箱提交失败")
+                log("❌ 邮箱提交失败")
                 return False
             
             new_page = wait_for_page_change(sb, 'email', timeout=15)
             if new_page:
-                print(f"   ✅ 已跳转到: {new_page}")
+                log(f"✅ 已跳转到: {new_page}")
+            else:
+                # 页面未变化，再次检查是否有错误
+                sb.sleep(1)
+                if check_page_error(sb):
+                    log("❌ 邮箱提交失败（页面有错误）")
+                    return False
+                log("⚠️ 页面未变化，继续执行")
 
         except Exception as e:
-            print(f"❌ 页面1失败: {e}")
+            log(f"❌ 页面1失败: {e}")
             return False
 
         # 页面2: 输入用户名
-        print("\n" + "="*60)
-        print("👤 页面2: 输入用户名")
-        print("="*60)
+        log("👤 页面2: 输入用户名")
 
         try:
             current_page = get_current_page(sb)
-            print(f"   当前页面: {current_page}, URL: {sb.get_current_url()}")
             
             # 如果已经跳过姓名页，跳过此步骤
             if current_page == 'verification':
-                print("ℹ️ 已在验证码页面，跳过姓名步骤")
+                log("ℹ️ 已在验证码页面，跳过姓名步骤")
             else:
                 sb.wait_for_element_visible("[data-testid='signup-full-name-input'] input", timeout=15)
                 sb.type("[data-testid='signup-full-name-input'] input", username)
-                print(f"✅ 已输入用户名: {username}")
+                log(f"✅ 已输入用户名: {username}")
 
                 hide_cookie_banner(sb)
                 sb.sleep(1)
@@ -546,7 +553,7 @@ def register_single_account(account_num, total_accounts):
                     try:
                         if sb.is_element_visible(selector):
                             sb.click(selector)
-                            print("✅ 已点击'继续'")
+                            log("✅ 已点击'继续'")
                             break
                     except:
                         continue
@@ -554,40 +561,40 @@ def register_single_account(account_num, total_accounts):
                 sb.reconnect(3)
                 
                 if check_page_error(sb):
-                    print("❌ 用户名提交失败")
+                    log("❌ 用户名提交失败")
                     return False
                 
                 # 等待页面跳转到验证码页
-                print("⏳ 等待页面跳转...")
                 new_page = wait_for_page_change(sb, 'name', timeout=30)
                 if new_page:
-                    print(f"   ✅ 已跳转到: {new_page}")
+                    log(f"✅ 已跳转到: {new_page}")
                 else:
-                    print("   ⚠️ 页面未变化，继续执行")
+                    # 页面未变化，再次检查是否有错误
+                    sb.sleep(1)
+                    if check_page_error(sb):
+                        log("❌ 用户名提交失败（页面有错误）")
+                        return False
+                    log("⚠️ 页面未变化，继续执行")
 
         except Exception as e:
-            print(f"❌ 页面2失败: {e}")
+            log(f"❌ 页面2失败: {e}")
             return False
 
         # 页面3: 输入邮箱验证码
-        print("\n" + "="*60)
-        print("🔢 页面3: 输入邮箱验证码")
-        print("="*60)
+        log("🔢 页面3: 输入邮箱验证码")
 
         try:
-            current_page = get_current_page(sb)
-            print(f"   当前页面: {current_page}, URL: {sb.get_current_url()}")
-            
             sb.wait_for_element_visible("[data-testid='email-verification-form-code-input'] input", timeout=15)
             
             # 获取验证码
+            log("⏳ 等待验证码...")
             verification_code = mail_handler.get_verification_code(email, timeout=120, min_wait=10)
             if not verification_code:
-                print("❌ 未能获取验证码")
+                log("❌ 未能获取验证码")
                 return False
 
             sb.type("[data-testid='email-verification-form-code-input'] input", verification_code)
-            print(f"✅ 已输入验证码: {verification_code}")
+            log(f"✅ 已输入验证码: {verification_code}")
 
             hide_cookie_banner(sb)
             
@@ -595,7 +602,7 @@ def register_single_account(account_num, total_accounts):
                 try:
                     if sb.is_element_visible(selector):
                         sb.click(selector)
-                        print("✅ 已点击'继续'")
+                        log("✅ 已点击'继续'")
                         break
                 except:
                     continue
@@ -603,40 +610,43 @@ def register_single_account(account_num, total_accounts):
             sb.reconnect(3)
             
             if check_page_error(sb):
-                print("❌ 验证码提交失败")
+                log("❌ 验证码提交失败")
                 return False
             
+            current_page = get_current_page(sb)
             new_page = wait_for_page_change(sb, current_page, timeout=20)
             if new_page:
-                print(f"   ✅ 已跳转到: {new_page}")
+                log(f"✅ 已跳转到: {new_page}")
+            else:
+                # 页面未变化，再次检查是否有错误
+                sb.sleep(1)
+                if check_page_error(sb):
+                    log("❌ 验证码提交失败（页面有错误）")
+                    return False
+                log("⚠️ 页面未变化，继续执行")
 
         except Exception as e:
-            print(f"❌ 页面3失败: {e}")
+            log(f"❌ 页面3失败: {e}")
             return False
 
         # 页面4: 设置密码
-        print("\n" + "="*60)
-        print("🔐 页面4: 设置密码")
-        print("="*60)
+        log("🔐 页面4: 设置密码")
 
         try:
             current_page = get_current_page(sb)
-            print(f"   当前页面: {current_page}, URL: {sb.get_current_url()}")
             
             # 等待页面完全加载
             sb.sleep(3)
             
             # 检查是否已跳过密码页
             if current_page == 'allow':
-                print("ℹ️ 已在允许访问页面，跳过密码步骤")
+                log("ℹ️ 已在允许访问页面，跳过密码步骤")
             else:
-                print("⏳ 等待密码输入框出现...")
                 sb.wait_for_element_visible("input[type='password']", timeout=20)
                 sb.sleep(2)
                 
                 # 检查密码框数量
                 pwd_count = sb.execute_script("return document.querySelectorAll(\"input[type='password']\").length")
-                print(f"   找到 {pwd_count} 个密码框")
                 
                 # 输入密码
                 try:
@@ -645,19 +655,18 @@ def register_single_account(account_num, total_accounts):
                     
                     if first_pwd_id:
                         sb.type(f"#{first_pwd_id}", password)
-                        print(f"✅ 已输入第一个密码")
                     else:
                         sb.type("input[type='password']", password)
-                        print(f"✅ 已输入密码")
                     
                     sb.sleep(0.5)
                     
                     if second_pwd_id:
                         sb.type(f"#{second_pwd_id}", password)
-                        print(f"✅ 已输入确认密码")
+                    
+                    log("✅ 已输入密码")
                     
                 except Exception as ex:
-                    print(f"   密码输入异常: {str(ex)[:80]}")
+                    log(f"⚠️ 密码输入异常，尝试JS方式")
                     sb.execute_script(f'''
                         var pwdInputs = document.querySelectorAll("input[type='password']");
                         for (var i = 0; i < pwdInputs.length; i++) {{
@@ -667,7 +676,7 @@ def register_single_account(account_num, total_accounts):
                             pwdInputs[i].dispatchEvent(new Event('change', {{ bubbles: true }}));
                         }}
                     ''')
-                    print(f"✅ 已通过JS输入密码")
+                    log("✅ 已通过JS输入密码")
 
                 hide_cookie_banner(sb)
                 sb.sleep(1)
@@ -677,7 +686,7 @@ def register_single_account(account_num, total_accounts):
                     try:
                         if sb.is_element_visible(selector):
                             sb.click(selector)
-                            print("✅ 已点击'继续'")
+                            log("✅ 已点击'继续'")
                             break
                     except:
                         continue
@@ -685,29 +694,33 @@ def register_single_account(account_num, total_accounts):
                 sb.reconnect(3)
                 
                 if check_page_error(sb):
-                    print("❌ 密码提交失败")
+                    log("❌ 密码提交失败")
                     return False
                 
                 new_page = wait_for_page_change(sb, current_page, timeout=20)
                 if new_page:
-                    print(f"   ✅ 已跳转到: {new_page}")
+                    log(f"✅ 已跳转到: {new_page}")
+                else:
+                    # 页面未变化，再次检查是否有错误
+                    sb.sleep(1)
+                    if check_page_error(sb):
+                        log("❌ 密码提交失败（页面有错误）")
+                        return False
+                    log("⚠️ 页面未变化，继续执行")
 
         except Exception as e:
-            print(f"❌ 页面4失败: {e}")
+            log(f"❌ 页面4失败: {e}")
             return False
 
         # 页面5: 确认并继续（设备确认页）
-        print("\n" + "="*60)
-        print("✅ 页面5: 确认并继续")
-        print("="*60)
+        log("✅ 页面5: 确认并继续")
 
         try:
             current_page = get_current_page(sb)
-            print(f"   当前页面: {current_page}, URL: {sb.get_current_url()}")
             
             # 检查是否已跳过确认页
             if current_page == 'callback':
-                print("ℹ️ 已完成授权，跳过确认步骤")
+                log("ℹ️ 已完成授权，跳过确认步骤")
             elif current_page == 'confirm':
                 sb.sleep(2)
                 
@@ -720,7 +733,7 @@ def register_single_account(account_num, total_accounts):
                     try:
                         if sb.is_element_visible(selector):
                             sb.click(selector)
-                            print("✅ 已点击'确认并继续'")
+                            log("✅ 已点击'确认并继续'")
                             break
                     except:
                         continue
@@ -729,25 +742,22 @@ def register_single_account(account_num, total_accounts):
                 
                 new_page = wait_for_page_change(sb, current_page, timeout=15)
                 if new_page:
-                    print(f"   ✅ 已跳转到: {new_page}")
+                    log(f"✅ 已跳转到: {new_page}")
             else:
-                print(f"ℹ️ 当前不在确认页，跳过")
+                log(f"ℹ️ 当前不在确认页，跳过")
 
         except Exception as e:
-            print(f"ℹ️  页面5处理: {e}")
+            log(f"ℹ️ 页面5处理: {e}")
 
         # 页面6: 允许访问
-        print("\n" + "="*60)
-        print("✅ 页面6: 允许访问")
-        print("="*60)
+        log("✅ 页面6: 允许访问")
 
         try:
             current_page = get_current_page(sb)
-            print(f"   当前页面: {current_page}, URL: {sb.get_current_url()}")
             
             # 检查是否已完成
             if current_page == 'callback':
-                print("ℹ️ 已完成授权")
+                log("ℹ️ 已完成授权")
             elif current_page == 'allow':
                 sb.sleep(2)
                 
@@ -761,30 +771,24 @@ def register_single_account(account_num, total_accounts):
                     try:
                         if sb.is_element_visible(selector):
                             sb.click(selector)
-                            print("✅ 已点击'允许访问'")
+                            log("✅ 已点击'允许访问'")
                             break
                     except:
                         continue
                 
                 sb.reconnect(3)
                 
-                new_page = wait_for_page_change(sb, current_page, timeout=15)
+                new_page = wait_for_page_change(sb, current_page, timeout=5)
                 if new_page:
-                    print(f"   ✅ 已跳转到: {new_page}")
+                    log(f"✅ 已跳转到: {new_page}")
             else:
-                print(f"ℹ️ 当前不在允许访问页，跳过")
+                log(f"ℹ️ 当前不在允许访问页，跳过")
 
         except Exception as e:
-            print(f"ℹ️  页面6处理: {e}")
+            log(f"ℹ️ 页面6处理: {e}")
 
         # 轮询获取 tokens
-        print("\n" + "="*60)
-        print("🔄 等待授权完成并获取 Tokens")
-        print("="*60)
-
-        print("⏳ 正在轮询获取 tokens...")
-        print(f"   最大等待时间: {expires_in} 秒")
-        print(f"   轮询间隔: {interval} 秒")
+        log("🔄 轮询获取 Tokens...")
 
         try:
             tokens = poll_token_device_code(
@@ -800,35 +804,28 @@ def register_single_account(account_num, total_accounts):
             refresh_token = tokens.get('refreshToken')
 
             if access_token and refresh_token:
-                print("\n" + "🎉"*30)
-                print("🎉 账号注册成功！")
-                print("🎉"*30)
-                print(f"\n📧 邮箱: {email}")
-                print(f"🔑 密码: {password}")
-                print(f"\n🔐 Client ID: {client_id}")
-                print(f"🔐 Client Secret: {client_secret[:20]}...")
-                print(f"🔐 Access Token: {access_token[:50]}...")
-                print(f"🔄 Refresh Token: {refresh_token[:50]}...")
+                log("🎉 账号注册成功！")
+                log(f"📧 邮箱: {email}")
+                log(f"🔑 密码: {password}")
 
                 save_account_to_file(email, password, client_id, client_secret, refresh_token, access_token)
 
-                print("\n✅ 浏览器会话即将关闭...")
                 return True
             else:
-                print("❌ Token 数据不完整")
+                log("❌ Token 数据不完整")
                 return False
 
         except TimeoutError:
-            print("❌ 授权超时（5 分钟）")
+            log("❌ 授权超时（5 分钟）")
             return False
         except Exception as e:
-            print(f"❌ 获取 Token 失败: {e}")
+            log(f"❌ 获取 Token 失败: {e}")
             import traceback
             traceback.print_exc()
             return False
 
     except Exception as e:
-        print(f"❌ 注册过程出错: {e}")
+        log(f"❌ 注册过程出错: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -842,7 +839,7 @@ def register_single_account(account_num, total_accounts):
         if sb_context is not None:
             try:
                 sb_context.__exit__(None, None, None)
-                print("✅ 浏览器已关闭，缓存已清空")
+                log("✅ 浏览器已关闭")
             except:
                 pass
 

@@ -31,11 +31,12 @@ class GPTMailHandler:
     
     BASE_URL = 'https://mail.chatgpt.org.uk'
     
-    def __init__(self, proxy: Optional[str] = None):
+    def __init__(self, proxy: Optional[str] = None, log_prefix: str = ""):
         """初始化邮箱处理器。
         
         Args:
             proxy: 代理地址，如 'socks5://127.0.0.1:7897'
+            log_prefix: 日志前缀，如 '[窗口 1]'
         """
         self.session = requests.Session()
         self.session.headers.update({
@@ -51,6 +52,14 @@ class GPTMailHandler:
         if proxy:
             self.session.proxies = {'http': proxy, 'https': proxy}
         self.current_email = None
+        self.log_prefix = log_prefix
+    
+    def _log(self, msg: str):
+        """带前缀的日志输出"""
+        if self.log_prefix:
+            print(f"{self.log_prefix} [MAIL] {msg}")
+        else:
+            print(f"[MAIL] {msg}")
     
     def generate_email(self, prefix: Optional[str] = None) -> Optional[str]:
         """生成邮箱地址（线程安全）。"""
@@ -108,17 +117,16 @@ class GPTMailHandler:
         poll_interval = 1.5
         max_interval = 4.0
         
-        print(f"[MAIL] Waiting for verification email to {email}...")
+        self._log(f"等待验证邮件 {email}...")
         
         while time.time() - start_time < timeout:
             try:
                 emails = self.get_emails(email)
                 elapsed = time.time() - start_time
-                print(f"[MAIL] Found {len(emails)} emails in inbox ({elapsed:.0f}s)")
                 
                 # 超过最少等待时间后，如果还是空邮箱就直接失败
                 if len(emails) == 0 and elapsed >= min_wait:
-                    print(f"[X] No emails after {min_wait}s, skipping...")
+                    self._log(f"等待 {min_wait}s 后无邮件，跳过")
                     return None
                 
                 new_emails = [m for m in emails if m.get('id') not in checked_ids]
@@ -126,12 +134,11 @@ class GPTMailHandler:
                 for mail in new_emails:
                     checked_ids.add(mail.get('id'))
                     subject = mail.get('subject', '')
-                    print(f"[MAIL] Checking email: {subject[:50]}...")
                     
                     # 直接尝试提取验证码，不过滤主题
                     code = self._extract_code(mail)
                     if code:
-                        print(f"[OK] Verification code: {code}")
+                        self._log(f"✅ 验证码: {code}")
                         self.clear_inbox(email)
                         return code
                 
@@ -144,10 +151,10 @@ class GPTMailHandler:
                 
                 time.sleep(poll_interval)
             except Exception as e:
-                print(f"[!] Error: {e}")
+                self._log(f"错误: {e}")
                 time.sleep(3)
         
-        print(f"[X] Verification code not found in {timeout}s")
+        self._log(f"❌ {timeout}s 内未获取到验证码")
         return None
     
     def _extract_code(self, mail: dict) -> Optional[str]:

@@ -83,7 +83,7 @@ class RegisterGUI:
         self.concurrent_spin.pack(side=LEFT, padx=(0, 20))
         
         # 无头模式
-        self.headless_var = ttk.BooleanVar(value=False)
+        self.headless_var = ttk.BooleanVar(value=True)
         self.headless_check = ttk.Checkbutton(
             row1, text="无头模式", variable=self.headless_var,
             bootstyle="primary-round-toggle"
@@ -260,15 +260,22 @@ class RegisterGUI:
         
         try:
             count = self.count_var.get()
-            concurrent = self.concurrent_var.get()
             
-            if count <= 0 or concurrent <= 0:
+            if count <= 0:
                 Messagebox.show_error("数量必须大于 0", title="错误")
                 return
             
-            if concurrent > 5:
+            # 根据账号数量自动设置并发数
+            if count <= 2:
+                concurrent = 1
+            elif count <= 5:
+                concurrent = 2
+            elif count <= 10:
+                concurrent = 3
+            else:
                 concurrent = 5
-                self.concurrent_var.set(5)
+            
+            self.concurrent_var.set(concurrent)
         except:
             Messagebox.show_error("请输入有效数字", title="错误")
             return

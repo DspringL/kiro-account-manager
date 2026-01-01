@@ -4,7 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { useTranslation } from 'react-i18next'
 import { USAGE_RANGES } from './utils/filterUtils'
 
-const SUBSCRIPTION_OPTIONS = ['Free', 'Pro', 'Pro+']
+const SUBSCRIPTION_OPTIONS = ['FREE', 'KIRO FREE', 'KIRO PRO', 'KIRO PRO+']
 const STATUS_OPTIONS = ['normal', 'banned', 'expired']
 const PROVIDER_OPTIONS = ['Google', 'GitHub', 'BuilderId']
 
@@ -33,11 +33,10 @@ function FilterDropdown({ filters, onFiltersChange }) {
     filters.usageRange ? 1 : 0,
   ].reduce((a, b) => a + b, 0)
 
+  // 单选切换：点击已选中的取消，点击未选中的替换
   const toggleFilter = (category, value) => {
     const current = filters[category] || []
-    const newValues = current.includes(value)
-      ? current.filter(v => v !== value)
-      : [...current, value]
+    const newValues = current.includes(value) ? [] : [value]
     onFiltersChange({ ...filters, [category]: newValues })
   }
 
@@ -59,8 +58,8 @@ function FilterDropdown({ filters, onFiltersChange }) {
 
   // 获取订阅类型颜色
   const getSubColor = (sub) => {
-    if (sub === 'Pro+') return 'from-purple-500 to-pink-500'
-    if (sub === 'Pro') return 'from-blue-500 to-cyan-500'
+    if (sub.includes('PRO+')) return 'from-purple-500 to-pink-500'
+    if (sub.includes('PRO')) return 'from-blue-500 to-cyan-500'
     return 'from-gray-400 to-gray-500'
   }
 

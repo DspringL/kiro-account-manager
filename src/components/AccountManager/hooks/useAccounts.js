@@ -52,15 +52,19 @@ export function useAccounts() {
     
     if (accountsToRefresh.length === 0) return
 
+    // 动态计算并发数：数量/10，最小3，最大20
+    const count = accountsToRefresh.length
+    const concurrency = Math.min(20, Math.max(3, Math.ceil(count / 10)))
+
     setAutoRefreshing(true)
     setRefreshProgress({ current: 0, total: accountsToRefresh.length, currentEmail: '', results: [] })
 
     const updatedAccounts = [...accountList]
     const results = []
+    let completed = 0
 
-    for (let i = 0; i < accountsToRefresh.length; i++) {
-      const account = accountsToRefresh[i]
-      setRefreshProgress(prev => ({ ...prev, currentEmail: account.email }))
+    // 单个账号刷新任务
+    const refreshOne = async (account) => {
       let success = false, message = ''
       try {
         const updated = await invoke('sync_account', { id: account.id })
@@ -71,9 +75,17 @@ export function useAccounts() {
       } catch (e) {
         message = String(e).slice(0, 30)
       }
+      completed++
       results.push({ email: account.email, success, message })
-      setRefreshProgress({ current: i + 1, total: accountsToRefresh.length, currentEmail: '', results: [...results] })
-      if (i < accountsToRefresh.length - 1) await new Promise(r => setTimeout(r, 500))
+      setRefreshProgress({ current: completed, total: accountsToRefresh.length, currentEmail: '', results: [...results] })
+      return { account, success, message }
+    }
+
+    // 并发控制：分批执行
+    for (let i = 0; i < accountsToRefresh.length; i += concurrency) {
+      const batch = accountsToRefresh.slice(i, i + concurrency)
+      setRefreshProgress(prev => ({ ...prev, currentEmail: batch.map(a => a.email.split('@')[0]).join(', ') }))
+      await Promise.all(batch.map(refreshOne))
     }
 
     setAccounts(updatedAccounts)

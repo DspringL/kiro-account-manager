@@ -18,12 +18,14 @@ export function applyFilters(accounts, filters) {
   return accounts.filter(account => {
     // 订阅类型筛选 - 使用 subscriptionTitle 字段
     if (filters.subscriptions?.length > 0) {
-      const subTitle = account.usageData?.subscriptionInfo?.subscriptionTitle || ''
-      let subType = 'Free'
-      if (subTitle.toUpperCase().includes('PRO+')) {
-        subType = 'Pro+'
-      } else if (subTitle.toUpperCase().includes('PRO')) {
-        subType = 'Pro'
+      const subTitle = (account.usageData?.subscriptionInfo?.subscriptionTitle || '').toUpperCase()
+      let subType = 'FREE'
+      if (subTitle.includes('PRO+')) {
+        subType = 'KIRO PRO+'
+      } else if (subTitle.includes('PRO')) {
+        subType = 'KIRO PRO'
+      } else if (subTitle.includes('KIRO')) {
+        subType = 'KIRO FREE'
       }
       if (!filters.subscriptions.includes(subType)) return false
     }
