@@ -46,7 +46,7 @@ const ListRow = memo(function ListRow({
       <input type="checkbox" checked={isSelected} onChange={(e) => onSelectOne(account.id, e.target.checked)} className="w-4 h-4 rounded shrink-0 cursor-pointer" onClick={(e) => e.stopPropagation()} />
       
       {/* 邮箱 */}
-      <div className="w-44 shrink-0">
+      <div className="w-52 shrink-0">
         <div className="flex items-center gap-2">
           <span className={`text-sm font-medium truncate ${colors.text}`}>{maskEmail(account.email)}</span>
           {isCurrent && <span className="text-xs px-1.5 py-0.5 bg-blue-500 text-white rounded shrink-0">当前</span>}
@@ -55,7 +55,7 @@ const ListRow = memo(function ListRow({
       </div>
 
       {/* 标签 */}
-      <div className="w-28 shrink-0">
+      <div className="w-36 shrink-0">
         {account.tags?.length > 0 ? (
           <div className="flex items-center gap-1 overflow-hidden">
             {account.tags.slice(0, 1).map(tagId => {
@@ -103,7 +103,7 @@ const ListRow = memo(function ListRow({
       </span>
 
       {/* 到期时间（合并显示） */}
-      <div className="w-24 shrink-0 text-[11px]">
+      <div className="w-32 shrink-0 text-[11px]">
         <span className={colors.textMuted} title="Token 过期">{account.expiresAt?.slice(5, 16).replace('/', '-').replace(' ', ' ') || '-'}</span>
         {account.usageData?.usageBreakdownList?.[0]?.freeTrialInfo?.freeTrialExpiry && (
           <span className={`ml-1 ${isLightTheme ? 'text-orange-600' : 'text-orange-400'}`} title="试用到期">
@@ -167,14 +167,14 @@ function AccountListView({
       {/* 表头 */}
       <div className={`flex items-center gap-3 px-4 py-3 ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-t-xl ${colors.textMuted} text-xs font-semibold uppercase tracking-wider`}>
         <div className="w-4" />
-        <div className="w-44">邮箱</div>
-        <div className="w-28">标签</div>
+        <div className="w-52">邮箱</div>
+        <div className="w-36">标签</div>
         <div className="w-20 text-center">提供商</div>
         <div className="w-20 text-center">订阅类型</div>
         <div className="w-20">配额</div>
         <div className="w-14 text-center">状态</div>
         <div className={`w-16 text-center ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>机器码</div>
-        <div className="w-24">到期</div>
+        <div className="w-32">到期</div>
       </div>
 
       <div ref={scrollRef} className={`flex-1 overflow-auto border border-t-0 ${colors.cardBorder} rounded-b-xl`}>
