@@ -107,20 +107,30 @@ impl TokenManager {
       // Social 类型：使用 Kiro Desktop Auth 刷新
       let refresh_url = format!("https://prod.{}.auth.desktop.kiro.dev/refreshToken", region);
 
+      #[cfg(debug_assertions)]
+      println!("[KiroGate Auth] Refreshing Social token, URL: {}", refresh_url);
+
       let body = serde_json::json!({
         "refreshToken": self.config.refresh_token
       });
 
       let resp = self.client
         .post(&refresh_url)
+        .header("Content-Type", "application/json")
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("刷新 token 请求失败: {}", e))?;
+        .map_err(|e| {
+          #[cfg(debug_assertions)]
+          println!("[KiroGate Auth] Request error: {:?}", e);
+          format!("刷新 token 请求失败: {}", e)
+        })?;
 
       let status = resp.status();
       if !status.is_success() {
         let text = resp.text().await.unwrap_or_default();
+        #[cfg(debug_assertions)]
+        println!("[KiroGate Auth] Response error: {} - {}", status, text);
         if status.as_u16() == 401 {
           return Err("RefreshToken 已过期或无效".to_string());
         }
@@ -129,6 +139,9 @@ impl TokenManager {
 
       let data: RefreshResponse = resp.json().await
         .map_err(|e| format!("解析刷新响应失败: {}", e))?;
+
+      #[cfg(debug_assertions)]
+      println!("[KiroGate Auth] Token refreshed, expires_in: {}", data.expires_in);
 
       let expires_at = Instant::now() + Duration::from_secs((data.expires_in - 60) as u64);
       

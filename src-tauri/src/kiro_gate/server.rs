@@ -2,7 +2,7 @@
 
 use axum::{
   extract::{Json, State},
-  http::{header, HeaderMap, StatusCode},
+  http::{header, HeaderMap, Method, StatusCode},
   response::{IntoResponse, Response},
   routing::{get, post},
   Router,
@@ -73,8 +73,10 @@ pub async fn start_server(port: u16, proxy_api_key: String) -> Result<(), String
 
   let cors = CorsLayer::new()
     .allow_origin(Any)
-    .allow_methods(Any)
-    .allow_headers(Any);
+    .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+    .allow_headers(Any)
+    .expose_headers(Any)
+    .max_age(Duration::from_secs(3600));
 
   let app = Router::new()
     .route("/", get(health_handler))
@@ -170,28 +172,24 @@ async fn chat_completions_handler(
   headers: HeaderMap,
   Json(request): Json<ChatCompletionRequest>,
 ) -> Response {
-  // 验证 API Key 并获取 refresh_token
-  let refresh_token = match verify_api_key(&headers, &state.proxy_api_key) {
-    Ok(token) => token,
+  // 验证 API Key 并获取完整的 Token 信息
+  let verify_result = match verify_api_key(&headers, &state.proxy_api_key) {
+    Ok(result) => result,
     Err(e) => return error_response(StatusCode::UNAUTHORIZED, &e),
   };
 
-  // 从 refresh_token 解析认证信息
-  let (auth_method, profile_arn, client_id, client_secret, region) = 
-    parse_refresh_token_info(&refresh_token);
-
-  // 构建 TokenConfig
+  // 构建 TokenConfig（直接使用验证结果中的信息）
   let config = TokenConfig {
-    refresh_token: refresh_token.clone(),
-    auth_method: auth_method.clone(),
-    profile_arn: profile_arn.clone(),
-    client_id: client_id.clone(),
-    client_secret: client_secret.clone(),
-    region: region.clone(),
+    refresh_token: verify_result.refresh_token.clone(),
+    auth_method: verify_result.auth_method.clone(),
+    profile_arn: verify_result.profile_arn.clone(),
+    client_id: verify_result.client_id.clone(),
+    client_secret: verify_result.client_secret.clone(),
+    region: verify_result.region.clone(),
   };
 
   // 获取 TokenManager
-  let token_manager = state.auth_cache.get_or_create(&refresh_token, config).await;
+  let token_manager = state.auth_cache.get_or_create(&verify_result.refresh_token, config).await;
   
   // 获取 access_token
   let access_token = match token_manager.get_access_token().await {
@@ -208,7 +206,7 @@ async fn chat_completions_handler(
   };
 
   // 根据 region 选择 API host
-  let region = region.as_deref().unwrap_or("us-east-1");
+  let region = verify_result.region.as_deref().unwrap_or("us-east-1");
   let api_host = format!("https://codewhisperer.{}.amazonaws.com", region);
   let url = format!("{}/generateAssistantResponse", api_host);
 
@@ -247,7 +245,17 @@ async fn chat_completions_handler(
 // 辅助函数
 // ============================================================
 
-fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<String, String> {
+/// 验证结果：包含完整的 Token 信息
+struct VerifyResult {
+  refresh_token: String,
+  auth_method: String,
+  profile_arn: Option<String>,
+  client_id: Option<String>,
+  client_secret: Option<String>,
+  region: Option<String>,
+}
+
+fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<VerifyResult, String> {
   let auth_header = headers
     .get(header::AUTHORIZATION)
     .and_then(|v| v.to_str().ok())
@@ -276,19 +284,32 @@ fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<String, St
       return Err("API Key 无效".to_string());
     }
     
-    Ok(parts[1].to_string()) // 返回 REFRESH_TOKEN
+    // 多租户模式默认为 Social 类型
+    Ok(VerifyResult {
+      refresh_token: parts[1].to_string(),
+      auth_method: "social".to_string(),
+      profile_arn: None,
+      client_id: None,
+      client_secret: None,
+      region: Some("us-east-1".to_string()),
+    })
   }
   // 检查传统格式：整个 token 就是 PROXY_API_KEY
   else if token == proxy_api_key {
-    // 传统模式：使用全局配置的 refresh_token
-    // 这里需要从配置中获取，暂时返回错误提示用户使用多租户模式
     Err("传统模式需要服务器配置全局 REFRESH_TOKEN，请使用 PROXY_API_KEY:REFRESH_TOKEN 格式".to_string())
   }
   // 检查用户 API Key 格式：sk-{48位十六进制}
   else if token.starts_with("sk-") && token.len() == 51 {
-    // 用户 API Key 格式，查找映射关系
-    match find_refresh_token_by_api_key(token) {
-      Some(refresh_token) => Ok(refresh_token),
+    // 用户 API Key 格式，查找完整的 Token 信息
+    match find_token_by_api_key(token) {
+      Some(kiro_token) => Ok(VerifyResult {
+        refresh_token: kiro_token.refresh_token,
+        auth_method: if kiro_token.auth_method.is_empty() { "social".to_string() } else { kiro_token.auth_method },
+        profile_arn: kiro_token.profile_arn,
+        client_id: kiro_token.client_id,
+        client_secret: kiro_token.client_secret,
+        region: kiro_token.region.or(Some("us-east-1".to_string())),
+      }),
       None => Err("API Key 无效或已过期".to_string()),
     }
   }
@@ -297,8 +318,8 @@ fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<String, St
   }
 }
 
-// 查找 API Key 对应的 REFRESH_TOKEN
-fn find_refresh_token_by_api_key(api_key: &str) -> Option<String> {
+// 查找 API Key 对应的完整 Token 信息
+fn find_token_by_api_key(api_key: &str) -> Option<KiroGateToken> {
   // 从 API Key 映射表查找
   let path = dirs::data_dir()
     .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -321,7 +342,7 @@ fn find_refresh_token_by_api_key(api_key: &str) -> Option<String> {
   let mappings: Vec<ApiKeyMapping> = serde_json::from_str(&content).ok()?;
   let mapping = mappings.iter().find(|m| m.api_key == api_key)?;
   
-  // 根据 token_id 查找 Token
+  // 根据 token_id 查找完整的 Token 信息
   let tokens_path = dirs::data_dir()
     .unwrap_or_else(|| std::path::PathBuf::from("."))
     .join(".kiro-account-manager")
@@ -330,22 +351,7 @@ fn find_refresh_token_by_api_key(api_key: &str) -> Option<String> {
   let tokens_content = std::fs::read_to_string(&tokens_path).ok()?;
   let tokens: Vec<KiroGateToken> = serde_json::from_str(&tokens_content).ok()?;
   
-  tokens.iter().find(|t| t.id == mapping.token_id).map(|t| t.refresh_token.clone())
-}
-
-// 从 refresh_token 解析认证信息
-fn parse_refresh_token_info(_refresh_token: &str) -> (String, Option<String>, Option<String>, Option<String>, Option<String>) {
-  // 简单判断：如果 refresh_token 很长且包含特定字符，可能是 Social 类型
-  // 这里可以根据实际情况调整判断逻辑
-  
-  // 默认为 Social 类型
-  let auth_method = "social".to_string();
-  let profile_arn = None; // 需要从实际使用中获取
-  let client_id = None;
-  let client_secret = None;
-  let region = Some("us-east-1".to_string());
-  
-  (auth_method, profile_arn, client_id, client_secret, region)
+  tokens.iter().find(|t| t.id == mapping.token_id).cloned()
 }
 
 fn error_response(status: StatusCode, message: &str) -> Response {
@@ -369,6 +375,7 @@ async fn stream_response(resp: reqwest::Response, model: &str) -> Response {
     let mut bytes_stream = resp.bytes_stream();
     let mut buffer = String::new();
     let mut sent_role = false;
+    let mut last_content: Option<String> = None; // 去重
     
     use futures::StreamExt;
     
@@ -377,15 +384,36 @@ async fn stream_response(resp: reqwest::Response, model: &str) -> Response {
         Ok(bytes) => {
           buffer.push_str(&String::from_utf8_lossy(&bytes));
           
-          // 解析事件流
-          while let Some(pos) = buffer.find("\n\n") {
-            let event = buffer[..pos].to_string();
-            buffer = buffer[pos + 2..].to_string();
-            
-            // 解析 Kiro 事件
-            if let Some(content) = parse_kiro_event(&event) {
-              // 发送 role（仅第一次）
-              if !sent_role {
+          // 解析所有 JSON 对象（Kiro 返回的是连续的 JSON，不是 SSE 格式）
+          while let Some(start) = buffer.find('{') {
+            let remaining = &buffer[start..];
+            if let Some(json_str) = extract_json(remaining) {
+              let json_len = json_str.len();
+              
+              // 解析 Kiro 事件
+              if let Some(content) = parse_kiro_content(&json_str, &mut last_content) {
+                // 发送 role（仅第一次）
+                if !sent_role {
+                  let chunk = ChatCompletionChunk {
+                    id: id.clone(),
+                    object: "chat.completion.chunk".to_string(),
+                    created,
+                    model: model.clone(),
+                    choices: vec![ChunkChoice {
+                      index: 0,
+                      delta: Delta {
+                        role: Some("assistant".to_string()),
+                        content: None,
+                        tool_calls: None,
+                      },
+                      finish_reason: None,
+                    }],
+                  };
+                  yield Ok::<_, Infallible>(format!("data: {}\n\n", serde_json::to_string(&chunk).unwrap()));
+                  sent_role = true;
+                }
+                
+                // 发送内容
                 let chunk = ChatCompletionChunk {
                   id: id.clone(),
                   object: "chat.completion.chunk".to_string(),
@@ -394,34 +422,21 @@ async fn stream_response(resp: reqwest::Response, model: &str) -> Response {
                   choices: vec![ChunkChoice {
                     index: 0,
                     delta: Delta {
-                      role: Some("assistant".to_string()),
-                      content: None,
+                      role: None,
+                      content: Some(content),
                       tool_calls: None,
                     },
                     finish_reason: None,
                   }],
                 };
                 yield Ok::<_, Infallible>(format!("data: {}\n\n", serde_json::to_string(&chunk).unwrap()));
-                sent_role = true;
               }
               
-              // 发送内容
-              let chunk = ChatCompletionChunk {
-                id: id.clone(),
-                object: "chat.completion.chunk".to_string(),
-                created,
-                model: model.clone(),
-                choices: vec![ChunkChoice {
-                  index: 0,
-                  delta: Delta {
-                    role: None,
-                    content: Some(content),
-                    tool_calls: None,
-                  },
-                  finish_reason: None,
-                }],
-              };
-              yield Ok::<_, Infallible>(format!("data: {}\n\n", serde_json::to_string(&chunk).unwrap()));
+              // 移除已处理的 JSON
+              buffer = buffer[start + json_len..].to_string();
+            } else {
+              // JSON 不完整，等待更多数据
+              break;
             }
           }
         }
@@ -472,10 +487,18 @@ async fn non_stream_response(resp: reqwest::Response, model: &str) -> Response {
   let text = String::from_utf8_lossy(&bytes);
   let mut content = String::new();
   
-  // 解析所有事件
-  for line in text.lines() {
-    if let Some(c) = parse_kiro_event(line) {
-      content.push_str(&c);
+  // 解析所有事件（按 JSON 对象提取）
+  let mut remaining = text.as_ref();
+  while let Some(start) = remaining.find('{') {
+    remaining = &remaining[start..];
+    if let Some(json_str) = extract_json(remaining) {
+      let json_len = json_str.len();
+      if let Some(c) = parse_kiro_event(&json_str) {
+        content.push_str(&c);
+      }
+      remaining = &remaining[json_len..];
+    } else {
+      break;
     }
   }
 
@@ -500,38 +523,89 @@ async fn non_stream_response(resp: reqwest::Response, model: &str) -> Response {
 }
 
 fn parse_kiro_event(event: &str) -> Option<String> {
-  // Kiro 事件格式: :event-type {...json...}
-  // 或者 :content-block-delta {"delta":{"text":"..."}}
+  parse_kiro_content(event, &mut None)
+}
+
+// 解析 Kiro 事件内容，带去重
+fn parse_kiro_content(json_str: &str, last_content: &mut Option<String>) -> Option<String> {
+  let value: serde_json::Value = serde_json::from_str(json_str).ok()?;
   
-  for line in event.lines() {
-    let line = line.trim();
-    
-    // 跳过空行和注释
-    if line.is_empty() || line.starts_with(':') && !line.contains('{') {
+  // 1. 直接 content 字段（最常见格式）
+  if let Some(text) = value.get("content").and_then(|c| c.as_str()) {
+    if !text.is_empty() {
+      // 去重：跳过重复内容
+      if last_content.as_deref() == Some(text) {
+        return None;
+      }
+      *last_content = Some(text.to_string());
+      return Some(text.to_string());
+    }
+  }
+  
+  // 2. delta.text 格式
+  if let Some(text) = value.get("delta").and_then(|d| d.get("text")).and_then(|t| t.as_str()) {
+    if !text.is_empty() {
+      return Some(text.to_string());
+    }
+  }
+  
+  // 3. contentBlockDelta 格式
+  if let Some(text) = value.get("contentBlockDelta")
+    .and_then(|e| e.get("delta"))
+    .and_then(|d| d.get("text"))
+    .and_then(|t| t.as_str())
+  {
+    if !text.is_empty() {
+      return Some(text.to_string());
+    }
+  }
+  
+  // 4. assistantResponseEvent 格式
+  if let Some(text) = value.get("assistantResponseEvent")
+    .and_then(|e| e.get("content"))
+    .and_then(|c| c.as_str())
+  {
+    if !text.is_empty() {
+      return Some(text.to_string());
+    }
+  }
+  
+  None
+}
+
+// 提取完整的 JSON 字符串（处理嵌套大括号）
+fn extract_json(s: &str) -> Option<String> {
+  if !s.starts_with('{') {
+    return None;
+  }
+  
+  let mut brace_count = 0;
+  let mut in_string = false;
+  let mut escape_next = false;
+  
+  for (i, c) in s.char_indices() {
+    if escape_next {
+      escape_next = false;
       continue;
     }
     
-    // 尝试提取 JSON
-    if let Some(json_start) = line.find('{') {
-      let json_str = &line[json_start..];
-      if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
-        // 提取文本内容
-        if let Some(text) = value.get("delta").and_then(|d| d.get("text")).and_then(|t| t.as_str()) {
-          return Some(text.to_string());
-        }
-        if let Some(text) = value.get("assistantResponseEvent")
-          .and_then(|e| e.get("content"))
-          .and_then(|c| c.as_str())
-        {
-          return Some(text.to_string());
-        }
-        // contentBlockDelta 格式
-        if let Some(text) = value.get("contentBlockDelta")
-          .and_then(|e| e.get("delta"))
-          .and_then(|d| d.get("text"))
-          .and_then(|t| t.as_str())
-        {
-          return Some(text.to_string());
+    if c == '\\' && in_string {
+      escape_next = true;
+      continue;
+    }
+    
+    if c == '"' {
+      in_string = !in_string;
+      continue;
+    }
+    
+    if !in_string {
+      if c == '{' {
+        brace_count += 1;
+      } else if c == '}' {
+        brace_count -= 1;
+        if brace_count == 0 {
+          return Some(s[..=i].to_string());
         }
       }
     }

@@ -126,10 +126,10 @@ function ServerConfig() {
           </div>
         )}
 
-        <button onClick={serverStatus.running ? stopServer : startServer} disabled={loading || (!serverStatus.running && !proxyKey)}
+        <button onClick={serverStatus.running ? stopServer : startServer} disabled={loading}
           className={`w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${
             serverStatus.running ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' :
-            proxyKey ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white' : `${colors.card} ${colors.textMuted} cursor-not-allowed`
+            'bg-gradient-to-r from-cyan-500 to-blue-600 text-white hover:opacity-90'
           }`}>
           {loading ? <Loader2 size={18} className="animate-spin" /> : serverStatus.running ? <><Square size={18} />停止服务器</> : <><Play size={18} />启动服务器</>}
         </button>

@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Send, Copy, Check, Loader2 } from 'lucide-react'
+import { invoke } from '@tauri-apps/api/core'
+import { fetch } from '@tauri-apps/plugin-http'
 import { useApp } from '../../hooks/useApp'
 import { useAppSettings } from '../../contexts/AppSettingsContext'
 
@@ -25,6 +27,26 @@ function TestPage() {
     'claude-3-7-sonnet-20250219'
   ]
 
+  // 组件加载时自动加载 API Key
+  useEffect(() => {
+    loadApiKeyFromStorage(true)
+  }, [])
+
+  const loadApiKeyFromStorage = async (silent = false) => {
+    try {
+      const keys = await invoke('get_api_keys')
+      if (keys.length > 0) {
+        setApiKey(keys[keys.length - 1].apiKey)
+      } else if (!silent) {
+        alert('没有找到 API Key，请先在「API Key」页面生成')
+      }
+    } catch (e) {
+      if (!silent) {
+        alert('加载 API Key 失败: ' + e)
+      }
+    }
+  }
+
   const testApi = async () => {
     if (!apiKey.trim() || !message.trim()) {
       alert('请填写 API Key 和消息内容')
@@ -35,7 +57,8 @@ function TestPage() {
     setResponse('')
 
     try {
-      const response = await fetch(`${serverUrl}/v1/chat/completions`, {
+      // 使用 Tauri HTTP 插件发请求，绕过 CORS
+      const resp = await fetch(`${serverUrl}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -51,15 +74,20 @@ function TestPage() {
         })
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      const text = await resp.text()
+      
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${text}`)
       }
 
-      const data = await response.json()
-      setResponse(data.choices[0]?.message?.content || '无响应内容')
+      try {
+        const data = JSON.parse(text)
+        setResponse(data.choices?.[0]?.message?.content || `无响应内容，原始数据: ${text}`)
+      } catch {
+        setResponse(`解析响应失败，原始数据: ${text}`)
+      }
     } catch (error) {
-      setResponse(`错误: ${error.message}`)
+      setResponse(`错误: ${error?.message || error || '未知错误'}`)
     } finally {
       setLoading(false)
     }
@@ -75,7 +103,8 @@ function TestPage() {
     setResponse('')
 
     try {
-      const response = await fetch(`${serverUrl}/v1/chat/completions`, {
+      // 使用 Tauri HTTP 插件发请求
+      const resp = await fetch(`${serverUrl}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -91,42 +120,40 @@ function TestPage() {
         })
       })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      if (!resp.ok) {
+        const errorText = await resp.text()
+        throw new Error(`HTTP ${resp.status}: ${errorText}`)
       }
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6)
-            if (data === '[DONE]') continue
-            
-            try {
-              const parsed = JSON.parse(data)
-              const content = parsed.choices[0]?.delta?.content
-              if (content) {
-                setResponse(prev => prev + content)
-              }
-            } catch (e) {
-              // 忽略解析错误
+      // Tauri HTTP 插件可能不支持流式读取，尝试直接读取全部内容
+      const text = await resp.text()
+      
+      // 解析 SSE 格式的响应
+      let content = ''
+      const lines = text.split('\n')
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6).trim()
+          if (data === '[DONE]') continue
+          
+          try {
+            const parsed = JSON.parse(data)
+            const chunk = parsed.choices?.[0]?.delta?.content
+            if (chunk) {
+              content += chunk
+              setResponse(content)
             }
+          } catch {
+            // 忽略解析错误
           }
         }
       }
+      
+      if (!content) {
+        setResponse(`无内容，原始响应: ${text.slice(0, 500)}...`)
+      }
     } catch (error) {
-      setResponse(`错误: ${error.message}`)
+      setResponse(`错误: ${error?.message || error || '未知错误'}`)
     } finally {
       setLoading(false)
     }
@@ -136,13 +163,6 @@ function TestPage() {
     await navigator.clipboard.writeText(response)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
-
-  const loadApiKeyFromStorage = () => {
-    const mappings = JSON.parse(localStorage.getItem('kirogate-api-keys') || '[]')
-    if (mappings.length > 0) {
-      setApiKey(mappings[mappings.length - 1].apiKey)
-    }
   }
 
   return (
@@ -179,10 +199,10 @@ function TestPage() {
           <div className="flex items-center justify-between mb-2">
             <label className={`text-sm ${colors.textMuted}`}>API Key</label>
             <button 
-              onClick={loadApiKeyFromStorage}
+              onClick={() => loadApiKeyFromStorage(false)}
               className="text-xs text-blue-400 hover:text-blue-300"
             >
-              从本地加载
+              重新加载
             </button>
           </div>
           <input 

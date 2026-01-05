@@ -6,12 +6,18 @@ inclusion: always
 
 ## 参考项目
 
-### KiroGate 原版
+### KiroGate 本地版（已适配 IdC）
+- 本地路径：`E:\VSCodeSpace\Kiro\KiroGate`
+- 使用 PowerShell 命令访问：`Get-Content "E:\VSCodeSpace\Kiro\KiroGate\文件路径" -Raw`
+- 已支持 Social 和 IdC 两种认证类型
+- 优先参考此版本
+
+### KiroGate 原版（GitHub）
 - GitHub 仓库：https://github.com/aliom-v/KiroGate
 - owner: `aliom-v`
 - repo: `KiroGate`
 - OpenAI 兼容的 Kiro API 代理服务
-- 用于参考 KiroGate 功能实现
+- 注意：原版只支持 Social 类型（Google/GitHub），没有适配 IdC 类型（BuilderId/Enterprise）
 
 ### Kiro Account Manager 参考
 - GitHub 仓库：https://github.com/chaogei/Kiro-account-manager

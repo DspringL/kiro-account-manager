@@ -64,6 +64,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_http::init())
         // 单实例插件：确保只有一个实例运行，deep-link 回调传递给已运行的实例
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             // 当第二个实例尝试启动时，处理传入的参数（deep-link 回调）
