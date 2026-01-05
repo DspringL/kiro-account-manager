@@ -20,8 +20,8 @@ function TokenManager() {
 
   const generateApiKey = () => {
     if (!selectedTokenId || !proxyKey) return
-    const token = tokens.find(t => t.id === selectedTokenId)
-    if (token) setGeneratedKey(`${proxyKey}:${token.refreshToken}`)
+    // API Key 格式: PROXY_API_KEY:TOKEN_ID
+    setGeneratedKey(`${proxyKey}:${selectedTokenId}`)
   }
 
   const copyKey = async () => {
@@ -41,7 +41,7 @@ function TokenManager() {
 
   const handleBatchSave = async (tokenList) => {
     for (const t of tokenList) {
-      await addToken(t.name, t.refreshToken)
+      await addToken(t)
     }
     setShowModal(false)
   }

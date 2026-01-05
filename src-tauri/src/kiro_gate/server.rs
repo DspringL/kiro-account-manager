@@ -16,11 +16,10 @@ use std::time::Duration;
 use tokio::sync::{oneshot, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::kiro_gate::auth::AuthCache;
+use crate::kiro_gate::auth::{AuthCache, TokenConfig};
 use crate::kiro_gate::converter::{build_kiro_payload, get_available_models};
 use crate::kiro_gate::models::*;
-
-const KIRO_API_HOST: &str = "https://codewhisperer.us-east-1.amazonaws.com";
+use crate::commands::kiro_gate_cmd::KiroGateToken;
 
 // ============================================================
 // 服务器状态
@@ -171,15 +170,30 @@ async fn chat_completions_handler(
   headers: HeaderMap,
   Json(request): Json<ChatCompletionRequest>,
 ) -> Response {
-  // 验证 API Key
-  let auth_result = verify_api_key(&headers, &state.proxy_api_key);
-  let refresh_token = match auth_result {
-    Ok(token) => token,
+  // 验证 API Key 并获取 token_id
+  let token_id = match verify_api_key(&headers, &state.proxy_api_key) {
+    Ok(id) => id,
     Err(e) => return error_response(StatusCode::UNAUTHORIZED, &e),
   };
 
+  // 从存储中查找 Token
+  let token = match load_token_by_id(&token_id) {
+    Some(t) => t,
+    None => return error_response(StatusCode::UNAUTHORIZED, "Token 不存在"),
+  };
+
+  // 构建 TokenConfig
+  let config = TokenConfig {
+    refresh_token: token.refresh_token.clone(),
+    auth_method: token.auth_method.clone(),
+    profile_arn: token.profile_arn.clone(),
+    client_id: token.client_id.clone(),
+    client_secret: token.client_secret.clone(),
+    region: token.region.clone(),
+  };
+
   // 获取 TokenManager
-  let token_manager = state.auth_cache.get_or_create(&refresh_token).await;
+  let token_manager = state.auth_cache.get_or_create(&token_id, config).await;
   
   // 获取 access_token
   let access_token = match token_manager.get_access_token().await {
@@ -195,7 +209,10 @@ async fn chat_completions_handler(
     Err(e) => return error_response(StatusCode::BAD_REQUEST, &e),
   };
 
-  let url = format!("{}/generateAssistantResponse", KIRO_API_HOST);
+  // 根据 region 选择 API host
+  let region = token.region.as_deref().unwrap_or("us-east-1");
+  let api_host = format!("https://codewhisperer.{}.amazonaws.com", region);
+  let url = format!("{}/generateAssistantResponse", api_host);
 
   // 发送请求
   let resp = match state.http_client
@@ -244,7 +261,7 @@ fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<String, St
     auth_header
   };
 
-  // 支持 PROXY_API_KEY:REFRESH_TOKEN 格式
+  // 格式: PROXY_API_KEY:TOKEN_ID
   if token.contains(':') {
     let parts: Vec<&str> = token.splitn(2, ':').collect();
     if parts.len() != 2 {
@@ -257,8 +274,24 @@ fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<String, St
     
     Ok(parts[1].to_string())
   } else {
-    Err("API Key 格式无效，需要 PROXY_API_KEY:REFRESH_TOKEN".to_string())
+    Err("API Key 格式无效，需要 PROXY_API_KEY:TOKEN_ID".to_string())
   }
+}
+
+fn load_token_by_id(token_id: &str) -> Option<KiroGateToken> {
+  let path = dirs::data_dir()
+    .unwrap_or_else(|| std::path::PathBuf::from("."))
+    .join(".kiro-account-manager")
+    .join("kirogate-tokens.json");
+  
+  if !path.exists() {
+    return None;
+  }
+
+  let content = std::fs::read_to_string(&path).ok()?;
+  let tokens: Vec<KiroGateToken> = serde_json::from_str(&content).ok()?;
+  
+  tokens.into_iter().find(|t| t.id == token_id)
 }
 
 fn error_response(status: StatusCode, message: &str) -> Response {

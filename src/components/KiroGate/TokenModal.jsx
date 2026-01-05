@@ -18,24 +18,33 @@ const validateSocialToken = (item) => {
 
 // 验证 IdC Token
 const validateIdcToken = (item) => {
-  return validateRefreshToken(item.refreshToken) && item.clientIdHash
+  return validateRefreshToken(item.refreshToken) && item.clientId && item.clientSecret
 }
 
-// 解析 JSON 数组输入
+// 判断是否为 IdC 类型（BuilderId/Enterprise）
+const isIdcType = (item) => {
+  if (item.authMethod === 'IdC') return true
+  if (item.provider === 'BuilderId' || item.provider === 'Enterprise') return true
+  if (item.clientId && item.clientSecret) return true
+  return false
+}
+
+// 解析 JSON 输入（支持单个对象或数组）
 const parseJsonInput = (input) => {
   if (!input.trim()) return { tokens: [], error: '' }
   try {
-    const arr = JSON.parse(input.trim())
-    if (!Array.isArray(arr)) return { tokens: [], error: '请输入 JSON 数组格式' }
+    const parsed = JSON.parse(input.trim())
+    // 支持单个对象或数组
+    const arr = Array.isArray(parsed) ? parsed : [parsed]
     const tokens = arr.map((item, i) => {
-      const authMethod = item.authMethod || 'social'
-      const isIdc = authMethod === 'IdC'
+      const isIdc = isIdcType(item)
       return {
-        name: item.name || `Token ${i + 1}`,
+        name: item.name || item.label || item.email || `Token ${i + 1}`,
         refreshToken: item.refreshToken || '',
-        authMethod,
+        authMethod: isIdc ? 'IdC' : 'social',
         profileArn: item.profileArn || null,
-        clientIdHash: item.clientIdHash || null,
+        clientId: item.clientId || null,
+        clientSecret: item.clientSecret || null,
         region: item.region || 'us-east-1',
         valid: isIdc ? validateIdcToken(item) : validateSocialToken(item)
       }
@@ -48,7 +57,7 @@ const parseJsonInput = (input) => {
 
 const PLACEHOLDER = `[
   { "name": "Google账号", "refreshToken": "aor...", "profileArn": "arn:aws:..." },
-  { "name": "BuilderId", "authMethod": "IdC", "refreshToken": "aor...", "clientIdHash": "e909a05...", "region": "us-east-1" }
+  { "name": "BuilderId", "refreshToken": "aor...", "clientId": "xxx", "clientSecret": "xxx", "region": "us-east-1" }
 ]`
 
 function TokenModal({ show, onClose, onBatchSave }) {
@@ -77,7 +86,8 @@ function TokenModal({ show, onClose, onBatchSave }) {
       refreshToken: t.refreshToken.trim(),
       authMethod: t.authMethod,
       profileArn: t.profileArn,
-      clientIdHash: t.clientIdHash,
+      clientId: t.clientId,
+      clientSecret: t.clientSecret,
       region: t.authMethod === 'IdC' ? t.region : null
     }))
     onBatchSave(validTokens)
@@ -115,7 +125,7 @@ function TokenModal({ show, onClose, onBatchSave }) {
           </div>
           <div className={`text-xs ${colors.textMuted} space-y-1`}>
             <p>💡 Google/GitHub：需要 refreshToken + profileArn</p>
-            <p>💡 BuilderId/Enterprise：需要 authMethod="IdC" + refreshToken + clientIdHash</p>
+            <p>💡 BuilderId/Enterprise：需要 refreshToken + clientId + clientSecret</p>
           </div>
           <button onClick={handleSave} disabled={!canSave}
             className={`w-full py-2.5 rounded-xl font-medium transition-all ${

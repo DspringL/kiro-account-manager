@@ -1,5 +1,5 @@
 // KiroGate 认证管理
-// 管理 access_token 生命周期
+// 管理 access_token 生命周期，支持 Social 和 IdC 两种认证方式
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -7,38 +7,52 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 
-const KIRO_REFRESH_URL: &str = "https://prod.us-east-1.auth.desktop.kiro.dev/refreshToken";
 const TOKEN_REFRESH_THRESHOLD_SECS: u64 = 300; // 5 分钟前刷新
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RefreshResponse {
   pub access_token: String,
-  pub refresh_token: String,
+  #[serde(default)]
+  pub refresh_token: Option<String>,
   pub expires_in: i64,
-  pub profile_arn: String,
+  #[serde(default)]
+  pub profile_arn: Option<String>,
+}
+
+/// Token 配置
+#[derive(Debug, Clone)]
+pub struct TokenConfig {
+  pub refresh_token: String,
+  pub auth_method: String, // "social" 或 "IdC"
+  pub profile_arn: Option<String>,
+  pub client_id: Option<String>,
+  pub client_secret: Option<String>,
+  pub region: Option<String>,
 }
 
 /// Token 管理器
 pub struct TokenManager {
-  refresh_token: String,
+  config: TokenConfig,
   access_token: RwLock<Option<String>>,
-  profile_arn: RwLock<Option<String>>,
+  cached_profile_arn: RwLock<Option<String>>,
   expires_at: RwLock<Option<Instant>>,
   client: Client,
 }
 
 impl TokenManager {
-  pub fn new(refresh_token: String) -> Self {
+  pub fn new(config: TokenConfig) -> Self {
     let client = Client::builder()
       .timeout(Duration::from_secs(30))
       .build()
       .expect("failed to build reqwest client");
 
+    let initial_profile_arn = config.profile_arn.clone();
+
     Self {
-      refresh_token,
+      config,
       access_token: RwLock::new(None),
-      profile_arn: RwLock::new(None),
+      cached_profile_arn: RwLock::new(initial_profile_arn),
       expires_at: RwLock::new(None),
       client,
     }
@@ -46,7 +60,6 @@ impl TokenManager {
 
   /// 获取有效的 access_token，必要时刷新
   pub async fn get_access_token(&self) -> Result<String, String> {
-    // 检查是否需要刷新
     let needs_refresh = {
       let expires_at = self.expires_at.read().await;
       let access_token = self.access_token.read().await;
@@ -70,52 +83,67 @@ impl TokenManager {
 
   /// 获取 profile_arn
   pub async fn get_profile_arn(&self) -> Option<String> {
-    self.profile_arn.read().await.clone()
+    self.cached_profile_arn.read().await.clone()
   }
 
   /// 刷新 token
   async fn refresh(&self) -> Result<(), String> {
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct RefreshRequest<'a> {
-      refresh_token: &'a str,
-    }
+    let region = self.config.region.as_deref().unwrap_or("us-east-1");
 
-    let body = RefreshRequest {
-      refresh_token: &self.refresh_token,
-    };
+    if self.config.auth_method == "IdC" {
+      // IdC 类型：使用 AWS SSO OIDC 刷新
+      let client_id = self.config.client_id.as_ref()
+        .ok_or("IdC Token 缺少 clientId")?;
+      let client_secret = self.config.client_secret.as_ref()
+        .ok_or("IdC Token 缺少 clientSecret")?;
 
-    let resp = self.client
-      .post(KIRO_REFRESH_URL)
-      .json(&body)
-      .send()
-      .await
-      .map_err(|e| format!("刷新 token 请求失败: {}", e))?;
+      let sso_client = crate::aws_sso_client::AWSSSOClient::new(region);
+      let resp = sso_client.refresh_token(client_id, client_secret, &self.config.refresh_token).await?;
 
-    let status = resp.status();
-    if !status.is_success() {
-      let text = resp.text().await.unwrap_or_default();
-      if status.as_u16() == 401 {
-        return Err("RefreshToken 已过期或无效".to_string());
+      let expires_at = Instant::now() + Duration::from_secs((resp.expires_in - 60) as u64);
+      *self.access_token.write().await = Some(resp.access_token);
+      *self.expires_at.write().await = Some(expires_at);
+    } else {
+      // Social 类型：使用 Kiro Desktop Auth 刷新
+      let refresh_url = format!("https://prod.{}.auth.desktop.kiro.dev/refreshToken", region);
+
+      let body = serde_json::json!({
+        "refreshToken": self.config.refresh_token
+      });
+
+      let resp = self.client
+        .post(&refresh_url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("刷新 token 请求失败: {}", e))?;
+
+      let status = resp.status();
+      if !status.is_success() {
+        let text = resp.text().await.unwrap_or_default();
+        if status.as_u16() == 401 {
+          return Err("RefreshToken 已过期或无效".to_string());
+        }
+        return Err(format!("刷新 token 失败 ({}): {}", status, text));
       }
-      return Err(format!("刷新 token 失败 ({}): {}", status, text));
+
+      let data: RefreshResponse = resp.json().await
+        .map_err(|e| format!("解析刷新响应失败: {}", e))?;
+
+      let expires_at = Instant::now() + Duration::from_secs((data.expires_in - 60) as u64);
+      
+      *self.access_token.write().await = Some(data.access_token);
+      if let Some(arn) = data.profile_arn {
+        *self.cached_profile_arn.write().await = Some(arn);
+      }
+      *self.expires_at.write().await = Some(expires_at);
     }
-
-    let data: RefreshResponse = resp.json().await
-      .map_err(|e| format!("解析刷新响应失败: {}", e))?;
-
-    // 更新状态
-    let expires_at = Instant::now() + Duration::from_secs((data.expires_in - 60) as u64);
-    
-    *self.access_token.write().await = Some(data.access_token);
-    *self.profile_arn.write().await = Some(data.profile_arn);
-    *self.expires_at.write().await = Some(expires_at);
 
     Ok(())
   }
 }
 
-/// 认证缓存 - 缓存多个 refresh_token 对应的 TokenManager
+/// 认证缓存 - 缓存多个 token_id 对应的 TokenManager
 pub struct AuthCache {
   cache: RwLock<std::collections::HashMap<String, Arc<TokenManager>>>,
 }
@@ -128,21 +156,19 @@ impl AuthCache {
   }
 
   /// 获取或创建 TokenManager
-  pub async fn get_or_create(&self, refresh_token: &str) -> Arc<TokenManager> {
-    // 先尝试读取
+  pub async fn get_or_create(&self, token_id: &str, config: TokenConfig) -> Arc<TokenManager> {
     {
       let cache = self.cache.read().await;
-      if let Some(manager) = cache.get(refresh_token) {
+      if let Some(manager) = cache.get(token_id) {
         return manager.clone();
       }
     }
 
-    // 创建新的
-    let manager = Arc::new(TokenManager::new(refresh_token.to_string()));
+    let manager = Arc::new(TokenManager::new(config));
     
     {
       let mut cache = self.cache.write().await;
-      cache.insert(refresh_token.to_string(), manager.clone());
+      cache.insert(token_id.to_string(), manager.clone());
     }
 
     manager

@@ -25,16 +25,12 @@ pub struct KiroGateToken {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub profile_arn: Option<String>, // Social 需要
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub client_id_hash: Option<String>, // IdC 需要
+  pub client_id: Option<String>, // IdC 需要
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub region: Option<String>, // IdC 需要
+  pub client_secret: Option<String>, // IdC 需要
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub region: Option<String>, // IdC 需要，默认 us-east-1
   pub created_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct KiroGateTokenStore {
-  pub tokens: Vec<KiroGateToken>,
 }
 
 fn get_data_dir() -> PathBuf {
@@ -47,13 +43,13 @@ fn get_data_dir() -> PathBuf {
 }
 
 fn get_tokens_path() -> PathBuf {
-  get_data_dir().join("kiro-gate-tokens.json")
+  get_data_dir().join("kirogate-tokens.json")
 }
 
-fn load_tokens() -> KiroGateTokenStore {
+fn load_tokens() -> Vec<KiroGateToken> {
   let path = get_tokens_path();
   if !path.exists() {
-    return KiroGateTokenStore::default();
+    return Vec::new();
   }
   std::fs::read_to_string(&path)
     .ok()
@@ -61,12 +57,12 @@ fn load_tokens() -> KiroGateTokenStore {
     .unwrap_or_default()
 }
 
-fn save_tokens(store: &KiroGateTokenStore) -> Result<(), String> {
+fn save_tokens(tokens: &[KiroGateToken]) -> Result<(), String> {
   let path = get_tokens_path();
   if let Some(parent) = path.parent() {
     std::fs::create_dir_all(parent).ok();
   }
-  let content = serde_json::to_string_pretty(store)
+  let content = serde_json::to_string_pretty(tokens)
     .map_err(|e| format!("序列化失败: {}", e))?;
   std::fs::write(&path, content)
     .map_err(|e| format!("写入失败: {}", e))
@@ -74,46 +70,60 @@ fn save_tokens(store: &KiroGateTokenStore) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn get_kiro_gate_tokens() -> Result<Vec<KiroGateToken>, String> {
-  Ok(load_tokens().tokens)
+  Ok(load_tokens())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTokenParams {
-  pub name: String,
+  pub name: Option<String>,
   pub refresh_token: String,
   #[serde(default)]
   pub auth_method: String,
   pub profile_arn: Option<String>,
-  pub client_id_hash: Option<String>,
+  pub client_id: Option<String>,
+  pub client_secret: Option<String>,
   pub region: Option<String>,
 }
 
 #[tauri::command]
 pub async fn add_kiro_gate_token(params: AddTokenParams) -> Result<KiroGateToken, String> {
-  let mut store = load_tokens();
+  let mut tokens = load_tokens();
+  let auth_method = if params.auth_method.is_empty() { "social".to_string() } else { params.auth_method };
+  
+  // 自动生成名称
+  let name = params.name.unwrap_or_else(|| {
+    let count = tokens.len() + 1;
+    if auth_method == "IdC" {
+      format!("BuilderId Token {}", count)
+    } else {
+      format!("Social Token {}", count)
+    }
+  });
+
   let token = KiroGateToken {
     id: uuid::Uuid::new_v4().to_string(),
-    name: params.name,
+    name,
     refresh_token: params.refresh_token,
-    auth_method: if params.auth_method.is_empty() { "social".to_string() } else { params.auth_method },
+    auth_method,
     profile_arn: params.profile_arn,
-    client_id_hash: params.client_id_hash,
+    client_id: params.client_id,
+    client_secret: params.client_secret,
     region: params.region,
     created_at: chrono::Utc::now().to_rfc3339(),
   };
-  store.tokens.push(token.clone());
-  save_tokens(&store)?;
+  tokens.push(token.clone());
+  save_tokens(&tokens)?;
   Ok(token)
 }
 
 #[tauri::command]
 pub async fn update_kiro_gate_token(id: String, name: String, refresh_token: String) -> Result<(), String> {
-  let mut store = load_tokens();
-  if let Some(t) = store.tokens.iter_mut().find(|t| t.id == id) {
+  let mut tokens = load_tokens();
+  if let Some(t) = tokens.iter_mut().find(|t| t.id == id) {
     t.name = name;
     t.refresh_token = refresh_token;
-    save_tokens(&store)?;
+    save_tokens(&tokens)?;
     Ok(())
   } else {
     Err("Token 不存在".to_string())
@@ -122,9 +132,9 @@ pub async fn update_kiro_gate_token(id: String, name: String, refresh_token: Str
 
 #[tauri::command]
 pub async fn delete_kiro_gate_token(id: String) -> Result<(), String> {
-  let mut store = load_tokens();
-  store.tokens.retain(|t| t.id != id);
-  save_tokens(&store)?;
+  let mut tokens = load_tokens();
+  tokens.retain(|t| t.id != id);
+  save_tokens(&tokens)?;
   Ok(())
 }
 
