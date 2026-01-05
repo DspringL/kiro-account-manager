@@ -42,11 +42,16 @@ function ServerConfig() {
   const saveProxyKey = (v) => { setProxyKey(v); updateSettings({ kiroGateProxyKey: v }) }
 
   const startServer = async () => {
-    if (!proxyKey) return alert('请先设置 PROXY_API_KEY')
+    // 如果没有设置 PROXY_API_KEY，使用默认值
+    const finalProxyKey = proxyKey || 'default-proxy-key'
     setLoading(true)
     try {
-      const status = await invoke('start_kiro_gate', { params: { port, proxy_api_key: proxyKey } })
+      const status = await invoke('start_kiro_gate', { params: { port, proxy_api_key: finalProxyKey } })
       setServerStatus(status)
+      // 如果使用了默认值，保存到设置
+      if (!proxyKey) {
+        saveProxyKey(finalProxyKey)
+      }
     } catch (e) { alert('启动失败: ' + e) }
     finally { setLoading(false) }
   }
@@ -104,7 +109,8 @@ function ServerConfig() {
           <div>
             <label className={`block text-sm mb-2 ${colors.textMuted}`}>PROXY_API_KEY</label>
             <input type="text" value={proxyKey} onChange={(e) => saveProxyKey(e.target.value)} disabled={serverStatus.running}
-              placeholder="设置代理密钥" className={`w-full px-4 py-2.5 border rounded-xl ${colors.text} ${colors.input} disabled:opacity-50`} />
+              placeholder="设置代理密钥（任意字符串）" className={`w-full px-4 py-2.5 border rounded-xl ${colors.text} ${colors.input} disabled:opacity-50`} />
+            <div className={`text-xs ${colors.textMuted} mt-1`}>用于多租户模式，sk- 格式 API Key 不需要此密钥</div>
           </div>
         </div>
 
@@ -127,6 +133,18 @@ function ServerConfig() {
           }`}>
           {loading ? <Loader2 size={18} className="animate-spin" /> : serverStatus.running ? <><Square size={18} />停止服务器</> : <><Play size={18} />启动服务器</>}
         </button>
+      </div>
+
+      {/* 使用说明 */}
+      <div className={`${colors.card} rounded-2xl p-5 border ${colors.cardBorder}`}>
+        <h3 className={`font-semibold ${colors.text} mb-3`}>使用流程</h3>
+        <div className={`text-sm ${colors.textMuted} space-y-2`}>
+          <p>1. 设置 PROXY_API_KEY（任意字符串）和端口</p>
+          <p>2. 启动服务器</p>
+          <p>3. 在「Token 管理」页添加 Kiro refresh token</p>
+          <p>4. 生成 sk- 格式的 API Key</p>
+          <p>5. 在「API 测试」页测试生成的 API Key</p>
+        </div>
       </div>
     </div>
   )

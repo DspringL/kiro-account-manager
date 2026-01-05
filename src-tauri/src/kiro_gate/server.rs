@@ -170,30 +170,28 @@ async fn chat_completions_handler(
   headers: HeaderMap,
   Json(request): Json<ChatCompletionRequest>,
 ) -> Response {
-  // 验证 API Key 并获取 token_id
-  let token_id = match verify_api_key(&headers, &state.proxy_api_key) {
-    Ok(id) => id,
+  // 验证 API Key 并获取 refresh_token
+  let refresh_token = match verify_api_key(&headers, &state.proxy_api_key) {
+    Ok(token) => token,
     Err(e) => return error_response(StatusCode::UNAUTHORIZED, &e),
   };
 
-  // 从存储中查找 Token
-  let token = match load_token_by_id(&token_id) {
-    Some(t) => t,
-    None => return error_response(StatusCode::UNAUTHORIZED, "Token 不存在"),
-  };
+  // 从 refresh_token 解析认证信息
+  let (auth_method, profile_arn, client_id, client_secret, region) = 
+    parse_refresh_token_info(&refresh_token);
 
   // 构建 TokenConfig
   let config = TokenConfig {
-    refresh_token: token.refresh_token.clone(),
-    auth_method: token.auth_method.clone(),
-    profile_arn: token.profile_arn.clone(),
-    client_id: token.client_id.clone(),
-    client_secret: token.client_secret.clone(),
-    region: token.region.clone(),
+    refresh_token: refresh_token.clone(),
+    auth_method: auth_method.clone(),
+    profile_arn: profile_arn.clone(),
+    client_id: client_id.clone(),
+    client_secret: client_secret.clone(),
+    region: region.clone(),
   };
 
   // 获取 TokenManager
-  let token_manager = state.auth_cache.get_or_create(&token_id, config).await;
+  let token_manager = state.auth_cache.get_or_create(&refresh_token, config).await;
   
   // 获取 access_token
   let access_token = match token_manager.get_access_token().await {
@@ -210,7 +208,7 @@ async fn chat_completions_handler(
   };
 
   // 根据 region 选择 API host
-  let region = token.region.as_deref().unwrap_or("us-east-1");
+  let region = region.as_deref().unwrap_or("us-east-1");
   let api_host = format!("https://codewhisperer.{}.amazonaws.com", region);
   let url = format!("{}/generateAssistantResponse", api_host);
 
@@ -261,37 +259,93 @@ fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<String, St
     auth_header
   };
 
-  // 格式: PROXY_API_KEY:TOKEN_ID
+  // 支持三种格式（按原版 KiroGate 逻辑）：
+  // 1. 多租户格式：PROXY_API_KEY:REFRESH_TOKEN
+  // 2. 传统格式：PROXY_API_KEY
+  // 3. 用户 API Key：sk-{48位十六进制}
+  
+  // 检查是否包含冒号（多租户格式）
   if token.contains(':') {
     let parts: Vec<&str> = token.splitn(2, ':').collect();
     if parts.len() != 2 {
       return Err("API Key 格式无效".to_string());
     }
     
+    // 验证 PROXY_API_KEY 部分
     if parts[0] != proxy_api_key {
       return Err("API Key 无效".to_string());
     }
     
-    Ok(parts[1].to_string())
-  } else {
-    Err("API Key 格式无效，需要 PROXY_API_KEY:TOKEN_ID".to_string())
+    Ok(parts[1].to_string()) // 返回 REFRESH_TOKEN
+  }
+  // 检查传统格式：整个 token 就是 PROXY_API_KEY
+  else if token == proxy_api_key {
+    // 传统模式：使用全局配置的 refresh_token
+    // 这里需要从配置中获取，暂时返回错误提示用户使用多租户模式
+    Err("传统模式需要服务器配置全局 REFRESH_TOKEN，请使用 PROXY_API_KEY:REFRESH_TOKEN 格式".to_string())
+  }
+  // 检查用户 API Key 格式：sk-{48位十六进制}
+  else if token.starts_with("sk-") && token.len() == 51 {
+    // 用户 API Key 格式，查找映射关系
+    match find_refresh_token_by_api_key(token) {
+      Some(refresh_token) => Ok(refresh_token),
+      None => Err("API Key 无效或已过期".to_string()),
+    }
+  }
+  else {
+    Err("API Key 格式无效".to_string())
   }
 }
 
-fn load_token_by_id(token_id: &str) -> Option<KiroGateToken> {
+// 查找 API Key 对应的 REFRESH_TOKEN
+fn find_refresh_token_by_api_key(api_key: &str) -> Option<String> {
+  // 从 API Key 映射表查找
   let path = dirs::data_dir()
     .unwrap_or_else(|| std::path::PathBuf::from("."))
     .join(".kiro-account-manager")
-    .join("kirogate-tokens.json");
+    .join("kirogate-api-keys.json");
   
   if !path.exists() {
     return None;
   }
 
   let content = std::fs::read_to_string(&path).ok()?;
-  let tokens: Vec<KiroGateToken> = serde_json::from_str(&content).ok()?;
   
-  tokens.into_iter().find(|t| t.id == token_id)
+  #[derive(serde::Deserialize)]
+  #[serde(rename_all = "camelCase")]
+  struct ApiKeyMapping {
+    api_key: String,
+    token_id: String,
+  }
+  
+  let mappings: Vec<ApiKeyMapping> = serde_json::from_str(&content).ok()?;
+  let mapping = mappings.iter().find(|m| m.api_key == api_key)?;
+  
+  // 根据 token_id 查找 Token
+  let tokens_path = dirs::data_dir()
+    .unwrap_or_else(|| std::path::PathBuf::from("."))
+    .join(".kiro-account-manager")
+    .join("kirogate-tokens.json");
+  
+  let tokens_content = std::fs::read_to_string(&tokens_path).ok()?;
+  let tokens: Vec<KiroGateToken> = serde_json::from_str(&tokens_content).ok()?;
+  
+  tokens.iter().find(|t| t.id == mapping.token_id).map(|t| t.refresh_token.clone())
+}
+
+// 从 refresh_token 解析认证信息
+fn parse_refresh_token_info(_refresh_token: &str) -> (String, Option<String>, Option<String>, Option<String>, Option<String>) {
+  // 简单判断：如果 refresh_token 很长且包含特定字符，可能是 Social 类型
+  // 这里可以根据实际情况调整判断逻辑
+  
+  // 默认为 Social 类型
+  let auth_method = "social".to_string();
+  let profile_arn = None; // 需要从实际使用中获取
+  let client_id = None;
+  let client_secret = None;
+  let region = Some("us-east-1".to_string());
+  
+  (auth_method, profile_arn, client_id, client_secret, region)
 }
 
 fn error_response(status: StatusCode, message: &str) -> Response {

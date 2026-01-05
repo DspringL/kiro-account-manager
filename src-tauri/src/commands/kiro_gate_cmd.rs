@@ -156,3 +156,95 @@ pub async fn stop_kiro_gate() -> Result<(), String> {
 pub async fn get_kiro_gate_status() -> ServerStatus {
   get_server_status().await
 }
+
+// ============================================================
+// API Key 管理
+// ============================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiKeyMapping {
+  pub id: String,
+  pub api_key: String,
+  pub token_id: String,
+  pub token_name: String,
+  pub created_at: String,
+}
+
+fn get_api_keys_path() -> PathBuf {
+  get_data_dir().join("kirogate-api-keys.json")
+}
+
+fn load_api_keys() -> Vec<ApiKeyMapping> {
+  let path = get_api_keys_path();
+  if !path.exists() {
+    return Vec::new();
+  }
+  std::fs::read_to_string(&path)
+    .ok()
+    .and_then(|c| serde_json::from_str(&c).ok())
+    .unwrap_or_default()
+}
+
+fn save_api_keys(keys: &[ApiKeyMapping]) -> Result<(), String> {
+  let path = get_api_keys_path();
+  if let Some(parent) = path.parent() {
+    std::fs::create_dir_all(parent).ok();
+  }
+  let content = serde_json::to_string_pretty(keys)
+    .map_err(|e| format!("序列化失败: {}", e))?;
+  std::fs::write(&path, content)
+    .map_err(|e| format!("写入失败: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_api_keys() -> Result<Vec<ApiKeyMapping>, String> {
+  Ok(load_api_keys())
+}
+
+#[tauri::command]
+pub async fn generate_api_key(token_id: String) -> Result<ApiKeyMapping, String> {
+  let tokens = load_tokens();
+  let token = tokens.iter().find(|t| t.id == token_id)
+    .ok_or("Token 不存在")?;
+  
+  // 生成 sk-{48位十六进制} 格式
+  let random_bytes: Vec<u8> = (0..24).map(|_| rand::random::<u8>()).collect();
+  let hex_string: String = random_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+  let api_key = format!("sk-{}", hex_string);
+  
+  let mapping = ApiKeyMapping {
+    id: uuid::Uuid::new_v4().to_string(),
+    api_key,
+    token_id: token.id.clone(),
+    token_name: token.name.clone(),
+    created_at: chrono::Utc::now().to_rfc3339(),
+  };
+  
+  let mut keys = load_api_keys();
+  keys.push(mapping.clone());
+  save_api_keys(&keys)?;
+  
+  Ok(mapping)
+}
+
+#[tauri::command]
+pub async fn delete_api_key(id: String) -> Result<(), String> {
+  let mut keys = load_api_keys();
+  keys.retain(|k| k.id != id);
+  save_api_keys(&keys)?;
+  Ok(())
+}
+
+#[tauri::command]
+pub async fn find_token_by_api_key(api_key: String) -> Result<Option<KiroGateToken>, String> {
+  let keys = load_api_keys();
+  let mapping = keys.iter().find(|k| k.api_key == api_key);
+  
+  if let Some(m) = mapping {
+    let tokens = load_tokens();
+    Ok(tokens.iter().find(|t| t.id == m.token_id).cloned())
+  } else {
+    Ok(None)
+  }
+}

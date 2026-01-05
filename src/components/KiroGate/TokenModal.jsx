@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { X, AlertCircle, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { X, AlertCircle, CheckCircle, FileJson, Upload } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 
 // 验证 Refresh Token（aor 开头，冒号分隔两部分）
@@ -11,12 +11,12 @@ const validateRefreshToken = (token) => {
   return parts.length === 2 && parts[0].length >= 50 && parts[1].length >= 50
 }
 
-// 验证 Social Token
+// 验证 Social Token（只需要 refreshToken）
 const validateSocialToken = (item) => {
-  return validateRefreshToken(item.refreshToken) && item.profileArn
+  return validateRefreshToken(item.refreshToken)
 }
 
-// 验证 IdC Token
+// 验证 IdC Token（需要 refreshToken + clientId + clientSecret）
 const validateIdcToken = (item) => {
   return validateRefreshToken(item.refreshToken) && item.clientId && item.clientSecret
 }
@@ -38,8 +38,10 @@ const parseJsonInput = (input) => {
     const arr = Array.isArray(parsed) ? parsed : [parsed]
     const tokens = arr.map((item, i) => {
       const isIdc = isIdcType(item)
+      // 支持多种命名格式
+      const name = item.name || item.label || item.email || `Token ${i + 1}`
       return {
-        name: item.name || item.label || item.email || `Token ${i + 1}`,
+        name,
         refreshToken: item.refreshToken || '',
         authMethod: isIdc ? 'IdC' : 'social',
         profileArn: item.profileArn || null,
@@ -56,12 +58,13 @@ const parseJsonInput = (input) => {
 }
 
 const PLACEHOLDER = `[
-  { "name": "Google账号", "refreshToken": "aor...", "profileArn": "arn:aws:..." },
-  { "name": "BuilderId", "refreshToken": "aor...", "clientId": "xxx", "clientSecret": "xxx", "region": "us-east-1" }
+  { "name": "Google账号", "refreshToken": "aor..." },
+  { "name": "BuilderId", "refreshToken": "aor...", "clientId": "xxx", "clientSecret": "xxx" }
 ]`
 
 function TokenModal({ show, onClose, onBatchSave }) {
   const { colors } = useApp()
+  const fileInputRef = useRef(null)
   const [jsonInput, setJsonInput] = useState('')
   const [parseResult, setParseResult] = useState({ tokens: [], error: '' })
 
@@ -78,6 +81,14 @@ function TokenModal({ show, onClose, onBatchSave }) {
   const { tokens, error } = parseResult
   const validCount = tokens.filter(t => t.valid).length
   const canSave = validCount > 0
+
+  // 选择文件
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    setJsonInput(text)
+  }
 
   const handleSave = () => {
     if (!canSave) return
@@ -101,6 +112,21 @@ function TokenModal({ show, onClose, onBatchSave }) {
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10"><X size={18} className={colors.textMuted} /></button>
         </div>
         <div className="space-y-4">
+          {/* 文件选择按钮 */}
+          <div className="flex gap-2">
+            <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileSelect} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl ${colors.card} border ${colors.cardBorder} hover:bg-white/5 transition-colors`}>
+              <FileJson size={16} className={colors.textMuted} />
+              <span className={`text-sm ${colors.text}`}>选择 JSON 文件</span>
+            </button>
+            <button onClick={() => setJsonInput(PLACEHOLDER)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors text-sm`}>
+              <Upload size={16} />
+              <span>加载模板</span>
+            </button>
+          </div>
+
           <div>
             <label className={`block text-sm mb-2 ${colors.textMuted}`}>
               JSON 数组 <span className="text-xs opacity-60">（支持批量导入）</span>
@@ -124,7 +150,7 @@ function TokenModal({ show, onClose, onBatchSave }) {
             )}
           </div>
           <div className={`text-xs ${colors.textMuted} space-y-1`}>
-            <p>💡 Google/GitHub：需要 refreshToken + profileArn</p>
+            <p>💡 Google/GitHub：只需要 refreshToken</p>
             <p>💡 BuilderId/Enterprise：需要 refreshToken + clientId + clientSecret</p>
           </div>
           <button onClick={handleSave} disabled={!canSave}

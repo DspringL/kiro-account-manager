@@ -241,7 +241,11 @@ fn main() {
             get_kiro_gate_tokens,
             add_kiro_gate_token,
             update_kiro_gate_token,
-            delete_kiro_gate_token
+            delete_kiro_gate_token,
+            get_api_keys,
+            generate_api_key,
+            delete_api_key,
+            find_token_by_api_key
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

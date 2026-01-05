@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { Zap, Server, Key, BookOpen } from 'lucide-react'
+import { Zap, Server, Key, BookOpen, TestTube, KeyRound } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import ServerConfig from './ServerConfig'
 import TokenManager from './TokenManager'
+import ApiKeyManager from './ApiKeyManager'
+import TestPage from './TestPage'
 import UsageGuide from './UsageGuide'
 
 const TABS = [
   { id: 'server', label: '服务器', icon: Server },
   { id: 'tokens', label: 'Token 管理', icon: Key },
+  { id: 'apikeys', label: 'API Key', icon: KeyRound },
+  { id: 'test', label: 'API 测试', icon: TestTube },
   { id: 'guide', label: '使用说明', icon: BookOpen },
 ]
 
@@ -50,6 +54,8 @@ function KiroGate() {
         {/* Tab 内容 */}
         {activeTab === 'server' && <ServerConfig />}
         {activeTab === 'tokens' && <TokenManager />}
+        {activeTab === 'apikeys' && <ApiKeyManager />}
+        {activeTab === 'test' && <TestPage />}
         {activeTab === 'guide' && <UsageGuide />}
       </div>
     </div>
