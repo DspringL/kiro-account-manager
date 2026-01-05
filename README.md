@@ -101,7 +101,7 @@
 
 ## 📥 下载
 
-🌐 **[官网](https://vercel-lajuwps1g-hj01857655s-projects-fa88a766.vercel.app)** | 👉 **[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)**
+🌐 **[官网](https://vercel-api-lemon-five.vercel.app)** | 👉 **[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)**
 
 - Windows `.msi` - 推荐，双击安装
 - macOS `.dmg` - 拖入 Applications
@@ -234,7 +234,7 @@ A: 网络超时，手动再刷新一次或换个网络试试。
 
 ## 📥 Download
 
-🌐 **[Website](https://vercel-lajuwps1g-hj01857655s-projects-fa88a766.vercel.app)** | 👉 **[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)**
+🌐 **[Website](https://vercel-api-lemon-five.vercel.app)** | 👉 **[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)**
 
 - Windows `.msi` - Recommended, double-click to install
 - macOS `.dmg` - Drag to Applications
@@ -363,7 +363,7 @@ If this project helps you, consider buying me a coffee ☕
 
 ## 📥 Скачать
 
-🌐 **[Сайт](https://vercel-lajuwps1g-hj01857655s-projects-fa88a766.vercel.app)** | 👉 **[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)**
+🌐 **[Сайт](https://vercel-api-lemon-five.vercel.app)** | 👉 **[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)**
 
 - Windows `.msi` - Рекомендуется, двойной клик для установки
 - macOS `.dmg` - Перетащите в Applications

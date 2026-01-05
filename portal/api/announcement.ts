@@ -19,7 +19,7 @@ const ANNOUNCEMENTS = [
       '请从官网或 GitHub 下载，保护自己的账号安全。'
     ],
     // 官网地址
-    websiteUrl: 'https://vercel-lajuwps1g-hj01857655s-projects-fa88a766.vercel.app',
+    websiteUrl: 'https://vercel-api-lemon-five.vercel.app',
     officialUrl: 'https://github.com/hj01857655/kiro-account-manager',
     // 使用教程
     tutorialUrl: 'https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc',
