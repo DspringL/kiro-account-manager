@@ -101,8 +101,11 @@ function AccountManager() {
       const errorMsg = result.error
       if (errorMsg.includes('BANNED')) {
         await showError(t('accounts.refreshFailed'), t('accounts.accountBanned'))
-      } else if (errorMsg.includes('AUTH_ERROR') || errorMsg.includes('invalid')) {
+      } else if (errorMsg.includes('AUTH_ERROR') || errorMsg.includes('401') || errorMsg.includes('invalid')) {
         await showError(t('accounts.refreshFailed'), t('accounts.tokenInvalid'))
+      } else {
+        // 其他所有错误也弹窗提醒
+        await showError(t('accounts.refreshFailed'), errorMsg.slice(0, 100))
       }
     }
     return result
