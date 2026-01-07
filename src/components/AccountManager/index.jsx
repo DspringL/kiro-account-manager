@@ -41,7 +41,7 @@ function AccountManager() {
     providers: [],
     usageRange: null
   })
-  const [sortBy, setSortBy] = useState('default')
+  const [sortBy, setSortBy] = useState('trialAsc')
   
   // 当前登录的本地 token
   const [localToken, setLocalToken] = useState(null)
