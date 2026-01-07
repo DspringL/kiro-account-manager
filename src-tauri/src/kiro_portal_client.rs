@@ -204,6 +204,17 @@ impl KiroPortalClient {
                 return Err(format!("AUTH_ERROR: {}", error_msg));
             }
             
+            // 423 Locked + AccountSuspendedException → 封禁
+            if status.as_u16() == 423 {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&error_msg) {
+                    let type_field = parsed.get("__type").and_then(|t| t.as_str()).unwrap_or("");
+                    if type_field.contains("AccountSuspendedException") {
+                        let message = parsed.get("message").and_then(|m| m.as_str()).unwrap_or("账号已被暂停");
+                        return Err(format!("BANNED: {}", message));
+                    }
+                }
+            }
+            
             // 403 处理
             if status.as_u16() == 403 {
                 // 解析 JSON 检查 reason 字段

@@ -429,6 +429,10 @@ fn verify_api_key(headers: &HeaderMap, proxy_api_key: &str) -> Result<VerifyResu
   }
   // 检查用户 API Key 格式：sk-{48位十六进制}
   else if token.starts_with("sk-") && token.len() == 51 {
+    // 先检查 Token 池是否为空
+    if is_token_pool_empty() {
+      return Err("Token 池为空，请先在「Token」页面添加 Token".to_string());
+    }
     // 用户 API Key 格式，查找完整的 Token 信息
     match find_token_by_api_key(token) {
       Some(kiro_token) => Ok(VerifyResult {
@@ -481,6 +485,28 @@ fn find_token_by_api_key(api_key: &str) -> Option<KiroGateToken> {
   let tokens: Vec<KiroGateToken> = serde_json::from_str(&tokens_content).ok()?;
   
   tokens.iter().find(|t| t.id == mapping.token_id).cloned()
+}
+
+// 检查 Token 池是否为空
+fn is_token_pool_empty() -> bool {
+  let tokens_path = dirs::data_dir()
+    .unwrap_or_else(|| std::path::PathBuf::from("."))
+    .join(".kiro-account-manager")
+    .join("kirogate-tokens.json");
+  
+  if !tokens_path.exists() {
+    return true;
+  }
+  
+  match std::fs::read_to_string(&tokens_path) {
+    Ok(content) => {
+      match serde_json::from_str::<Vec<KiroGateToken>>(&content) {
+        Ok(tokens) => tokens.is_empty(),
+        Err(_) => true,
+      }
+    }
+    Err(_) => true,
+  }
 }
 
 fn error_response(status: StatusCode, message: &str) -> Response {
@@ -790,6 +816,10 @@ fn verify_token_string(token: &str, proxy_api_key: &str) -> Result<VerifyResult,
   
   // 用户 API Key 格式：sk-{48位十六进制}
   if token.starts_with("sk-") && token.len() == 51 {
+    // 先检查 Token 池是否为空
+    if is_token_pool_empty() {
+      return Err("Token 池为空，请先在「Token」页面添加 Token".to_string());
+    }
     match find_token_by_api_key(token) {
       Some(kiro_token) => return Ok(VerifyResult {
         refresh_token: kiro_token.refresh_token,

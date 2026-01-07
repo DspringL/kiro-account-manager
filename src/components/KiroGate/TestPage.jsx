@@ -95,7 +95,36 @@ function TestPage() {
       const text = await resp.text()
       
       if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${text}`)
+        // 解析错误信息
+        let serverMsg = ''
+        try {
+          const errorData = JSON.parse(text)
+          if (typeof errorData.error === 'string') {
+            serverMsg = errorData.error
+          } else if (typeof errorData.error === 'object' && errorData.error?.message) {
+            serverMsg = errorData.error.message
+          } else if (errorData.detail) {
+            serverMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail)
+          } else if (errorData.message) {
+            serverMsg = errorData.message
+          }
+        } catch {
+          serverMsg = text
+        }
+        
+        // 针对常见错误给出友好提示
+        let errorMsg = ''
+        if (resp.status === 401) {
+          errorMsg = `认证失败 (401)\n\n可能原因：\n• API Key 无效或已过期\n• KiroGate Token 池为空，请先添加 Token`
+        } else if (resp.status === 503) {
+          errorMsg = `服务不可用 (503)\n\n可能原因：\n• KiroGate 服务未启动\n• 所有 Token 都已失效`
+        } else if (resp.status === 429) {
+          errorMsg = `请求过于频繁 (429)\n\n请稍后再试`
+        } else {
+          errorMsg = `请求失败 (${resp.status})${serverMsg ? `\n\n${serverMsg}` : ''}`
+        }
+        
+        throw new Error(errorMsg)
       }
 
       if (stream) {
