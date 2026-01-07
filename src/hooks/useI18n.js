@@ -1,27 +1,13 @@
-// 兼容旧的 useI18n hook
-import { useState, useReducer } from 'react'
+// i18n hook（仅支持中文）
 import { useTranslation } from 'react-i18next'
-import { changeLanguage } from '../utils/i18nUtils'
 
 export function useI18n() {
-  const { t, i18n: i18nInstance } = useTranslation()
-  const [loading, setLoading] = useState(false)
-  const [, forceUpdate] = useReducer(x => x + 1, 0)
-  
-  const setLocale = async (lng) => {
-    setLoading(true)
-    try {
-      await changeLanguage(lng)
-      forceUpdate()
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { t } = useTranslation()
   
   return {
     t,
-    locale: i18nInstance.language,
-    setLocale,
-    loading,
+    locale: 'zh-CN',
+    setLocale: () => {}, // 不再支持切换语言
+    loading: false,
   }
 }
