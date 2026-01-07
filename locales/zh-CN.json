@@ -242,6 +242,8 @@
   "accounts.switchFailed": "切换失败",
   "accounts.refreshSuccess": "刷新成功",
   "accounts.refreshFailed": "刷新失败",
+  "accounts.accountBanned": "账号已被封禁，无法使用",
+  "accounts.tokenInvalid": "Token 已失效，请重新登录",
   "accounts.importSuccess": "导入成功",
   "accounts.importFailed": "导入失败",
   "accounts.exportSuccess": "导出成功",

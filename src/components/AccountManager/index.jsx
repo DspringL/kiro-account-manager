@@ -21,7 +21,7 @@ import { AccountListSkeleton, AccountTableSkeleton } from '../Skeleton'
 
 function AccountManager() {
   const { t, colors } = useApp()
-  const { showConfirm } = useDialog()
+  const { showConfirm, showError } = useDialog()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIds, setSelectedIds] = useState([])
   const [editingAccount, setEditingAccount] = useState(null)
@@ -93,6 +93,20 @@ function AccountManager() {
     handleRefreshStatus,
     handleExport,
   } = useAccounts()
+
+  // 包装刷新函数，添加错误弹窗通知
+  const handleRefreshWithNotify = useCallback(async (id) => {
+    const result = await handleRefreshStatus(id)
+    if (!result.success && result.error) {
+      const errorMsg = result.error
+      if (errorMsg.includes('BANNED')) {
+        await showError(t('accounts.refreshFailed'), t('accounts.accountBanned'))
+      } else if (errorMsg.includes('AUTH_ERROR') || errorMsg.includes('invalid')) {
+        await showError(t('accounts.refreshFailed'), t('accounts.tokenInvalid'))
+      }
+    }
+    return result
+  }, [handleRefreshStatus, showError, t])
 
   // 获取所有标签（从标签定义中获取）
   const allTags = useMemo(() => {
@@ -274,7 +288,7 @@ function AccountManager() {
           copiedId={copiedId}
           onCopy={handleCopy}
           onSwitch={handleSwitchAccount}
-          onRefresh={handleRefreshStatus}
+          onRefresh={handleRefreshWithNotify}
           onEdit={setEditingAccount}
           onEditLabel={setEditingLabelAccount}
           onDelete={handleDelete}
@@ -293,7 +307,7 @@ function AccountManager() {
           onSelectAll={handleSelectAll}
           onSelectOne={handleSelectOne}
           onSwitch={handleSwitchAccount}
-          onRefresh={handleRefreshStatus}
+          onRefresh={handleRefreshWithNotify}
           onEdit={setEditingAccount}
           onEditLabel={setEditingLabelAccount}
           onDelete={handleDelete}
