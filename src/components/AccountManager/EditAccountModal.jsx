@@ -231,6 +231,50 @@ function EditAccountModal({ account, onClose, onSuccess }) {
             </div>
           </div>
 
+          {/* BuilderId 专用字段 */}
+          {account.provider === 'BuilderId' && (
+            <>
+              <div>
+                <label className={`block text-sm font-medium ${colors.textMuted} mb-2`}>Client ID</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.clientId}
+                    onChange={(e) => setForm({ ...form, clientId: e.target.value })}
+                    placeholder="刷新 Token 需要"
+                    className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${colors.input} ${colors.text}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(form.clientId, 'clientId')}
+                    className={`px-3 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg transition-colors`}
+                  >
+                    {copied === 'clientId' ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium ${colors.textMuted} mb-2`}>Client Secret</label>
+                <div className="flex gap-2">
+                  <textarea
+                    value={form.clientSecret}
+                    onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
+                    placeholder="刷新 Token 需要"
+                    rows={2}
+                    className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${colors.input} ${colors.text} resize-none`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(form.clientSecret, 'clientSecret')}
+                    className={`px-3 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg transition-colors self-start`}
+                  >
+                    {copied === 'clientSecret' ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* 分组选择 - 支持直接创建 */}
           <GroupSelector
             groups={groups}

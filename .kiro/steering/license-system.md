@@ -89,23 +89,8 @@ E:\VSCodeSpace\LicenseSystem\license-server/
 - 响应式设计
 
 ### 数据格式
-账号数据 payload 格式：
-```json
-{
-  "email": "user@example.com",
-  "provider": "social",
-  "token": "jwt_token_here",
-  "refreshToken": "refresh_token_here",
-  "expiresAt": "2026-01-08T10:30:00Z",
-  "subscription": "PRO",
-  "usage": {
-    "main": { "used": 0, "limit": 1000000 },
-    "trial": { "used": 0, "limit": 50000 },
-    "reward": { "used": 0, "limit": 0 }
-  },
-  "remark": "通过卡密兑换获得"
-}
-```
+
+账号数据格式详见 LicenseSystem 项目文档：`docs/账号数据格式.md`
 
 ## 部署规范
 
@@ -141,6 +126,49 @@ npm run dev
 - API 密钥验证
 
 ## 测试规范
+
+### 测试数据规范
+
+⚠️ **严禁使用真实账号数据！** 所有测试数据必须是格式正确的假数据。
+
+#### 字段格式要求
+
+| 字段 | 格式要求 | 示例 |
+|------|----------|------|
+| `email` | 有效邮箱格式 | `test001@example.com` |
+| `token` | JWT 格式（eyJ 开头） | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0...` |
+| `refreshToken` | JWT 格式（eyJ 开头） | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWZyZXNoIjoi...` |
+| `clientId` | 36 字符 + Base64 后缀 | `testABCDEFGH1234567890abcdefLWVhc3QtMQ` |
+| `clientSecret` | JWT 格式（eyJ 开头） | `eyJraWQiOiJ0ZXN0S2V5SWQiLCJhbGciOiJSUzI1NiJ9.eyJpc3Mi...` |
+| `clientIdHash` | 64 位十六进制 | `a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12` |
+| `region` | AWS 区域格式 | `us-east-1` |
+
+#### 禁止事项
+
+- ❌ 禁止导入真实用户的账号数据
+- ❌ 禁止使用真实的 Token、clientId、clientSecret
+- ❌ 禁止使用简单占位符（如 `xxx`、`test123`）
+- ❌ 禁止使用明显不符合格式的假数据
+
+#### 正确做法
+
+- ✅ 使用符合真实格式的假数据
+- ✅ JWT 格式字段必须以 `eyJ` 开头
+- ✅ clientIdHash 必须是 64 位十六进制字符串
+- ✅ 测试完成后清理测试数据
+
+#### 测试数据生成示例
+
+```javascript
+// 生成假 JWT Token
+const fakeJwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0VXNlcklkIiwiaWF0IjoxNzA0NjcyMDAwfQ.fakeSignature123456789'
+
+// 生成假 clientId（36 字符 + Base64 后缀）
+const fakeClientId = 'testABCDEFGH1234567890abcdefLWVhc3QtMQ'
+
+// 生成假 clientIdHash（64 位十六进制）
+const fakeClientIdHash = 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef12'
+```
 
 ### 单元测试
 - Service 层业务逻辑测试
