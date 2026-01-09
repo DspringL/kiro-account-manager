@@ -67,3 +67,68 @@ pub async fn clear_macos_override() -> Result<(), String> {
 
 #[tauri::command]
 pub fn generate_machine_guid() -> String { generate_random_machine_id() }
+
+/// 以管理员权限重启应用（仅 Windows）
+#[tauri::command]
+pub async fn restart_as_admin(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        
+        let exe_path = std::env::current_exe()
+            .map_err(|e| format!("获取程序路径失败: {}", e))?;
+        
+        // 使用 PowerShell 的 Start-Process -Verb RunAs 以管理员权限启动
+        let _status = Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                &format!(
+                    "Start-Process -FilePath '{}' -Verb RunAs",
+                    exe_path.display().to_string().replace("'", "''")
+                )
+            ])
+            .spawn()
+            .map_err(|e| format!("启动管理员进程失败: {}", e))?;
+        
+        // 等待一小段时间确保新进程启动
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        
+        // 退出当前应用
+        app.exit(0);
+        Ok(())
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        
+        let exe_path = std::env::current_exe()
+            .map_err(|e| format!("获取程序路径失败: {}", e))?;
+        
+        // 尝试使用 pkexec
+        let result = Command::new("pkexec")
+            .arg(&exe_path)
+            .spawn();
+        
+        match result {
+            Ok(_) => {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                app.exit(0);
+                Ok(())
+            }
+            Err(_) => Err("请使用 sudo 或 pkexec 手动以 root 权限运行程序".to_string())
+        }
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        // macOS 不需要管理员权限（写入用户目录）
+        Err("macOS 不需要管理员权限".to_string())
+    }
+    
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        Err("不支持的操作系统".to_string())
+    }
+}

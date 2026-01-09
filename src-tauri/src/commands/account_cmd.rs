@@ -285,6 +285,7 @@ pub async fn add_account_by_social(
         account.access_token = Some(final_access_token.clone());
         account.refresh_token = Some(final_refresh_token.clone());
         account.provider = Some(idp.clone());
+        account.auth_method = Some("social".to_string());
         account.user_id = user_id;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned);
@@ -474,6 +475,7 @@ pub async fn add_account_by_idc(
         account.access_token = Some(final_access_token);
         account.refresh_token = Some(final_refresh_token);
         account.provider = Some("BuilderId".to_string());
+        account.auth_method = Some("IdC".to_string());
         account.user_id = user_id;
         if !expires_at.is_empty() {
             account.expires_at = Some(expires_at);

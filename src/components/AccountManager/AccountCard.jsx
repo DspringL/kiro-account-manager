@@ -23,6 +23,7 @@ const AccountCard = memo(function AccountCard({
   switchingId,
   isCurrentAccount,
   tagDefinitions = [],
+  groupDefinitions = [],
 }) {
   const { t } = useTranslation()
   const { theme, colors } = useTheme()
@@ -171,11 +172,15 @@ const AccountCard = memo(function AccountCard({
         {/* 订阅类型和登录方式 */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className={`inline-flex px-2 py-1 rounded-lg text-xs font-medium ${
-            (subType.includes('PRO+') || subPlan.includes('PRO+'))
-              ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
-              : (subType.includes('PRO') || subPlan.includes('PRO'))
-                ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm'
-                : isLightTheme ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-300'
+            (subType.includes('ENTERPRISE') || subPlan.toUpperCase().includes('ENTERPRISE'))
+              ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm'
+              : (subType.includes('PRO+') || subPlan.includes('PRO+'))
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
+                : (subType.includes('PRO') || subPlan.includes('PRO'))
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-sm'
+                  : (subPlan.toUpperCase().includes('KIRO'))
+                    ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white shadow-sm'
+                    : isLightTheme ? 'bg-gray-100 text-gray-600' : 'bg-gray-700 text-gray-300'
           }`}>
             {subPlan || 'Free'}
           </span>
@@ -194,17 +199,42 @@ const AccountCard = memo(function AccountCard({
           )}
         </div>
 
+        {/* 分组 */}
+        {account.groupId && (
+          <div className="flex items-center gap-1.5 mb-2">
+            {(() => {
+              const group = groupDefinitions.find(g => g.id === account.groupId)
+              if (!group) return null
+              return (
+                <span 
+                  className="text-xs px-2 py-0.5 rounded-lg font-medium"
+                  style={{ 
+                    backgroundColor: group.color ? `${group.color}20` : (isLightTheme ? '#e5e7eb' : 'rgba(255,255,255,0.1)'),
+                    color: group.color || (isLightTheme ? '#374151' : '#9ca3af')
+                  }}
+                >
+                  {group.name}
+                </span>
+              )
+            })()}
+          </div>
+        )}
+
         {/* 标签 */}
         {account.tags && account.tags.length > 0 && (
           <div className="flex items-center gap-1.5 mb-3 flex-wrap">
             {account.tags.map(tagId => {
               const tag = tagDefinitions.find(t => t.id === tagId)
               if (!tag) return null
+              // 查找关联时间
+              const tagLink = account.tagLinks?.find(l => l.tagId === tagId)
+              const linkedAt = tagLink?.linkedAt
               return (
                 <span 
                   key={tagId} 
-                  className="text-xs px-2 py-0.5 rounded-full text-white"
+                  className="text-xs px-2 py-0.5 rounded-full text-white cursor-default"
                   style={{ backgroundColor: tag.color || '#8b5cf6' }}
+                  title={linkedAt ? `关联于 ${linkedAt}` : ''}
                 >
                   {tag.name}
                 </span>

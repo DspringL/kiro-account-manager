@@ -2,7 +2,7 @@
 
 use tauri::State;
 use crate::state::AppState;
-use crate::account::{AccountGroup, AccountTag};
+use crate::account::{AccountGroup, AccountTag, AccountTagLink};
 
 // ============================================================
 // 分组命令
@@ -93,7 +93,10 @@ pub fn set_account_group(state: State<AppState>, account_id: String, group_id: O
 pub fn add_tag_to_account(state: State<AppState>, account_id: String, tag_id: String) -> Result<(), String> {
     let mut store = state.store.lock().unwrap();
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
-        if !account.tags.contains(&tag_id) {
+        // 检查是否已存在（兼容旧数据）
+        if !account.tags.contains(&tag_id) && !account.tag_links.iter().any(|l| l.tag_id == tag_id) {
+            account.tag_links.push(AccountTagLink::new(tag_id.clone()));
+            // 同时更新 tags 保持兼容
             account.tags.push(tag_id);
             store.save_to_file();
         }
@@ -108,6 +111,7 @@ pub fn remove_tag_from_account(state: State<AppState>, account_id: String, tag_i
     let mut store = state.store.lock().unwrap();
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         account.tags.retain(|t| t != &tag_id);
+        account.tag_links.retain(|l| l.tag_id != tag_id);
         store.save_to_file();
         Ok(())
     } else {
@@ -119,6 +123,16 @@ pub fn remove_tag_from_account(state: State<AppState>, account_id: String, tag_i
 pub fn set_account_tags(state: State<AppState>, account_id: String, tag_ids: Vec<String>) -> Result<(), String> {
     let mut store = state.store.lock().unwrap();
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
+        // 保留已有的 tag_links（保持时间戳），只添加新的
+        let existing_ids: Vec<String> = account.tag_links.iter().map(|l| l.tag_id.clone()).collect();
+        // 移除不在新列表中的
+        account.tag_links.retain(|l| tag_ids.contains(&l.tag_id));
+        // 添加新的
+        for tag_id in &tag_ids {
+            if !existing_ids.contains(tag_id) {
+                account.tag_links.push(AccountTagLink::new(tag_id.clone()));
+            }
+        }
         account.tags = tag_ids;
         store.save_to_file();
         Ok(())
@@ -132,6 +146,7 @@ pub fn remove_account_tags(state: State<AppState>, account_id: String, tag_ids: 
     let mut store = state.store.lock().unwrap();
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         account.tags.retain(|t| !tag_ids.contains(t));
+        account.tag_links.retain(|l| !tag_ids.contains(&l.tag_id));
         store.save_to_file();
         Ok(())
     } else {

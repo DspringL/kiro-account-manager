@@ -8,7 +8,7 @@ import ContextMenu from './ContextMenu'
 
 // 单行组件
 const ListRow = memo(function ListRow({
-  account, isSelected, isCurrent, refreshingId, switchingId, tagDefinitions, colors, isLightTheme, t, maskEmail,
+  account, isSelected, isCurrent, refreshingId, switchingId, tagDefinitions, groupDefinitions, colors, isLightTheme, t, maskEmail,
   onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onCopy,
 }) {
   const [contextMenu, setContextMenu] = useState(null)
@@ -85,9 +85,15 @@ const ListRow = memo(function ListRow({
 
       {/* 订阅类型 */}
       <span className={`text-xs px-2 py-1 rounded w-20 text-center shrink-0 ${
-        account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO') 
-          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
-          : (isLightTheme ? 'bg-gray-100' : 'bg-white/10') + ' ' + colors.textMuted
+        account.usageData?.subscriptionInfo?.subscriptionTitle?.toUpperCase()?.includes('ENTERPRISE')
+          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+          : account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO+')
+            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+            : account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO')
+              ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+              : account.usageData?.subscriptionInfo?.subscriptionTitle?.toUpperCase()?.includes('KIRO')
+                ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
+                : (isLightTheme ? 'bg-gray-100' : 'bg-white/10') + ' ' + colors.textMuted
       }`}>{account.usageData?.subscriptionInfo?.subscriptionTitle || 'Free'}</span>
 
       {/* 配额 */}
@@ -123,13 +129,31 @@ const ListRow = memo(function ListRow({
         )}
       </div>
 
+      {/* 分组 */}
+      <div className="w-16 shrink-0">
+        {account.groupId ? (() => {
+          const group = groupDefinitions.find(g => g.id === account.groupId)
+          return group ? (
+            <span 
+              className="text-[10px] px-1.5 py-0.5 rounded font-medium truncate block max-w-full"
+              style={{ backgroundColor: `${group.color}20`, color: group.color }}
+              title={group.name}
+            >
+              {group.name}
+            </span>
+          ) : <span className={`text-xs ${colors.textMuted}`}>-</span>
+        })() : <span className={`text-xs ${colors.textMuted}`}>-</span>}
+      </div>
+
       {/* 标签 */}
       <div className="flex-1 min-w-0">
         {account.tags?.length > 0 ? (
           <div className="flex items-center gap-1 flex-wrap">
             {account.tags.slice(0, 3).map(tagId => {
               const tag = tagDefinitions.find(t => t.id === tagId)
-              return tag ? <span key={tagId} className="text-[10px] px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]" style={{ backgroundColor: `${tag.color}20`, color: tag.color }} title={tag.name}>{tag.name}</span> : null
+              const tagLink = account.tagLinks?.find(l => l.tagId === tagId)
+              const linkedAt = tagLink?.linkedAt
+              return tag ? <span key={tagId} className="text-[10px] px-1.5 py-0.5 rounded font-medium truncate max-w-[120px]" style={{ backgroundColor: `${tag.color}20`, color: tag.color }} title={linkedAt ? `${tag.name} (关联于 ${linkedAt})` : tag.name}>{tag.name}</span> : null
             })}
             {account.tags.length > 3 && <span className={`text-[10px] ${colors.textMuted}`}>+{account.tags.length - 3}</span>}
           </div>
@@ -139,12 +163,12 @@ const ListRow = memo(function ListRow({
   )
 }, (prev, next) => (
   prev.account === next.account && prev.isSelected === next.isSelected && prev.isCurrent === next.isCurrent &&
-  prev.refreshingId === next.refreshingId && prev.switchingId === next.switchingId && prev.tagDefinitions === next.tagDefinitions && prev.isLightTheme === next.isLightTheme
+  prev.refreshingId === next.refreshingId && prev.switchingId === next.switchingId && prev.tagDefinitions === next.tagDefinitions && prev.groupDefinitions === next.groupDefinitions && prev.isLightTheme === next.isLightTheme
 ))
 
 
 function AccountListView({
-  accounts, totalCount, selectedIds, onSelectAll, onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onCopy, onAdd, refreshingId, switchingId, localToken, tagDefinitions = [], copiedId, sortBy, onSortChange,
+  accounts, totalCount, selectedIds, onSelectAll, onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onCopy, onAdd, refreshingId, switchingId, localToken, tagDefinitions = [], groupDefinitions = [], copiedId, sortBy, onSortChange,
 }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
@@ -222,6 +246,7 @@ function AccountListView({
         <div className="w-28 cursor-pointer hover:text-blue-500 select-none" onClick={() => handleSort('trial')}>
           token|试用过期<SortIcon field="trial" />
         </div>
+        <div className="w-16">分组</div>
         <div className="flex-1">标签</div>
       </div>
 
@@ -238,6 +263,7 @@ function AccountListView({
                   refreshingId={refreshingId}
                   switchingId={switchingId}
                   tagDefinitions={tagDefinitions}
+                  groupDefinitions={groupDefinitions}
                   colors={colors}
                   isLightTheme={isLightTheme}
                   t={t}

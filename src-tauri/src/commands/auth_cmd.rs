@@ -96,6 +96,7 @@ async fn login_social(
         account.access_token = Some(auth_result.access_token.clone());
         account.refresh_token = Some(auth_result.refresh_token.clone());
         account.provider = Some(provider_id.clone());
+        account.auth_method = Some("social".to_string());
         account.user_id = user_id;
         account.expires_at = Some(auth_result.expires_at.clone());
         account.profile_arn = auth_result.profile_arn;
@@ -166,6 +167,7 @@ async fn login_idc(
         account.access_token = Some(auth_result.access_token.clone());
         account.refresh_token = Some(auth_result.refresh_token.clone());
         account.provider = Some(provider_id.clone());
+        account.auth_method = Some("IdC".to_string());
         account.user_id = user_id;
         account.expires_at = Some(auth_result.expires_at.clone());
         account.client_id_hash = auth_result.client_id_hash;
@@ -257,6 +259,7 @@ pub async fn handle_kiro_social_callback(
         account.access_token = Some(token_response.access_token.clone());
         account.refresh_token = Some(token_response.refresh_token.clone());
         account.provider = Some(pending.provider.clone());
+        account.auth_method = Some("social".to_string());
         account.user_id = user_id;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned);
@@ -327,6 +330,12 @@ pub async fn add_kiro_account(
         account.access_token = Some(access_token.clone());
         account.refresh_token = Some(refresh_token.clone());
         account.provider = Some(idp.clone());
+        // 根据 idp 设置 auth_method
+        account.auth_method = Some(if idp == "BuilderId" || idp == "Enterprise" {
+            "IdC".to_string()
+        } else {
+            "social".to_string()
+        });
         account.user_id = user_id;
         account.csrf_token = Some(csrf_token.clone());
         account.usage_data = Some(usage_result.usage_data);

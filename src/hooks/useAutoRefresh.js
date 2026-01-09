@@ -5,12 +5,9 @@ import { emit } from '@tauri-apps/api/event'
 // 常量
 const DEFAULT_REFRESH_INTERVAL = 10 // 分钟
 
-// 根据账号数量计算并发数
+// 根据账号数量计算并发数：数量/10，最小3，最大20
 const getConcurrency = (count) => {
-  if (count <= 10) return count // 10 个以内全并发
-  if (count <= 50) return 10    // 50 个以内并发 10
-  if (count <= 200) return 20   // 200 个以内并发 20
-  return 30                     // 超过 200 并发 30
+  return Math.min(20, Math.max(3, Math.ceil(count / 10)))
 }
 
 // 分批执行异步任务

@@ -343,6 +343,7 @@ pub async fn import_from_sso_token(
     } else {
         let mut account = Account::new(email.clone(), email.clone());
         account.provider = Some("BuilderId".to_string());
+        account.auth_method = Some("IdC".to_string());
         account.access_token = Some(token_data.access_token);
         account.refresh_token = Some(token_data.refresh_token);
         account.client_id = Some(client_id);

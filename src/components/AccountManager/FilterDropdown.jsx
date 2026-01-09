@@ -10,6 +10,7 @@ const SUBSCRIPTION_OPTIONS = [
   { value: 'KIRO FREE', label: 'KIRO FREE' },
   { value: 'KIRO PRO', label: 'KIRO PRO' },
   { value: 'KIRO PRO+', label: 'KIRO PRO+' },
+  { value: 'KIRO ENTERPRISE', label: 'KIRO ENTERPRISE' },
 ]
 const STATUS_OPTIONS = [
   { value: '', label: '全部' },
@@ -60,6 +61,9 @@ function FilterSelect({ label, value, options, onChange, onClear, colors, isLigh
 function FilterDropdown({ 
   filters, 
   onFiltersChange,
+  allGroups = [],
+  selectedGroup,
+  onGroupFilter,
   allTags = [],
   selectedTag,
   onTagFilter,
@@ -87,12 +91,14 @@ function FilterDropdown({
     filters.statuses?.length || 0,
     filters.providers?.length || 0,
     filters.usageRange ? 1 : 0,
+    selectedGroup ? 1 : 0,
     selectedTag ? 1 : 0,
     selectedStatus ? 1 : 0,
   ].reduce((a, b) => a + b, 0)
 
   const clearAll = () => {
     onFiltersChange({ subscriptions: [], statuses: [], providers: [], usageRange: null })
+    onGroupFilter?.(null)
     onTagFilter(null)
     onStatusFilter(null)
   }
@@ -131,6 +137,26 @@ function FilterDropdown({
           </div>
 
           <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
+            {/* 分组 */}
+            {allGroups.length > 0 && (
+              <div>
+                <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('groups.title') || '分组'}</label>
+                <div className="relative">
+                  <SearchableTagSelect
+                    tags={allGroups}
+                    value={selectedGroup}
+                    onChange={onGroupFilter}
+                    placeholder={t('groups.searchPlaceholder') || '搜索分组...'}
+                    showAllOption={true}
+                    showNoneOption={true}
+                    allLabel={t('groups.all') || '全部'}
+                    noneLabel={t('groups.noGroup') || '无分组'}
+                    hasLabel={t('groups.hasGroup') || '有分组'}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* 标签 */}
             {allTags.length > 0 && (
               <div>
@@ -145,6 +171,7 @@ function FilterDropdown({
                     showNoneOption={true}
                     allLabel={t('tags.all')}
                     noneLabel={t('tags.noTags')}
+                    hasLabel={t('tags.hasTags') || '有标签'}
                   />
                 </div>
               </div>

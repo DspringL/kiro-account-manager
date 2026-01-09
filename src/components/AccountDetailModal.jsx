@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { X, Copy, Check, RefreshCw, User, CreditCard, Key, Clock, ChevronDown, ChevronUp, Shield } from 'lucide-react'
+import { X, Copy, Check, RefreshCw, User, CreditCard, Shield } from 'lucide-react'
 import { useApp } from '../hooks/useApp'
 import { useDialog } from '../contexts/DialogContext'
 import { formatUsage } from '../utils/accountStats'
+import { TokenJsonView } from './AccountManager/TokenJsonView'
 
 function AccountDetailModal({ account, onClose }) {
   const { t, theme, colors } = useApp()
@@ -23,7 +24,6 @@ function AccountDetailModal({ account, onClose }) {
 
   const [refreshing, setRefreshing] = useState(false)
   const [copied, setCopied] = useState(null)
-  const [showTokens, setShowTokens] = useState(true)
   const copiedTimerRef = useRef(null)
 
   // 清理timer
@@ -108,7 +108,17 @@ function AccountDetailModal({ account, onClose }) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className={`text-lg font-semibold ${colors.text}`}>{account.email}</h2>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${(account.usageData?.subscriptionInfo?.type?.includes('PRO+') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO+')) ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' : (account.usageData?.subscriptionInfo?.type?.includes('PRO') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO')) ? 'bg-blue-500 text-white' : (isLightTheme ? 'bg-gray-200 text-gray-600' : 'bg-gray-700 text-gray-300')}`}>
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  (account.usageData?.subscriptionInfo?.subscriptionTitle?.toUpperCase()?.includes('ENTERPRISE'))
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                    : (account.usageData?.subscriptionInfo?.type?.includes('PRO+') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO+'))
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                      : (account.usageData?.subscriptionInfo?.type?.includes('PRO') || account.usageData?.subscriptionInfo?.subscriptionTitle?.includes('PRO'))
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                        : (account.usageData?.subscriptionInfo?.subscriptionTitle?.toUpperCase()?.includes('KIRO'))
+                          ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
+                          : (isLightTheme ? 'bg-gray-200 text-gray-600' : 'bg-gray-700 text-gray-300')
+                }`}>
                   {account.usageData?.subscriptionInfo?.subscriptionTitle || 'Free'}
                 </span>
               </div>
@@ -268,132 +278,8 @@ function AccountDetailModal({ account, onClose }) {
 
             </div>
 
-            {/* account */}
-            <div className={`${colors.card} rounded-xl shadow-sm overflow-hidden`}>
-              <div className={`flex items-center justify-between px-5 py-4 cursor-pointer ${colors.cardHover} transition-colors`} onClick={() => setShowTokens(!showTokens)}>
-                <div className="flex items-center gap-2">
-                  <Key size={18} className={colors.textMuted} />
-                  <span className={`font-medium ${colors.text}`}>{t('detail.tokenCredentials')}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {account.expiresAt && <span className={`text-xs ${colors.textMuted} flex items-center gap-1`}><Clock size={12} />{account.expiresAt}</span>}
-                  {showTokens ? <ChevronUp size={16} className={colors.textMuted} /> : <ChevronDown size={16} className={colors.textMuted} />}
-                </div>
-              </div>
-              
-              {showTokens && (
-                <div className={`px-5 pb-5 space-y-3 border-t ${colors.cardBorder} pt-4`}>
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-medium ${colors.textMuted}`}>Access Token</span>
-                        <button type="button" onClick={() => handleCopy(form.accessToken, 'access')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                          {copied === 'access' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                          {copied === 'access' ? t('common.copied') : t('common.copy')}
-                        </button>
-                      </div>
-                      <textarea value={form.accessToken} onChange={(e) => setForm({ ...form, accessToken: e.target.value })} placeholder={account.provider === 'BuilderId' ? t('detail.aoaPrefix') : t('detail.eyjPrefix')} className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-xs font-medium ${colors.textMuted}`}>Refresh Token</span>
-                        <button type="button" onClick={() => handleCopy(form.refreshToken, 'refresh')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                          {copied === 'refresh' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                          {copied === 'refresh' ? t('common.copied') : t('common.copy')}
-                        </button>
-                      </div>
-                      <textarea value={form.refreshToken} onChange={(e) => setForm({ ...form, refreshToken: e.target.value })} placeholder={account.provider === 'BuilderId' ? t('detail.aorPrefix') : 'refresh token'} className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} />
-                    </div>
-                    
-                    {/* IdC (BuilderId) 专用字段 */}
-                    {account.provider === 'BuilderId' && (
-                      <div className={`pt-3 border-t ${colors.cardBorder} space-y-3`}>
-                        <div className={`text-xs font-medium ${colors.textMuted} flex items-center gap-1`}>
-                          <Shield size={12} />
-                          {t('detail.ssoCredentials')}
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className={`text-xs ${colors.textMuted}`}>Client ID Hash</label>
-                            <button type="button" onClick={() => handleCopy(account.clientIdHash, 'clientIdHash')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                              {copied === 'clientIdHash' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                            </button>
-                          </div>
-                          <input type="text" value={account.clientIdHash || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className={`block text-xs ${colors.textMuted} mb-1`}>Region</label>
-                            <input type="text" value={account.region || 'us-east-1'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                          </div>
-                          <div>
-                            <label className={`block text-xs ${colors.textMuted} mb-1`}>Session ID</label>
-                            <input type="text" value={account.ssoSessionId || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60 truncate`} />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className={`text-xs ${colors.textMuted}`}>Client ID</label>
-                            <button type="button" onClick={() => handleCopy(account.clientId, 'clientId')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                              {copied === 'clientId' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                            </button>
-                          </div>
-                          <input type="text" value={account.clientId || ''} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                        </div>
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <label className={`text-xs ${colors.textMuted}`}>Client Secret</label>
-                            <button type="button" onClick={() => handleCopy(account.clientSecret, 'clientSecret')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                              {copied === 'clientSecret' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                            </button>
-                          </div>
-                          <textarea value={account.clientSecret || ''} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg resize-none h-14 ${colors.text} opacity-60`} />
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Social 专用字段 */}
-                    {(account.provider === 'Google' || account.provider === 'Github') && (
-                      <div className={`pt-3 border-t ${colors.cardBorder} space-y-3`}>
-                        {account.profileArn && (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className={`text-xs ${colors.textMuted}`}>Profile ARN</label>
-                              <button type="button" onClick={() => handleCopy(account.profileArn, 'profileArn')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                                {copied === 'profileArn' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                              </button>
-                            </div>
-                            <input type="text" value={account.profileArn} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                          </div>
-                        )}
-                        {account.csrfToken && (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className={`text-xs ${colors.textMuted}`}>CSRF Token</label>
-                              <button type="button" onClick={() => handleCopy(account.csrfToken, 'csrfToken')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                                {copied === 'csrfToken' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                              </button>
-                            </div>
-                            <input type="text" value={account.csrfToken} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                          </div>
-                        )}
-                        {account.sessionToken && (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className={`text-xs ${colors.textMuted}`}>Session Token</label>
-                              <button type="button" onClick={() => handleCopy(account.sessionToken, 'sessionToken')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                                {copied === 'sessionToken' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                              </button>
-                            </div>
-                            <input type="text" value={account.sessionToken} readOnly className={`w-full px-3 py-2 text-xs font-mono ${colors.cardSecondary} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-
-                </div>
-              )}
-            </div>
+            {/* Token 凭证 JSON 视图 */}
+            <TokenJsonView account={account} />
           </div>
 
           {/* Footer */}

@@ -31,6 +31,7 @@ const VirtualRow = memo(function VirtualRow({
   switchingId,
   localToken,
   tagDefinitions,
+  groupDefinitions,
   isLightTheme,
   colors,
   t,
@@ -59,6 +60,7 @@ const VirtualRow = memo(function VirtualRow({
             switchingId={switchingId}
             isCurrentAccount={localToken?.refreshToken && item.refreshToken === localToken.refreshToken}
             tagDefinitions={tagDefinitions}
+            groupDefinitions={groupDefinitions}
           />
         )
       })}
@@ -72,6 +74,7 @@ const VirtualRow = memo(function VirtualRow({
   if (prev.switchingId !== next.switchingId) return false
   if (prev.localToken !== next.localToken) return false
   if (prev.tagDefinitions !== next.tagDefinitions) return false
+  if (prev.groupDefinitions !== next.groupDefinitions) return false
   if (prev.isLightTheme !== next.isLightTheme) return false
   // selectedIdsSet 比较：检查行内账号的选中状态是否变化
   for (const item of prev.row) {
@@ -102,6 +105,7 @@ function AccountTable({
   switchingId,
   localToken,
   tagDefinitions = [],
+  groupDefinitions = [],
 }) {
   const { t, theme, colors } = useApp()
   const isLightTheme = theme === 'light'
@@ -208,6 +212,7 @@ function AccountTable({
                     switchingId={switchingId}
                     localToken={localToken}
                     tagDefinitions={tagDefinitions}
+                    groupDefinitions={groupDefinitions}
                     isLightTheme={isLightTheme}
                     colors={colors}
                     t={t}

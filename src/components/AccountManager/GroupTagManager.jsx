@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { X, Tag, Plus, Trash2, Edit2, Check } from 'lucide-react'
+import { X, Tag, Plus, Trash2, Edit2, Check, Folder } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
-import { getTags } from '../../api/groupTag'
+import { getTags, getGroups } from '../../api/groupTag'
 
 // 预设颜色
 const PRESET_COLORS = [
@@ -151,90 +151,108 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
   )
 }
 
-// 标签管理弹窗（全局标签管理）
-function GroupTagManager({ onClose, onSuccess }) {
+// 标签管理弹窗（全局标签和分组管理）
+function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
   const { t, theme, colors } = useApp()
   const { showError, showConfirm } = useDialog()
   const isLightTheme = theme === 'light'
   
+  const [activeTab, setActiveTab] = useState(defaultTab)
   const [tags, setTags] = useState([])
+  const [groups, setGroups] = useState([])
   const [loading, setLoading] = useState(true)
-  const [newTagName, setNewTagName] = useState('')
-  const [newTagColor, setNewTagColor] = useState(PRESET_COLORS[0])
+  const [newName, setNewName] = useState('')
+  const [newColor, setNewColor] = useState(PRESET_COLORS[0])
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState({ name: '', color: '' })
 
-  // 加载标签
+  // 加载数据
   useEffect(() => {
-    loadTags()
+    loadData()
   }, [])
 
-  const loadTags = async () => {
+  const loadData = async () => {
     try {
-      const data = await getTags()
-      setTags(data)
+      const [tagsData, groupsData] = await Promise.all([getTags(), getGroups()])
+      setTags(tagsData)
+      setGroups(groupsData)
     } catch (e) {
-      console.error('加载标签失败:', e)
+      console.error('加载数据失败:', e)
     } finally {
       setLoading(false)
     }
   }
 
-  // 添加标签
+  const isTagMode = activeTab === 'tags'
+  const items = isTagMode ? tags : groups
+  const setItems = isTagMode ? setTags : setGroups
+
+  // 添加
   const handleAdd = async () => {
-    const trimmed = newTagName.trim().slice(0, 20)
+    const trimmed = newName.trim().slice(0, 20)
     if (!trimmed) return
-    if (tags.some(t => t.name === trimmed)) {
-      await showError(t('common.error'), t('tags.duplicateName') || '标签名已存在')
+    if (items.some(item => item.name === trimmed)) {
+      await showError(t('common.error'), isTagMode ? (t('tags.duplicateName') || '标签名已存在') : (t('groups.duplicateName') || '分组名已存在'))
       return
     }
     try {
-      const newTag = await invoke('add_tag', { name: trimmed, color: newTagColor })
-      setTags([...tags, newTag])
-      setNewTagName('')
-      setNewTagColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)])
+      const cmd = isTagMode ? 'add_tag' : 'add_group'
+      const newItem = await invoke(cmd, { name: trimmed, color: newColor })
+      setItems([...items, newItem])
+      setNewName('')
+      setNewColor(PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)])
     } catch (e) {
       await showError(t('common.error'), e.toString())
     }
   }
 
-  // 删除标签
-  const handleDelete = async (tagId) => {
-    const tag = tags.find(t => t.id === tagId)
-    const confirmed = await showConfirm(
-      t('tags.deleteTag') || '删除标签',
-      `${t('tags.confirmDelete') || '确定删除标签'} "${tag?.name}"?`
-    )
+  // 删除
+  const handleDelete = async (id) => {
+    const item = items.find(i => i.id === id)
+    const title = isTagMode ? (t('tags.deleteTag') || '删除标签') : (t('groups.deleteGroup') || '删除分组')
+    const msg = isTagMode 
+      ? `${t('tags.confirmDelete') || '确定删除标签'} "${item?.name}"?`
+      : `${t('groups.confirmDelete') || '确定删除分组'} "${item?.name}"?`
+    const confirmed = await showConfirm(title, msg)
     if (!confirmed) return
     try {
-      await invoke('delete_tag', { id: tagId })
-      setTags(tags.filter(t => t.id !== tagId))
+      const cmd = isTagMode ? 'delete_tag' : 'delete_group'
+      await invoke(cmd, { id })
+      setItems(items.filter(i => i.id !== id))
     } catch (e) {
       await showError(t('common.error'), e.toString())
     }
   }
 
   // 开始编辑
-  const startEdit = (tag) => {
-    setEditingId(tag.id)
-    setEditForm({ name: tag.name, color: tag.color })
+  const startEdit = (item) => {
+    setEditingId(item.id)
+    setEditForm({ name: item.name, color: item.color })
   }
 
   // 保存编辑
   const saveEdit = async () => {
     const trimmed = editForm.name.trim().slice(0, 20)
     if (!trimmed) return
-    if (tags.some(t => t.id !== editingId && t.name === trimmed)) {
-      await showError(t('common.error'), t('tags.duplicateName') || '标签名已存在')
+    if (items.some(i => i.id !== editingId && i.name === trimmed)) {
+      await showError(t('common.error'), isTagMode ? (t('tags.duplicateName') || '标签名已存在') : (t('groups.duplicateName') || '分组名已存在'))
       return
     }
     try {
-      await invoke('update_tag', { id: editingId, name: trimmed, color: editForm.color })
-      setTags(tags.map(t => t.id === editingId ? { ...t, name: trimmed, color: editForm.color } : t))
+      const cmd = isTagMode ? 'update_tag' : 'update_group'
+      await invoke(cmd, { id: editingId, name: trimmed, color: editForm.color })
+      setItems(items.map(i => i.id === editingId ? { ...i, name: trimmed, color: editForm.color } : i))
       setEditingId(null)
     } catch (e) {
       await showError(t('common.error'), e.toString())
     }
+  }
+
+  // 切换 Tab 时重置编辑状态
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setEditingId(null)
+    setNewName('')
   }
 
   return (
@@ -243,38 +261,62 @@ function GroupTagManager({ onClose, onSuccess }) {
         className={`${isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'} rounded-xl w-full max-w-md shadow-2xl max-h-[80vh] overflow-hidden flex flex-col`}
         onClick={e => e.stopPropagation()}
       >
-        {/* 头部 */}
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${colors.cardBorder}`}>
-          <div className="flex items-center gap-2">
-            <Tag size={20} className="text-purple-500" />
-            <h3 className={`font-medium ${colors.text}`}>{t('tags.manage')}</h3>
+        {/* 头部 + Tab */}
+        <div className={`px-5 py-4 border-b ${colors.cardBorder}`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={`font-medium ${colors.text}`}>{t('tags.manage') || '管理标签和分组'}</h3>
+            <button onClick={onClose} className={`p-1.5 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}>
+              <X size={18} className={colors.textMuted} />
+            </button>
           </div>
-          <button onClick={onClose} className={`p-1.5 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}>
-            <X size={18} className={colors.textMuted} />
-          </button>
+          {/* Tab 切换 */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleTabChange('tags')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'tags'
+                  ? 'bg-purple-500 text-white'
+                  : `${colors.text} ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/5 hover:bg-white/10'}`
+              }`}
+            >
+              <Tag size={16} />
+              {t('tags.title') || '标签'}
+            </button>
+            <button
+              onClick={() => handleTabChange('groups')}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === 'groups'
+                  ? 'bg-blue-500 text-white'
+                  : `${colors.text} ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/5 hover:bg-white/10'}`
+              }`}
+            >
+              <Folder size={16} />
+              {t('groups.title') || '分组'}
+            </button>
+          </div>
         </div>
 
-        {/* 添加新标签 */}
+        {/* 添加新项 */}
         <div className={`px-5 py-4 border-b ${colors.cardBorder}`}>
           <div className="flex gap-2">
             <input
               type="text"
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-              placeholder={t('tags.newTagPlaceholder')}
-              className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 ${colors.input} ${colors.text}`}
+              placeholder={isTagMode ? (t('tags.newTagPlaceholder') || '输入新标签...') : (t('groups.newGroupPlaceholder') || '输入新分组...')}
+              className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm focus:outline-none focus:ring-2 ${isTagMode ? 'focus:ring-purple-500/20' : 'focus:ring-blue-500/20'} ${colors.input} ${colors.text}`}
             />
             <input
               type="color"
-              value={newTagColor}
-              onChange={(e) => setNewTagColor(e.target.value)}
+              value={newColor}
+              onChange={(e) => setNewColor(e.target.value)}
               className="w-10 h-10 rounded-lg cursor-pointer border-0"
             />
             <button
               onClick={handleAdd}
-              disabled={!newTagName.trim()}
-              className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 disabled:opacity-50"
+              disabled={!newName.trim()}
+              className={`px-4 py-2 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 ${isTagMode ? 'bg-purple-500' : 'bg-blue-500'}`}
             >
               <Plus size={16} />
             </button>
@@ -284,28 +326,30 @@ function GroupTagManager({ onClose, onSuccess }) {
             {PRESET_COLORS.map(color => (
               <button
                 key={color}
-                onClick={() => setNewTagColor(color)}
-                className={`w-6 h-6 rounded-full ${newTagColor === color ? 'ring-2 ring-offset-2 ring-purple-500' : ''}`}
+                onClick={() => setNewColor(color)}
+                className={`w-6 h-6 rounded-full ${newColor === color ? `ring-2 ring-offset-2 ${isTagMode ? 'ring-purple-500' : 'ring-blue-500'}` : ''}`}
                 style={{ backgroundColor: color }}
               />
             ))}
           </div>
         </div>
 
-        {/* 标签列表 */}
+        {/* 列表 */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading ? (
             <div className={`text-center py-8 ${colors.textMuted}`}>{t('common.loading')}</div>
-          ) : tags.length === 0 ? (
-            <div className={`text-center py-8 ${colors.textMuted}`}>{t('tags.noTags')}</div>
+          ) : items.length === 0 ? (
+            <div className={`text-center py-8 ${colors.textMuted}`}>
+              {isTagMode ? (t('tags.noTags') || '暂无标签') : (t('groups.noGroups') || '暂无分组')}
+            </div>
           ) : (
             <div className="space-y-2">
-              {tags.map(tag => (
+              {items.map(item => (
                 <div 
-                  key={tag.id} 
+                  key={item.id} 
                   className={`flex items-center gap-3 p-3 rounded-lg ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}
                 >
-                  {editingId === tag.id ? (
+                  {editingId === item.id ? (
                     <>
                       <input
                         type="color"
@@ -331,18 +375,21 @@ function GroupTagManager({ onClose, onSuccess }) {
                   ) : (
                     <>
                       <span 
-                        className="w-4 h-4 rounded-full flex-shrink-0" 
-                        style={{ backgroundColor: tag.color }}
+                        className={`w-4 h-4 flex-shrink-0 ${isTagMode ? 'rounded-full' : 'rounded'}`}
+                        style={{ backgroundColor: item.color }}
                       />
-                      <span className={`flex-1 text-sm ${colors.text}`}>{tag.name}</span>
+                      <span className={`flex-1 text-sm ${colors.text}`}>{item.name}</span>
+                      {item.createdAt && (
+                        <span className={`text-xs ${colors.textMuted}`}>{item.createdAt}</span>
+                      )}
                       <button 
-                        onClick={() => startEdit(tag)} 
+                        onClick={() => startEdit(item)} 
                         className={`p-1.5 ${colors.textMuted} hover:text-blue-500 hover:bg-blue-500/10 rounded`}
                       >
                         <Edit2 size={14} />
                       </button>
                       <button 
-                        onClick={() => handleDelete(tag.id)} 
+                        onClick={() => handleDelete(item.id)} 
                         className={`p-1.5 ${colors.textMuted} hover:text-red-500 hover:bg-red-500/10 rounded`}
                       >
                         <Trash2 size={14} />
@@ -359,7 +406,7 @@ function GroupTagManager({ onClose, onSuccess }) {
         <div className={`flex justify-end px-5 py-4 border-t ${colors.cardBorder}`}>
           <button 
             onClick={() => { onSuccess?.(); onClose() }} 
-            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600"
+            className={`px-4 py-2 text-white rounded-lg text-sm font-medium hover:opacity-90 ${isTagMode ? 'bg-purple-500' : 'bg-blue-500'}`}
           >
             {t('common.close')}
           </button>

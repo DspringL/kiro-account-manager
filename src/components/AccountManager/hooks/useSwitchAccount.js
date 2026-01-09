@@ -14,27 +14,32 @@ export function useSwitchAccount(onLocalTokenChange) {
   const [switchingId, setSwitchingId] = useState(null)
   const [switchDialog, setSwitchDialog] = useState(null)
 
-  // 处理机器码逻辑（失败时抛出错误，让用户看到提示）
+  // 处理机器码逻辑
   const handleMachineGuid = useCallback(async (account, settings) => {
     const autoChangeMachineId = settings.autoChangeMachineId !== false
     const bindMachineIdToAccount = settings.bindMachineIdToAccount !== false
     
     if (!autoChangeMachineId) return
     
-    if (bindMachineIdToAccount) {
-      // 绑定模式：使用账号自带的 machineId，没有则生成新的并保存
-      let machineId = account.machineId
-      
-      if (!machineId) {
-        machineId = await invoke('generate_machine_guid')
-        await invoke('update_account', { id: account.id, machineId })
+    try {
+      if (bindMachineIdToAccount) {
+        // 绑定模式：使用账号自带的 machineId，没有则生成新的并保存
+        let machineId = account.machineId
+        
+        if (!machineId) {
+          machineId = await invoke('generate_machine_guid')
+          await invoke('update_account', { id: account.id, machineId })
+        }
+        
+        await invoke('set_custom_machine_guid', { newGuid: machineId })
+      } else {
+        // 随机模式：每次生成新的机器码
+        const newMachineId = await invoke('generate_machine_guid')
+        await invoke('set_custom_machine_guid', { newGuid: newMachineId })
       }
-      
-      await invoke('set_custom_machine_guid', { newGuid: machineId })
-    } else {
-      // 随机模式：每次生成新的机器码
-      const newMachineId = await invoke('generate_machine_guid')
-      await invoke('set_custom_machine_guid', { newGuid: newMachineId })
+    } catch (e) {
+      // 机器码操作失败不阻断切换流程，只打印日志
+      console.warn('[Switch] 机器码操作失败:', e)
     }
   }, [])
 

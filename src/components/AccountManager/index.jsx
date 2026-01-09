@@ -4,7 +4,7 @@ import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
 import { useAccounts } from './hooks/useAccounts'
 import { useSwitchAccount } from './hooks/useSwitchAccount'
-import { getTags } from '../../api/groupTag'
+import { getTags, getGroups } from '../../api/groupTag'
 import { applyFilters } from './utils/filterUtils'
 import AccountHeader from './AccountHeader'
 import AccountTable from './AccountTable'
@@ -33,6 +33,8 @@ function AccountManager() {
   const [selectedStatus, setSelectedStatus] = useState(null)
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('accountViewMode') || 'card')
   const [tagDefinitions, setTagDefinitions] = useState([])
+  const [groupDefinitions, setGroupDefinitions] = useState([])
+  const [selectedGroup, setSelectedGroup] = useState(null)
   const [advancedFilters, setAdvancedFilters] = useState({
     subscriptions: [],
     statuses: [],
@@ -66,8 +68,14 @@ function AccountManager() {
     getTags().then(setTagDefinitions).catch(() => {})
   }, [])
 
+  // 加载分组定义
+  const loadGroupDefinitions = useCallback(() => {
+    getGroups().then(setGroupDefinitions).catch(() => {})
+  }, [])
+
   useEffect(() => {
     loadTagDefinitions()
+    loadGroupDefinitions()
   }, [])
 
   // 清理timer
@@ -122,9 +130,9 @@ function AccountManager() {
     return tagDefinitions.filter(t => usedTagIds.has(t.id))
   }, [accounts, tagDefinitions])
 
-  // 当选中的标签不存在时，重置筛选（排除 __none__ 特殊值）
+  // 当选中的标签不存在时，重置筛选（排除 __none__ 和 __has__ 特殊值）
   useEffect(() => {
-    if (selectedTag && selectedTag !== '__none__' && !allTags.find(t => t.id === selectedTag)) {
+    if (selectedTag && selectedTag !== '__none__' && selectedTag !== '__has__' && !allTags.find(t => t.id === selectedTag)) {
       setSelectedTag(null)
     }
   }, [allTags, selectedTag])
@@ -159,14 +167,21 @@ function AccountManager() {
       const matchSearch = a.email.toLowerCase().includes(term) ||
         a.label.toLowerCase().includes(term) ||
         tagNames.includes(term)
-      // 标签过滤（按 ID，__none__ 表示筛选无标签账号）
+      // 分组过滤（__none__ 表示无分组，__has__ 表示有分组）
+      const matchGroup = !selectedGroup ||
+        (selectedGroup === '__none__' ? !a.groupId :
+         selectedGroup === '__has__' ? !!a.groupId :
+         a.groupId === selectedGroup)
+      // 标签过滤（按 ID，__none__ 表示筛选无标签账号，__has__ 表示筛选有标签账号）
       const matchTag = !selectedTag || 
-        (selectedTag === '__none__' ? (!a.tags || a.tags.length === 0) : (a.tags && a.tags.includes(selectedTag)))
+        (selectedTag === '__none__' ? (!a.tags || a.tags.length === 0) : 
+         selectedTag === '__has__' ? (a.tags && a.tags.length > 0) :
+         (a.tags && a.tags.includes(selectedTag)))
       // 状态过滤
       const matchStatus = !selectedStatus || 
         (selectedStatus === 'active' && (a.status === 'active' || a.status === '正常' || a.status === '有效')) ||
         (selectedStatus === 'banned' && (a.status === 'banned' || a.status === '封禁' || a.status === '已封禁'))
-      return matchSearch && matchTag && matchStatus
+      return matchSearch && matchGroup && matchTag && matchStatus
     })
     // 应用高级筛选
     result = applyFilters(result, advancedFilters)
@@ -193,9 +208,10 @@ function AccountManager() {
       })
     }
     return result
-  }, [accounts, searchTerm, selectedTag, selectedStatus, tagDefinitions, advancedFilters, sortBy])
+  }, [accounts, searchTerm, selectedGroup, selectedTag, selectedStatus, tagDefinitions, advancedFilters, sortBy])
 
   const handleSearchChange = useCallback((term) => { setSearchTerm(term) }, [])
+  const handleGroupFilter = useCallback((group) => { setSelectedGroup(group) }, [])
   const handleTagFilter = useCallback((tag) => { setSelectedTag(tag) }, [])
   const handleStatusFilter = useCallback((status) => { setSelectedStatus(status) }, [])
   const handleViewModeChange = useCallback((mode) => {
@@ -277,6 +293,9 @@ function AccountManager() {
         autoRefreshing={autoRefreshing}
         lastRefreshTime={lastRefreshTime}
         refreshProgress={refreshProgress}
+        allGroups={groupDefinitions}
+        selectedGroup={selectedGroup}
+        onGroupFilter={handleGroupFilter}
         allTags={allTags}
         selectedTag={selectedTag}
         onTagFilter={handleTagFilter}
@@ -312,6 +331,7 @@ function AccountManager() {
           switchingId={switchingId}
           localToken={localToken}
           tagDefinitions={tagDefinitions}
+          groupDefinitions={groupDefinitions}
         />
       ) : (
         <AccountListView
@@ -332,6 +352,7 @@ function AccountManager() {
           switchingId={switchingId}
           localToken={localToken}
           tagDefinitions={tagDefinitions}
+          groupDefinitions={groupDefinitions}
           copiedId={copiedId}
           sortBy={sortBy}
           onSortChange={setSortBy}
@@ -345,7 +366,7 @@ function AccountManager() {
         />
       )}
       {showAddModal && (<AddAccountModal onClose={() => setShowAddModal(false)} onSuccess={loadAccounts} />)}
-      {editingLabelAccount && (<EditAccountModal account={editingLabelAccount} onClose={() => setEditingLabelAccount(null)} onSuccess={() => { loadAccounts(); loadTagDefinitions() }} />)}
+      {editingLabelAccount && (<EditAccountModal account={editingLabelAccount} onClose={() => setEditingLabelAccount(null)} onSuccess={() => { loadAccounts(); loadTagDefinitions(); loadGroupDefinitions() }} />)}
       {showImportModal && (<ImportAccountModal onClose={() => setShowImportModal(false)} onSuccess={loadAccounts} />)}
       {showBatchTagModal && (<BatchTagModal accountIds={selectedIds} accounts={accounts} onClose={() => setShowBatchTagModal(false)} onSuccess={() => { loadAccounts(); loadTagDefinitions(); setSelectedIds([]) }} />)}
       {autoRefreshing && (<RefreshProgressModal refreshProgress={refreshProgress} />)}

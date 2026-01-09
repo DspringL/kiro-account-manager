@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
-use log;
+
 
 const TOKEN_REFRESH_THRESHOLD_SECS: u64 = 300; // 5 分钟前刷新
 

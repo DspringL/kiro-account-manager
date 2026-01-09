@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, Download, Upload, RefreshCw, RefreshCcw, RotateCw, Trash2, Plus, Sparkles, LayoutGrid, List, Tag, ArrowUp, ArrowDown } from 'lucide-react'
+import { Search, Download, Upload, RefreshCcw, RotateCw, Trash2, Plus, Sparkles, LayoutGrid, List, Tag, ArrowUp, ArrowDown } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import FilterDropdown from './FilterDropdown'
 
@@ -16,6 +16,9 @@ function AccountHeader({
   onRefreshAll,
   autoRefreshing,
   refreshProgress,
+  allGroups = [],
+  selectedGroup,
+  onGroupFilter,
   allTags = [],
   selectedTag,
   onTagFilter,
@@ -147,6 +150,9 @@ function AccountHeader({
           <FilterDropdown
             filters={advancedFilters}
             onFiltersChange={onAdvancedFiltersChange}
+            allGroups={allGroups}
+            selectedGroup={selectedGroup}
+            onGroupFilter={onGroupFilter}
             allTags={allTags}
             selectedTag={selectedTag}
             onTagFilter={onTagFilter}

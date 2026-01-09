@@ -12,7 +12,9 @@ export function applyFilters(accounts, filters) {
     if (filters.subscriptions?.length > 0) {
       const subTitle = (account.usageData?.subscriptionInfo?.subscriptionTitle || '').toUpperCase()
       let subType = 'FREE'
-      if (subTitle.includes('PRO+')) {
+      if (subTitle.includes('ENTERPRISE')) {
+        subType = 'KIRO ENTERPRISE'
+      } else if (subTitle.includes('PRO+')) {
         subType = 'KIRO PRO+'
       } else if (subTitle.includes('PRO')) {
         subType = 'KIRO PRO'

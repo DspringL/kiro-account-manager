@@ -14,6 +14,7 @@ function SearchableTagSelect({
   showNoneOption = false,
   allLabel = '全部',
   noneLabel = '无标签',
+  hasLabel = '有标签',
   className = '',
 }) {
   const { colors, theme } = useTheme()
@@ -58,7 +59,7 @@ function SearchableTagSelect({
   }
 
   // 显示文本
-  const displayText = value === '__none__' ? noneLabel : (selectedTag?.name || '')
+  const displayText = value === '__none__' ? noneLabel : value === '__has__' ? hasLabel : (selectedTag?.name || '')
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -101,6 +102,20 @@ function SearchableTagSelect({
               >
                 <Tag size={14} className={colors.textMuted} />
                 {allLabel}
+              </button>
+            )}
+
+            {/* 有标签选项 */}
+            {showNoneOption && (
+              <button
+                type="button"
+                onClick={() => handleSelect('__has__')}
+                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
+                  value === '__has__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`
+                }`}
+              >
+                <span className={`w-3 h-3 rounded-full bg-green-500`} />
+                {hasLabel}
               </button>
             )}
 

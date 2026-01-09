@@ -226,6 +226,7 @@ fn main() {
             set_custom_machine_guid,
             clear_macos_override,
             generate_machine_guid,
+            restart_as_admin,
             // 浏览器检测
             detect_installed_browsers,
             // MCP 管理命令

@@ -1,10 +1,104 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { X, Key, Copy, Check, Shield, ChevronDown, ChevronUp, Clock } from 'lucide-react'
+import { X, Copy, Check, Folder, Plus } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
-import { setAccountTags } from '../../api/groupTag'
+import { setAccountTags, setAccountGroup, getGroups, addGroup } from '../../api/groupTag'
 import { TagSelector } from './GroupTagManager'
+import { TokenJsonView } from './TokenJsonView'
+
+// 预设颜色
+const PRESET_COLORS = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
+  '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'
+]
+
+// 分组选择器（支持直接创建）
+function GroupSelector({ groups, value, onChange, onGroupsChange }) {
+  const { t, theme, colors } = useApp()
+  const isLightTheme = theme === 'light'
+  const [newGroupName, setNewGroupName] = useState('')
+  const [showInput, setShowInput] = useState(false)
+
+  const handleAddGroup = async () => {
+    const trimmed = newGroupName.trim().slice(0, 20)
+    if (!trimmed) return
+    if (groups.some(g => g.name === trimmed)) {
+      setNewGroupName('')
+      return
+    }
+    const color = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]
+    try {
+      const newGroup = await addGroup(trimmed, color)
+      onGroupsChange([...groups, newGroup])
+      onChange(newGroup.id)
+      setNewGroupName('')
+      setShowInput(false)
+    } catch (e) {
+      console.error('创建分组失败:', e)
+    }
+  }
+
+  return (
+    <div>
+      <label className={`block text-sm font-medium ${colors.textMuted} mb-2 flex items-center gap-1.5`}>
+        <Folder size={14} />
+        {t('groups.title') || '分组'}
+      </label>
+      <div className="flex gap-2">
+        {showInput ? (
+          <>
+            <input
+              type="text"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddGroup()}
+              placeholder={t('groups.newGroupPlaceholder') || '输入新分组名...'}
+              autoFocus
+              className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.input} ${colors.text}`}
+            />
+            <button
+              type="button"
+              onClick={handleAddGroup}
+              disabled={!newGroupName.trim()}
+              className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50"
+            >
+              <Check size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowInput(false); setNewGroupName('') }}
+              className={`px-3 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}
+            >
+              <X size={16} className={colors.textMuted} />
+            </button>
+          </>
+        ) : (
+          <>
+            <select
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className={`flex-1 px-3 py-2 border ${colors.cardBorder} rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 ${colors.input} ${colors.text}`}
+            >
+              <option value="">{t('groups.noGroup') || '无分组'}</option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowInput(true)}
+              className={`px-3 py-2 ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/10 hover:bg-white/20'} rounded-lg`}
+              title={t('common.add') || '添加'}
+            >
+              <Plus size={16} className="text-blue-500" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function EditAccountModal({ account, onClose, onSuccess }) {
   const { t, theme, colors } = useApp()
@@ -20,10 +114,16 @@ function EditAccountModal({ account, onClose, onSuccess }) {
     machineId: account.machineId || '',
   })
   const [selectedTagIds, setSelectedTagIds] = useState(account.tags || [])
+  const [selectedGroupId, setSelectedGroupId] = useState(account.groupId || '')
+  const [groups, setGroups] = useState([])
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(null)
-  const [showTokens, setShowTokens] = useState(true)
   const copiedTimerRef = useRef(null)
+
+  // 加载分组列表
+  useEffect(() => {
+    getGroups().then(setGroups).catch(() => {})
+  }, [])
 
   // 清理timer
   useEffect(() => {
@@ -59,6 +159,8 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         params.clientSecret = form.clientSecret || null
       }
       await invoke('update_account', params)
+      // 保存分组关联
+      await setAccountGroup(account.id, selectedGroupId || null)
       // 保存标签关联
       await setAccountTags(account.id, selectedTagIds)
       onSuccess?.()
@@ -129,143 +231,22 @@ function EditAccountModal({ account, onClose, onSuccess }) {
             </div>
           </div>
 
+          {/* 分组选择 - 支持直接创建 */}
+          <GroupSelector
+            groups={groups}
+            value={selectedGroupId}
+            onChange={setSelectedGroupId}
+            onGroupsChange={setGroups}
+          />
+
           {/* 标签管理 */}
           <TagSelector 
             selectedTagIds={selectedTagIds} 
             onChange={setSelectedTagIds} 
           />
 
-          {/* Token 凭证 */}
-          <div className={`${colors.card} rounded-xl shadow-sm overflow-hidden`}>
-            <div 
-              className={`flex items-center justify-between px-4 py-3 cursor-pointer ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} transition-colors`} 
-              onClick={() => setShowTokens(!showTokens)}
-            >
-              <div className="flex items-center gap-2">
-                <Key size={16} className={colors.textMuted} />
-                <span className={`text-sm font-medium ${colors.text}`}>{t('editAccount.tokenCredentials')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {account.expiresAt && (
-                  <span className={`text-xs ${colors.textMuted} flex items-center gap-1`}>
-                    <Clock size={12} />{account.expiresAt}
-                  </span>
-                )}
-                {showTokens ? <ChevronUp size={16} className={colors.textMuted} /> : <ChevronDown size={16} className={colors.textMuted} />}
-              </div>
-            </div>
-            
-            {showTokens && (
-              <div className={`px-4 pb-4 space-y-3 border-t ${colors.cardBorder} pt-3`}>
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-xs font-medium ${colors.textMuted}`}>{t('editAccount.accessToken')}</span>
-                    <button type="button" onClick={() => handleCopy(form.accessToken, 'access')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                      {copied === 'access' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                      {copied === 'access' ? t('common.copied') : t('common.copy')}
-                    </button>
-                  </div>
-                  <textarea 
-                    value={form.accessToken} 
-                    onChange={(e) => setForm({ ...form, accessToken: e.target.value })} 
-                    placeholder="eyJ..."
-                    className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} 
-                  />
-                </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className={`text-xs font-medium ${colors.textMuted}`}>{t('editAccount.refreshToken')}</span>
-                    <button type="button" onClick={() => handleCopy(form.refreshToken, 'refresh')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                      {copied === 'refresh' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                      {copied === 'refresh' ? t('common.copied') : t('common.copy')}
-                    </button>
-                  </div>
-                  <textarea 
-                    value={form.refreshToken} 
-                    onChange={(e) => setForm({ ...form, refreshToken: e.target.value })} 
-                    placeholder="aor..."
-                    className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg resize-none h-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${colors.text}`} 
-                  />
-                </div>
-                
-                {/* BuilderId SSO 专用字段 */}
-                {account.provider === 'BuilderId' && (
-                  <div className={`pt-3 border-t ${colors.cardBorder} space-y-3`}>
-                    <div className={`text-xs font-medium ${colors.textMuted} flex items-center gap-1`}>
-                      <Shield size={12} />
-                      {t('editAccount.ssoCredentials')}
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className={`text-xs ${colors.textMuted}`}>Client ID Hash</label>
-                        <button type="button" onClick={() => handleCopy(account.clientIdHash, 'clientIdHash')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                          {copied === 'clientIdHash' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                      <input type="text" value={account.clientIdHash || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className={`block text-xs ${colors.textMuted} mb-1`}>Region</label>
-                        <input type="text" value={account.region || 'us-east-1'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} />
-                      </div>
-                      <div>
-                        <label className={`block text-xs ${colors.textMuted} mb-1`}>Session ID</label>
-                        <input type="text" value={account.ssoSessionId || '-'} readOnly className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60 truncate`} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className={`text-xs ${colors.textMuted}`}>Client ID</label>
-                        <button type="button" onClick={() => handleCopy(form.clientId, 'clientId')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                          {copied === 'clientId' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                      <input 
-                        type="text" 
-                        value={form.clientId} 
-                        onChange={(e) => setForm({ ...form, clientId: e.target.value })}
-                        className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} 
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className={`text-xs ${colors.textMuted}`}>Client Secret</label>
-                        <button type="button" onClick={() => handleCopy(form.clientSecret, 'clientSecret')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                          {copied === 'clientSecret' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                      <textarea 
-                        value={form.clientSecret} 
-                        onChange={(e) => setForm({ ...form, clientSecret: e.target.value })}
-                        className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg resize-none h-14 ${colors.text} focus:outline-none focus:ring-2 focus:ring-blue-500/20`} 
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                {/* Social 专用字段 */}
-                {(account.provider === 'Google' || account.provider === 'Github') && account.profileArn && (
-                  <div className={`pt-3 border-t ${colors.cardBorder} space-y-3`}>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className={`text-xs ${colors.textMuted}`}>Profile ARN</label>
-                        <button type="button" onClick={() => handleCopy(account.profileArn, 'profileArn')} className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1`}>
-                          {copied === 'profileArn' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                      <input 
-                        type="text" 
-                        value={account.profileArn} 
-                        readOnly
-                        className={`w-full px-3 py-2 text-xs font-mono ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-lg ${colors.text} opacity-60`} 
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Token 凭证 JSON 视图（只读） */}
+          <TokenJsonView account={account} defaultExpanded={false} />
         </div>
         
         <div className={`flex justify-end gap-3 px-5 py-4 border-t ${colors.cardBorder}`}>

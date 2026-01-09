@@ -3,12 +3,21 @@ use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
 use std::path::PathBuf;
 
-// 自定义反序列化：处理 null 值转为空 Vec
+// 自定义反序列化：处理 null 值转为空 Vec（兼容旧数据）
 fn deserialize_tags<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
 where
     D: Deserializer<'de>,
 {
     let opt: Option<Vec<String>> = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
+// 自定义反序列化：处理 tag_links 的 null 值
+fn deserialize_tag_links<'de, D>(deserializer: D) -> Result<Vec<AccountTagLink>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt: Option<Vec<AccountTagLink>> = Option::deserialize(deserializer)?;
     Ok(opt.unwrap_or_default())
 }
 
@@ -45,6 +54,8 @@ pub struct AccountTag {
     pub id: String,
     pub name: String,
     pub color: String,
+    #[serde(default)]
+    pub created_at: Option<String>,
 }
 
 impl AccountTag {
@@ -53,6 +64,27 @@ impl AccountTag {
             id: Uuid::new_v4().to_string(),
             name,
             color,
+            created_at: Some(chrono::Local::now().format("%Y-%m-%d %H:%M").to_string()),
+        }
+    }
+}
+
+// ============================================================
+// 账号标签关联（带时间戳）
+// ============================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountTagLink {
+    pub tag_id: String,
+    pub linked_at: String,
+}
+
+impl AccountTagLink {
+    pub fn new(tag_id: String) -> Self {
+        Self {
+            tag_id,
+            linked_at: chrono::Local::now().format("%Y-%m-%d %H:%M").to_string(),
         }
     }
 }
@@ -128,6 +160,9 @@ pub struct Account {
     // 账号信息
     pub provider: Option<String>,
     pub user_id: Option<String>,
+    // 认证方式（IdC / social）
+    #[serde(default)]
+    pub auth_method: Option<String>,
     // IdC 专用
     pub client_id: Option<String>,
     pub client_secret: Option<String>,
@@ -144,6 +179,9 @@ pub struct Account {
     pub group_id: Option<String>,
     #[serde(default, deserialize_with = "deserialize_tags")]
     pub tags: Vec<String>,
+    // 标签关联（带时间戳，新版本使用）
+    #[serde(default, deserialize_with = "deserialize_tag_links")]
+    pub tag_links: Vec<AccountTagLink>,
     // 详细额度分解
     #[serde(default)]
     pub usage_breakdown: Option<UsageBreakdown>,
@@ -168,6 +206,7 @@ impl Account {
             expires_at: None,
             provider: None,
             user_id: None,
+            auth_method: None,
             client_id: None,
             client_secret: None,
             region: None,
@@ -178,6 +217,7 @@ impl Account {
             usage_data: None,
             group_id: None,
             tags: Vec::new(),
+            tag_links: Vec::new(),
             usage_breakdown: None,
             machine_id: None,
             password: None,
@@ -291,6 +331,9 @@ impl AccountStore {
                         if account.machine_id.is_none() {
                             account.machine_id = Some(uuid::Uuid::new_v4().to_string().to_lowercase());
                         }
+                        // 清空标签（标签 ID 在不同设备上不通用）
+                        account.tags.clear();
+                        account.tag_links.clear();
                         self.accounts.push(account);
                         added += 1;
                     }

@@ -36,7 +36,7 @@ function Settings() {
     const [customTrustedCommands, setCustomTrustedCommands] = useState('') // 自定义命令列表
 
     // Agent 设置
-    const [agentAutonomy, setAgentAutonomy] = useState('supervised') // 'autopilot' | 'supervised'
+    const [agentAutonomy, setAgentAutonomy] = useState('Supervised') // 'Autopilot' | 'Supervised'
     const [enableTabAutocomplete, setEnableTabAutocomplete] = useState(true)
     const [usageSummary, setUsageSummary] = useState(true)
     const [codeReferences, setCodeReferences] = useState(true)
@@ -86,7 +86,7 @@ function Settings() {
                 setEnableCodebaseIndexing(kiroSettings.enableCodebaseIndexing ?? true)
                 setTrustedCommandsMode(kiroSettings.trustedCommandsMode || 'none')
                 // Agent 设置
-                setAgentAutonomy(kiroSettings.agentAutonomy || 'supervised')
+                setAgentAutonomy(kiroSettings.agentAutonomy || 'Supervised')
                 setEnableTabAutocomplete(kiroSettings.enableTabAutocomplete ?? true)
                 setUsageSummary(kiroSettings.usageSummary ?? true)
                 setCodeReferences(kiroSettings.codeReferences ?? true)
@@ -593,8 +593,8 @@ function Settings() {
                                 onChange={(e) => handleAgentAutonomyChange(e.target.value)}
                                 className={`w-full px-4 py-3 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2 appearance-none cursor-pointer transition-all`}
                             >
-                                <option value="supervised">{t('settings.agentSupervised')}</option>
-                                <option value="autopilot">{t('settings.agentAutopilot')}</option>
+                                <option value="Supervised">{t('settings.agentSupervised')}</option>
+                                <option value="Autopilot">{t('settings.agentAutopilot')}</option>
                             </select>
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -1045,13 +1045,34 @@ function Settings() {
                     {systemMachineInfo?.requiresAdmin && (
                         <div className={`flex items-start gap-3 ${colors.warning} rounded-xl p-4 mb-4 border ${colors.warningBorder}`}>
                             <AlertTriangle size={18} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                            <div className={`text-xs ${colors.textMuted}`}>
+                            <div className={`text-xs ${colors.textMuted} flex-1`}>
                                 <p className="font-medium text-orange-500 mb-1">{t('settings.adminWarningTitle')}</p>
-                                <ul className="list-disc list-inside space-y-0.5">
+                                <ul className="list-disc list-inside space-y-0.5 mb-3">
                                     <li>{t('settings.adminWarning1')}</li>
                                     <li>{t('settings.adminWarning2')}</li>
                                     <li>{t('settings.adminWarning3')}</li>
                                 </ul>
+                                {systemMachineInfo?.osType !== 'macos' && (
+                                    <button
+                                        onClick={async () => {
+                                            const confirmed = await showConfirm(
+                                                t('settings.restartAsAdmin'),
+                                                t('settings.confirmRestartAsAdmin'),
+                                                { confirmText: t('settings.restart'), cancelText: t('common.cancel') }
+                                            )
+                                            if (confirmed) {
+                                                try {
+                                                    await invoke('restart_as_admin')
+                                                } catch (e) {
+                                                    await showError(t('settings.restartFailed'), e.toString())
+                                                }
+                                            }
+                                        }}
+                                        className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded-lg transition-colors"
+                                    >
+                                        {t('settings.restartAsAdmin')}
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
