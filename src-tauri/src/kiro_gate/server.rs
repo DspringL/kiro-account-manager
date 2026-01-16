@@ -822,11 +822,36 @@ enum KiroEvent {
   ToolUseStart { id: String, name: String },
   ToolUseInputDelta { id: String, input_delta: String },
   ToolUseStop { id: String },
+  Usage { input_tokens: i32, output_tokens: i32 },
+  ContextUsage { percentage: f32 },
 }
 
 // 解析 Kiro 事件，返回文本或工具调用
 fn parse_kiro_event_full(json_str: &str) -> Option<KiroEvent> {
   let value: serde_json::Value = serde_json::from_str(json_str).ok()?;
+  
+  // 检查是否是 usage 事件
+  if let Some(usage) = value.get("usage").and_then(|v| v.as_object()) {
+    let input_tokens = usage.get("inputTokens")
+      .or_else(|| usage.get("input_tokens"))
+      .and_then(|v| v.as_i64())
+      .unwrap_or(0) as i32;
+    let output_tokens = usage.get("outputTokens")
+      .or_else(|| usage.get("output_tokens"))
+      .and_then(|v| v.as_i64())
+      .unwrap_or(0) as i32;
+    
+    if input_tokens > 0 || output_tokens > 0 {
+      log::debug!("[KiroGate] Usage: input={}, output={}", input_tokens, output_tokens);
+      return Some(KiroEvent::Usage { input_tokens, output_tokens });
+    }
+  }
+  
+  // 检查是否是 contextUsagePercentage 事件
+  if let Some(percentage) = value.get("contextUsagePercentage").and_then(|v| v.as_f64()) {
+    log::debug!("[KiroGate] Context usage: {}%", percentage);
+    return Some(KiroEvent::ContextUsage { percentage: percentage as f32 });
+  }
   
   // 检查是否是工具调用事件（有 toolUseId 字段）
   if let Some(tool_use_id) = value.get("toolUseId").and_then(|v| v.as_str()) {
@@ -1077,6 +1102,43 @@ fn anthropic_error_response(status: StatusCode, error_type: &str, message: &str)
   (status, body).into_response()
 }
 
+/// 工具调用去重
+/// 参考 Kiro IDE 源码的去重逻辑（extension.js 655267-655279）
+/// 按 id 去重，后出现的替换先出现的
+fn deduplicate_tool_calls(tool_calls: Vec<(String, String, String)>) -> Vec<(String, String, String)> {
+  use std::collections::HashMap;
+  
+  if tool_calls.is_empty() {
+    return tool_calls;
+  }
+  
+  let original_count = tool_calls.len();
+  
+  // 按 id 去重，后出现的替换先出现的（和 Kiro IDE 一致）
+  let mut by_id: HashMap<String, (String, String, String)> = HashMap::new();
+  let mut order: Vec<String> = Vec::new();
+  
+  for (id, name, args) in tool_calls {
+    if !by_id.contains_key(&id) {
+      order.push(id.clone());
+    }
+    // 直接替换（后出现的覆盖先出现的）
+    by_id.insert(id.clone(), (id, name, args));
+  }
+  
+  // 按原始顺序返回
+  let unique: Vec<(String, String, String)> = order
+    .into_iter()
+    .filter_map(|id| by_id.remove(&id))
+    .collect();
+  
+  if original_count != unique.len() {
+    log::info!("[KiroGate] 工具调用去重: {} -> {}", original_count, unique.len());
+  }
+  
+  unique
+}
+
 /// Anthropic 非流式响应
 async fn anthropic_non_stream_response(resp: reqwest::Response, model: &str) -> Response {
   let id = format!("msg_{}", uuid::Uuid::new_v4().to_string().replace("-", "")[..24].to_string());
@@ -1092,6 +1154,10 @@ async fn anthropic_non_stream_response(resp: reqwest::Response, model: &str) -> 
   // 工具调用累积器
   let mut tool_accumulators: std::collections::HashMap<String, (String, String)> = std::collections::HashMap::new();
   let mut completed_tools: Vec<(String, String, String)> = Vec::new();
+  
+  // usage 统计
+  let mut input_tokens = 0i32;
+  let mut output_tokens = 0i32;
   
   // 解析所有事件
   let mut remaining = text.as_ref();
@@ -1116,6 +1182,14 @@ async fn anthropic_non_stream_response(resp: reqwest::Response, model: &str) -> 
               completed_tools.push((id, name, input_str));
             }
           }
+          KiroEvent::Usage { input_tokens: i, output_tokens: o } => {
+            input_tokens = i;
+            output_tokens = o;
+          }
+          KiroEvent::ContextUsage { percentage } => {
+            // 非流式响应中记录 context usage（可用于日志）
+            log::debug!("[KiroGate] Context usage: {}%", percentage);
+          }
         }
       }
       
@@ -1124,6 +1198,9 @@ async fn anthropic_non_stream_response(resp: reqwest::Response, model: &str) -> 
       break;
     }
   }
+  
+  // 工具调用去重
+  let completed_tools = deduplicate_tool_calls(completed_tools);
 
   // 构建 content 数组
   let mut content_blocks: Vec<AnthropicContentBlock> = Vec::new();
@@ -1169,8 +1246,8 @@ async fn anthropic_non_stream_response(resp: reqwest::Response, model: &str) -> 
     stop_reason,
     stop_sequence: None,
     usage: AnthropicUsage {
-      input_tokens: 0,
-      output_tokens: 0,
+      input_tokens,
+      output_tokens,
     },
   };
 
@@ -1192,6 +1269,10 @@ async fn anthropic_stream_response(resp: reqwest::Response, model: &str) -> Resp
     // 工具调用累积器: HashMap<tool_use_id, (name, input_json_string)>
     let mut tool_accumulators: std::collections::HashMap<String, (String, String)> = std::collections::HashMap::new();
     let mut completed_tools: Vec<(String, String, String)> = Vec::new(); // (id, name, input_json)
+    
+    // usage 统计
+    let mut input_tokens = 0i32;
+    let mut output_tokens = 0i32;
     
     use futures::StreamExt;
     
@@ -1228,7 +1309,7 @@ async fn anthropic_stream_response(resp: reqwest::Response, model: &str) -> Resp
                           "model": model,
                           "stop_reason": null,
                           "stop_sequence": null,
-                          "usage": { "input_tokens": 0, "output_tokens": 0 }
+                          "usage": { "input_tokens": input_tokens, "output_tokens": output_tokens }
                         }
                       });
                       yield Ok::<_, Infallible>(format!("event: message_start\ndata: {}\n\n", serde_json::to_string(&event).unwrap()));
@@ -1270,6 +1351,18 @@ async fn anthropic_stream_response(resp: reqwest::Response, model: &str) -> Resp
                       log::info!("[KiroGate] 工具调用完成: name={}, input={}", name, preview);
                       completed_tools.push((tool_id, name, input_str));
                     }
+                  }
+                  KiroEvent::Usage { input_tokens: i, output_tokens: o } => {
+                    input_tokens = i;
+                    output_tokens = o;
+                  }
+                  KiroEvent::ContextUsage { percentage } => {
+                    // 发送 context usage 事件（自定义扩展）
+                    let ctx_event = serde_json::json!({
+                      "type": "context_usage",
+                      "percentage": percentage
+                    });
+                    yield Ok::<_, Infallible>(format!("event: context_usage\ndata: {}\n\n", serde_json::to_string(&ctx_event).unwrap()));
                   }
                 }
               }
@@ -1314,6 +1407,9 @@ async fn anthropic_stream_response(resp: reqwest::Response, model: &str) -> Resp
       yield Ok::<_, Infallible>(format!("event: message_start\ndata: {}\n\n", serde_json::to_string(&event).unwrap()));
       sent_start = true;
     }
+    
+    // 工具调用去重
+    let completed_tools = deduplicate_tool_calls(completed_tools);
     
     // 发送工具调用块
     for (tool_id, tool_name, input_json_str) in &completed_tools {
@@ -1363,7 +1459,7 @@ async fn anthropic_stream_response(resp: reqwest::Response, model: &str) -> Resp
       let msg_delta = serde_json::json!({
         "type": "message_delta",
         "delta": { "stop_reason": stop_reason, "stop_sequence": null },
-        "usage": { "output_tokens": 0 }
+        "usage": { "output_tokens": output_tokens }
       });
       yield Ok::<_, Infallible>(format!("event: message_delta\ndata: {}\n\n", serde_json::to_string(&msg_delta).unwrap()));
       

@@ -3,6 +3,9 @@
 use crate::kiro_gate::models::*;
 use uuid::Uuid;
 
+// 工具描述最大长度，超过此长度的描述会被移到 system prompt
+pub const TOOL_DESCRIPTION_MAX_LENGTH: usize = 1024;
+
 // 模型映射
 pub fn get_internal_model_id(external_model: &str) -> Result<String, String> {
   let model_id = match external_model {
@@ -143,12 +146,34 @@ fn convert_anthropic_content(content: &serde_json::Value) -> serde_json::Value {
         return content.clone();
       }
       
-      // 提取文本内容
+      // 提取文本内容（包括图片 placeholder）
       let text: String = arr.iter()
         .filter_map(|item| {
           if let serde_json::Value::Object(obj) = item {
-            if obj.get("type").and_then(|v| v.as_str()) == Some("text") {
-              return obj.get("text").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let block_type = obj.get("type").and_then(|v| v.as_str());
+            match block_type {
+              Some("text") => {
+                return obj.get("text").and_then(|v| v.as_str()).map(|s| s.to_string());
+              }
+              Some("image") => {
+                // 图片内容转换为 placeholder
+                if let Some(source) = obj.get("source").and_then(|v| v.as_object()) {
+                  let source_type = source.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                  match source_type {
+                    "base64" => {
+                      let media_type = source.get("media_type").and_then(|v| v.as_str()).unwrap_or("image");
+                      return Some(format!("[Image: {}]", media_type));
+                    }
+                    "url" => {
+                      let url = source.get("url").and_then(|v| v.as_str()).unwrap_or("");
+                      return Some(format!("[Image URL: {}]", url));
+                    }
+                    _ => return Some("[Image]".to_string()),
+                  }
+                }
+                return Some("[Image]".to_string());
+              }
+              _ => {}
             }
           }
           None
@@ -250,9 +275,15 @@ fn extract_tool_results(content: &Option<serde_json::Value>) -> Vec<KiroToolResu
             })
             .unwrap_or_default();
           
+          // 读取 is_error 字段，转换为 status
+          let is_error = obj.get("is_error")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+          let status = if is_error { "error" } else { "success" };
+          
           results.push(KiroToolResult {
             content: vec![KiroToolResultContent { text: content_text }],
-            status: "success".to_string(),
+            status: status.to_string(),
             tool_use_id,
           });
         }
@@ -445,7 +476,22 @@ pub fn build_kiro_payload(
   
   // 构建 context
   let tool_results = extract_tool_results(&current_msg.content);
-  let tools = convert_tools(&request.tools);
+  
+  // 处理长 description 的工具
+  let (processed_tools, tool_docs) = process_tools_with_long_descriptions(&request.tools);
+  let tools = convert_tools(&processed_tools);
+  
+  // 如果有长 description 的工具文档，添加到 system prompt
+  let mut final_content = current_content;
+  if let Some(docs) = tool_docs {
+    if history.is_none() {
+      // 没有历史时，添加到当前消息
+      final_content = format!("{}\n\n{}", docs, final_content);
+    }
+    // 有历史时，文档已经在第一个 user 消息中了（通过 system_prompt）
+    // 这里需要特殊处理，但为了简化，暂时只处理无历史的情况
+    log::debug!("[KiroGate] 长 description 工具文档已添加到消息中");
+  }
   
   let context = if tools.is_some() || !tool_results.is_empty() {
     Some(UserInputMessageContext {
@@ -462,7 +508,7 @@ pub fn build_kiro_payload(
       conversation_id,
       current_message: CurrentMessage {
         user_input_message: UserInputMessage {
-          content: current_content,
+          content: final_content,
           model_id,
           origin: "AI_EDITOR".to_string(),
           user_input_message_context: context,
@@ -523,4 +569,59 @@ fn merge_adjacent_messages(messages: &[&ChatMessage]) -> Vec<ChatMessage> {
   }
   
   merged
+}
+
+
+/// 处理长 description 的工具
+/// 超过 TOOL_DESCRIPTION_MAX_LENGTH 的描述会被移到 system prompt
+/// 返回 (处理后的 tools, 需要添加到 system prompt 的文档)
+pub fn process_tools_with_long_descriptions(
+  tools: &Option<Vec<Tool>>,
+) -> (Option<Vec<Tool>>, Option<String>) {
+  let tools = match tools {
+    Some(t) if !t.is_empty() => t,
+    _ => return (tools.clone(), None),
+  };
+  
+  let mut processed_tools = Vec::new();
+  let mut long_descriptions = Vec::new();
+  
+  for tool in tools {
+    let desc = tool.function.description.as_deref().unwrap_or("");
+    
+    if desc.len() > TOOL_DESCRIPTION_MAX_LENGTH {
+      // 描述过长，移到 system prompt
+      long_descriptions.push(format!(
+        "## Tool: {}\n\n{}",
+        tool.function.name,
+        desc
+      ));
+      
+      // 工具中留引用
+      processed_tools.push(Tool {
+        tool_type: tool.tool_type.clone(),
+        function: ToolFunction {
+          name: tool.function.name.clone(),
+          description: Some(format!(
+            "[Full documentation in system prompt under '## Tool: {}']",
+            tool.function.name
+          )),
+          parameters: tool.function.parameters.clone(),
+        },
+      });
+    } else {
+      processed_tools.push(tool.clone());
+    }
+  }
+  
+  let system_addition = if long_descriptions.is_empty() {
+    None
+  } else {
+    Some(format!(
+      "# Tool Documentation\n\n{}",
+      long_descriptions.join("\n\n")
+    ))
+  };
+  
+  (Some(processed_tools), system_addition)
 }

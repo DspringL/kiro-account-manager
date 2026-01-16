@@ -323,10 +323,6 @@ pub async fn get_kiro_gate_token_usage(token_id: String) -> Result<TokenUsageInf
   let client = KiroPortalClient::new();
   match client.get_user_usage_and_limits(&access_token, idp).await {
     Ok(resp) => {
-      // 调试日志
-      #[cfg(debug_assertions)]
-      log::debug!("[KiroGate] Usage response: {}", serde_json::to_string_pretty(&resp).unwrap_or_default());
-      
       let email = resp.user_info.as_ref().and_then(|u| u.email.clone());
       let subscription_type = resp.subscription_info.as_ref().and_then(|s| s.subscription_type.clone());
       let days_until_reset = resp.days_until_reset;
