@@ -163,11 +163,119 @@ async fn health_handler() -> impl IntoResponse {
   }))
 }
 
-async fn models_handler() -> impl IntoResponse {
+async fn models_handler(
+  State(state): State<Arc<ServerState>>,
+  headers: HeaderMap,
+) -> Response {
+  // 验证 API Key
+  let verify_result = match verify_api_key(&headers, &state.proxy_api_key) {
+    Ok(result) => result,
+    Err(_) => {
+      // 无 API Key 时返回静态列表
+      return Json(ModelsResponse {
+        object: "list".to_string(),
+        data: get_available_models(),
+      }).into_response();
+    }
+  };
+
+  // 构建 TokenConfig
+  let config = TokenConfig {
+    refresh_token: verify_result.refresh_token.clone(),
+    auth_method: verify_result.auth_method.clone(),
+    profile_arn: verify_result.profile_arn.clone(),
+    client_id: verify_result.client_id.clone(),
+    client_secret: verify_result.client_secret.clone(),
+    region: verify_result.region.clone(),
+  };
+
+  // 获取 TokenManager
+  let token_manager = state.auth_cache.get_or_create(&verify_result.refresh_token, config).await;
+  
+  // 获取 access_token
+  let access_token = match token_manager.get_access_token().await {
+    Ok(token) => token,
+    Err(_) => {
+      // Token 获取失败时返回静态列表
+      return Json(ModelsResponse {
+        object: "list".to_string(),
+        data: get_available_models(),
+      }).into_response();
+    }
+  };
+
+  // 调用 Kiro API 获取模型列表
+  let region = verify_result.region.as_deref().unwrap_or("us-east-1");
+  let url = format!("https://q.{}.amazonaws.com/ListAvailableModels?origin=AI_EDITOR", region);
+  
+  let resp = match state.http_client
+    .get(&url)
+    .header("Authorization", format!("Bearer {}", access_token))
+    .timeout(std::time::Duration::from_secs(10))
+    .send()
+    .await
+  {
+    Ok(r) => r,
+    Err(_) => {
+      return Json(ModelsResponse {
+        object: "list".to_string(),
+        data: get_available_models(),
+      }).into_response();
+    }
+  };
+
+  if !resp.status().is_success() {
+    return Json(ModelsResponse {
+      object: "list".to_string(),
+      data: get_available_models(),
+    }).into_response();
+  }
+
+  // 解析响应
+  let body = match resp.text().await {
+    Ok(b) => b,
+    Err(_) => {
+      return Json(ModelsResponse {
+        object: "list".to_string(),
+        data: get_available_models(),
+      }).into_response();
+    }
+  };
+
+  // 解析 Kiro 模型列表
+  #[derive(serde::Deserialize)]
+  #[serde(rename_all = "camelCase")]
+  struct KiroModel {
+    model_id: String,
+  }
+  
+  #[derive(serde::Deserialize)]
+  struct KiroModelsResponse {
+    models: Vec<KiroModel>,
+  }
+
+  let kiro_models: KiroModelsResponse = match serde_json::from_str(&body) {
+    Ok(m) => m,
+    Err(_) => {
+      return Json(ModelsResponse {
+        object: "list".to_string(),
+        data: get_available_models(),
+      }).into_response();
+    }
+  };
+
+  // 转换为 OpenAI 格式
+  let models: Vec<ModelInfo> = kiro_models.models.iter().map(|m| ModelInfo {
+    id: m.model_id.clone(),
+    object: "model".to_string(),
+    created: 1700000000,
+    owned_by: "anthropic".to_string(),
+  }).collect();
+
   Json(ModelsResponse {
     object: "list".to_string(),
-    data: get_available_models(),
-  })
+    data: models,
+  }).into_response()
 }
 
 async fn metrics_handler() -> impl IntoResponse {
