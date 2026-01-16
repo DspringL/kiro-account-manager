@@ -10,6 +10,7 @@ import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { useAutoSwitch } from './hooks/useAutoSwitch'
 import { useModelLock } from './hooks/useModelLock'
 import { useAppSettings } from './contexts/AppSettingsContext'
+import { useDialog } from './contexts/DialogContext'
 import { AccountProvider } from './contexts/AccountContext'
 import { PrivacyProvider } from './contexts/PrivacyContext'
 import { routes, internalRoutes } from './routes'
@@ -37,6 +38,7 @@ function App() {
   })
   const { colors } = useApp()
   const { settings: appSettings, loading: settingsLoading } = useAppSettings()
+  const { showError, showInfo } = useDialog()
 
   // 保存当前页面到 localStorage
   useEffect(() => {
@@ -63,6 +65,9 @@ function App() {
     let unlisten = null
     let unlistenSettings = null
     let unlistenAppSettings = null
+    let unlistenBanned = null
+    let unlistenTokenInvalid = null
+    let unlistenNetworkError = null
     let mounted = true
 
     const setupListeners = async () => {
@@ -88,6 +93,27 @@ function App() {
         console.log('[ModelLock] 设置已变化，重新检查模型')
         checkAndRestoreLockedModel()
       })
+
+      // 监听账号封禁事件
+      unlistenBanned = await listen('account-banned', (event) => {
+        if (!mounted) return
+        const { email } = event.payload
+        showError('账号已封禁', `账号 ${email} 已被封禁，无法继续使用`)
+      })
+
+      // 监听 Token 失效事件
+      unlistenTokenInvalid = await listen('account-token-invalid', (event) => {
+        if (!mounted) return
+        const { email } = event.payload
+        showInfo('Token 已失效', `账号 ${email} 的 Token 已失效，请重新登录`)
+      })
+
+      // 监听网络错误事件
+      unlistenNetworkError = await listen('sync-network-error', (event) => {
+        if (!mounted) return
+        const { count, total } = event.payload
+        showError('网络错误', `${count}/${total} 个账号同步失败，请检查网络连接`)
+      })
     }
 
     setupListeners()
@@ -97,6 +123,9 @@ function App() {
       if (unlisten) unlisten()
       if (unlistenSettings) unlistenSettings()
       if (unlistenAppSettings) unlistenAppSettings()
+      if (unlistenBanned) unlistenBanned()
+      if (unlistenTokenInvalid) unlistenTokenInvalid()
+      if (unlistenNetworkError) unlistenNetworkError()
     }
   }, [])
 

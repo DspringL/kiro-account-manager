@@ -113,6 +113,18 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
         a.usage_data = Some(usage.usage_data.clone());
         a.status = calc_status(usage.is_banned);
         
+        // 从 usage_data 中提取并更新 email 和 user_id
+        if let Some(user_info) = usage.usage_data.get("userInfo") {
+            if let Some(email) = user_info.get("email").and_then(|v| v.as_str()) {
+                if !email.is_empty() {
+                    a.email = email.to_string();
+                }
+            }
+            if let Some(user_id) = user_info.get("userId").and_then(|v| v.as_str()) {
+                a.user_id = Some(user_id.to_string());
+            }
+        }
+        
         let result = a.clone();
         store.save_to_file();
         return Ok(result);

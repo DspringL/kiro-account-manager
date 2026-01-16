@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { X, Upload, FileJson, AlertCircle, CheckCircle, Loader2, Key, FileCode } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../hooks/useApp'
+import { getConcurrency } from '../../utils/concurrency'
 
 // 校验单条账号数据（兼容导出格式和手动输入格式）
 function validateAccount(item, index) {
@@ -78,17 +79,6 @@ function ImportAccountModal({ onClose, onSuccess }) {
   const [ssoResult, setSsoResult] = useState(null)
 
   // 导入数量不再限制
-
-  // 根据数量动态调整并发数
-  const getConcurrency = (count) => {
-    if (count <= 10) return 3
-    if (count <= 50) return 5
-    if (count <= 100) return 10
-    if (count <= 500) return 20
-    if (count <= 1000) return 30
-    if (count <= 2000) return 40
-    return 50
-  }
 
   // 解析 JSON
   const parseJson = (text) => {
