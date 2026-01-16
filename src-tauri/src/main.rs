@@ -92,6 +92,9 @@ fn main() {
             }
         }))
         .setup(|app| {
+            // 初始化 KiroGate 日志发送器
+            kiro_gate::init_logger(app.handle().clone());
+            
             // 首次启动时检查命令行参数中的 deep link（Windows/Linux）
             for arg in std::env::args() {
                 if arg.starts_with("kiro://") {

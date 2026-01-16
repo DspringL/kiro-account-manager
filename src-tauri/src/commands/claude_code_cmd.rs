@@ -34,7 +34,7 @@ pub fn get_claude_code_settings() -> Result<ClaudeCodeSettings, String> {
 
 /// 配置 Claude Code 使用 KiroGate
 #[tauri::command]
-pub fn configure_claude_code(api_key: String, base_url: String) -> Result<(), String> {
+pub fn configure_claude_code(api_key: String, base_url: String, model: Option<String>) -> Result<(), String> {
     let path = get_claude_settings_path()?;
     
     // 确保目录存在
@@ -56,6 +56,14 @@ pub fn configure_claude_code(api_key: String, base_url: String) -> Result<(), St
     let mut env = settings.env.unwrap_or_default();
     env.insert("ANTHROPIC_BASE_URL".to_string(), base_url);
     env.insert("ANTHROPIC_API_KEY".to_string(), api_key);
+    
+    // 设置模型（如果指定）
+    if let Some(m) = model {
+        if !m.is_empty() {
+            env.insert("ANTHROPIC_MODEL".to_string(), m);
+        }
+    }
+    
     settings.env = Some(env);
     
     // 写入配置
@@ -85,6 +93,7 @@ pub fn clear_claude_code_config() -> Result<(), String> {
         env.remove("ANTHROPIC_BASE_URL");
         env.remove("ANTHROPIC_AUTH_TOKEN");
         env.remove("ANTHROPIC_API_KEY");
+        env.remove("ANTHROPIC_MODEL");
         if env.is_empty() {
             settings.env = None;
         }

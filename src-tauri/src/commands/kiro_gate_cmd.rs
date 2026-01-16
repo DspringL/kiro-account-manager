@@ -144,6 +144,12 @@ pub async fn delete_kiro_gate_token(id: String) -> Result<(), String> {
 /// 启动 KiroGate 服务器
 #[tauri::command]
 pub async fn start_kiro_gate(params: StartServerParams) -> Result<ServerStatus, String> {
+  // 检查 Token 池是否为空
+  let tokens = load_tokens();
+  if tokens.is_empty() {
+    return Err("Token 池为空，请先在「Token」页面添加 Token".to_string());
+  }
+  
   start_server(params.port, params.proxy_api_key).await?;
   Ok(get_server_status().await)
 }

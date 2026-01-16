@@ -18,6 +18,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::kiro_gate::auth::{AuthCache, TokenConfig};
 use crate::kiro_gate::converter::{build_kiro_payload, get_available_models, anthropic_to_openai};
+use crate::kiro_gate::logger::emit_log_sync;
 use crate::kiro_gate::metrics::METRICS;
 use crate::kiro_gate::models::*;
 use crate::commands::kiro_gate_cmd::KiroGateToken;
@@ -104,6 +105,8 @@ pub async fn start_server(port: u16, proxy_api_key: String) -> Result<(), String
     *handle = Some(ServerHandle { shutdown_tx, port });
   }
 
+  emit_log_sync("INFO", "server", &format!("服务器已启动: http://127.0.0.1:{}", port));
+
   // 启动服务器
   tokio::spawn(async move {
     axum::serve(listener, app)
@@ -112,6 +115,8 @@ pub async fn start_server(port: u16, proxy_api_key: String) -> Result<(), String
       })
       .await
       .ok();
+    
+    emit_log_sync("INFO", "server", "服务器已停止");
     
     // 清理句柄
     let mut handle = SERVER_HANDLE.write().await;
@@ -291,11 +296,14 @@ async fn chat_completions_handler(
   let start_time = std::time::Instant::now();
   let model = request.model.clone();
   let is_stream = request.stream;
+  
+  emit_log_sync("INFO", "openai", &format!("收到请求: model={}, stream={}", model, is_stream));
 
   // 验证 API Key 并获取完整的 Token 信息
   let verify_result = match verify_api_key(&headers, &state.proxy_api_key) {
     Ok(result) => result,
     Err(e) => {
+      emit_log_sync("ERROR", "openai", &format!("认证失败: {}", e));
       METRICS.record_request("/v1/chat/completions", 401, start_time.elapsed().as_millis() as f64, &model, is_stream, "openai");
       return error_response(StatusCode::UNAUTHORIZED, &e);
     }
@@ -368,6 +376,7 @@ async fn chat_completions_handler(
 
   // 记录成功请求
   METRICS.record_request("/v1/chat/completions", 200, start_time.elapsed().as_millis() as f64, &model, is_stream, "openai");
+  emit_log_sync("INFO", "openai", &format!("请求成功: model={}, 耗时={}ms", model, start_time.elapsed().as_millis()));
 
   // 处理响应
   if request.stream {
@@ -389,11 +398,14 @@ async fn anthropic_messages_handler(
   let start_time = std::time::Instant::now();
   let model = request.model.clone();
   let is_stream = request.stream;
+  
+  emit_log_sync("INFO", "anthropic", &format!("收到请求: model={}, stream={}", model, is_stream));
 
   // 验证 API Key（支持 x-api-key 和 Authorization 两种方式）
   let verify_result = match verify_anthropic_api_key(&headers, &state.proxy_api_key) {
     Ok(result) => result,
     Err(e) => {
+      emit_log_sync("ERROR", "anthropic", &format!("认证失败: {}", e));
       METRICS.record_request("/v1/messages", 401, start_time.elapsed().as_millis() as f64, &model, is_stream, "anthropic");
       return anthropic_error_response(StatusCode::UNAUTHORIZED, "authentication_error", &e);
     }
@@ -470,6 +482,7 @@ async fn anthropic_messages_handler(
 
   // 记录成功请求
   METRICS.record_request("/v1/messages", 200, start_time.elapsed().as_millis() as f64, &model, is_stream, "anthropic");
+  emit_log_sync("INFO", "anthropic", &format!("请求成功: model={}, 耗时={}ms", model, start_time.elapsed().as_millis()));
 
   // 处理响应（转换为 Anthropic 格式）
   if request.stream {

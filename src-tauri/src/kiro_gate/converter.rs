@@ -10,17 +10,19 @@ pub const TOOL_DESCRIPTION_MAX_LENGTH: usize = 1024;
 pub fn get_internal_model_id(external_model: &str) -> Result<String, String> {
   let model_id = match external_model {
     // Claude Opus 4.5
-    "claude-opus-4-5" | "claude-opus-4-5-20251101" => "claude-opus-4.5",
+    "claude-opus-4-5" | "claude-opus-4-5-20251101" | "opus" => "claude-opus-4.5",
     // Claude Haiku 4.5
-    "claude-haiku-4-5" | "claude-haiku-4-5-20251001" | "claude-haiku-4.5" => "claude-haiku-4.5",
-    // Claude Sonnet 4.5
-    "claude-sonnet-4-5" | "claude-sonnet-4-5-20250929" => "CLAUDE_SONNET_4_5_20250929_V1_0",
+    "claude-haiku-4-5" | "claude-haiku-4-5-20251001" | "claude-haiku-4.5" | "haiku" => "claude-haiku-4.5",
+    // Claude Sonnet 4.5 (最新)
+    "claude-sonnet-4-5" | "claude-sonnet-4-5-20250929" | "claude-sonnet-4.5" => "CLAUDE_SONNET_4_5_20250929_V1_0",
     // Claude Sonnet 4
     "claude-sonnet-4" | "claude-sonnet-4-20250514" => "CLAUDE_SONNET_4_20250514_V1_0",
     // Claude 3.7 Sonnet
-    "claude-3-7-sonnet-20250219" => "CLAUDE_3_7_SONNET_20250219_V1_0",
-    // 默认
-    "auto" => "claude-sonnet-4.5",
+    "claude-3-7-sonnet-20250219" | "claude-3.7-sonnet" => "CLAUDE_3_7_SONNET_20250219_V1_0",
+    // Claude 3.5 Sonnet (映射到 Sonnet 4)
+    "claude-3-5-sonnet-20241022" | "claude-3-5-sonnet-latest" | "claude-3.5-sonnet" | "sonnet" => "CLAUDE_SONNET_4_20250514_V1_0",
+    // 默认 / auto
+    "auto" | "default" => "CLAUDE_SONNET_4_5_20250929_V1_0",
     // 直接传递（可能是内部 ID）
     other => other,
   };
@@ -30,6 +32,10 @@ pub fn get_internal_model_id(external_model: &str) -> Result<String, String> {
 // 可用模型列表
 pub fn get_available_models() -> Vec<ModelInfo> {
   let models = vec![
+    // Claude Code 常用名称
+    "claude-3-5-sonnet-20241022",
+    "claude-3-5-sonnet-latest",
+    // Kiro 支持的模型
     "claude-opus-4-5",
     "claude-opus-4-5-20251101",
     "claude-haiku-4-5",
