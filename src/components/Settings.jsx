@@ -523,7 +523,7 @@ function Settings() {
                                     onClick={() => setTheme(opt.key)}
                                     className={`relative p-4 rounded-xl border-2 transition-all hover:scale-105 ${isActive
                                         ? 'border-blue-500 shadow-lg shadow-blue-500/20'
-                                        : `${colors.cardBorder} ${colors.cardHover}`
+                                        : `${colors.cardBorder} ${colors.cardHover} ${colors.card}`
                                         }`}
                                     style={{ animationDelay: `${index * 0.05}s` }}
                                 >
@@ -549,8 +549,10 @@ function Settings() {
 
                     {/* AI 模型 */}
                     <div className="mb-4">
+                        <label className={`block text-sm ${colors.textMuted} mb-2`}>
+                            {t('settings.aiModel')} {savingModel && <span className="text-blue-500 text-xs ml-2">{t('settings.saving')}</span>}
+                        </label>
                         <Select
-                            label={<span className={colors.textMuted}>{t('settings.aiModel')} {savingModel && <span className="text-blue-500 text-xs ml-2">{t('settings.saving')}</span>}</span>}
                             value={aiModel}
                             onChange={handleApplyModel}
                             disabled={savingModel}
@@ -561,8 +563,7 @@ function Settings() {
                                 { value: 'claude-opus-4.5', label: 'Claude Opus 4.5 - 2.2x' }
                             ]}
                             classNames={{
-                                input: `${colors.text} ${colors.input}`,
-                                label: 'text-sm mb-2'
+                                input: `${colors.text} ${colors.input}`
                             }}
                         />
                     </div>
@@ -583,8 +584,8 @@ function Settings() {
 
                     {/* Agent 自主模式 */}
                     <div className="mb-4">
+                        <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.agentAutonomy')}</label>
                         <Select
-                            label={<span className={colors.textMuted}>{t('settings.agentAutonomy')}</span>}
                             value={agentAutonomy}
                             onChange={handleAgentAutonomyChange}
                             data={[
@@ -592,16 +593,15 @@ function Settings() {
                                 { value: 'Autopilot', label: t('settings.agentAutopilot') }
                             ]}
                             classNames={{
-                                input: `${colors.text} ${colors.input}`,
-                                label: 'text-sm mb-2'
+                                input: `${colors.text} ${colors.input}`
                             }}
                         />
                     </div>
 
                     {/* 信任命令 */}
                     <div className="mb-4">
+                        <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.trustedCommands')}</label>
                         <Select
-                            label={<span className={colors.textMuted}>{t('settings.trustedCommands')}</span>}
                             value={trustedCommandsMode}
                             onChange={handleTrustedCommandsModeChange}
                             data={[
@@ -610,8 +610,7 @@ function Settings() {
                                 { value: 'all', label: t('settings.trustedCommandsAll') }
                             ]}
                             classNames={{
-                                input: `${colors.text} ${colors.input}`,
-                                label: 'text-sm mb-2'
+                                input: `${colors.text} ${colors.input}`
                             }}
                         />
                         {trustedCommandsMode === 'common' && (
@@ -770,6 +769,7 @@ function Settings() {
                             <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoRefresh')}</span>
                         </label>
                         <div className="relative flex-1">
+                            <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.autoRefreshInterval')}</label>
                             <Select
                                 value={String(autoRefreshInterval)}
                                 onChange={(value) => handleAutoRefreshIntervalChange(value)}
@@ -803,6 +803,7 @@ function Settings() {
                             <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoChangeMachineId')}</span>
                         </label>
                         <div className="relative flex-1">
+                            <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.machineIdMode')}</label>
                             <Select
                                 value={machineIdMode}
                                 onChange={handleMachineIdModeChange}
@@ -861,6 +862,7 @@ function Settings() {
                             />
                         </div>
                         <div className="relative flex-1">
+                            <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.autoSwitchInterval')}</label>
                             <Select
                                 value={String(autoSwitchInterval)}
                                 onChange={(value) => handleAutoSwitchIntervalChange(value)}
