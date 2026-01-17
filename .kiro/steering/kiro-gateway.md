@@ -32,6 +32,7 @@
 - **本地路径**: `E:\VSCodeSpace\Kiro\KiroGate`
 - **技术栈**: Python + FastAPI
 - **维护状态**: 与 aliom-v 共同维护
+- **上游项目**: Fork 自 [Jwadow/kiro-openai-gateway](https://github.com/Jwadow/kiro-openai-gateway)
 - **特点**:
   - 完整的格式转换实现（converters.py）
   - 完善的 Metrics 系统（使用 SQLite 持久化）
@@ -40,6 +41,9 @@
   - 支持 Prometheus 格式导出
   - WebSearch 集成
   - 图片支持
+  - IDC (Builder ID) 认证支持
+  - 用户系统（LinuxDo/GitHub OAuth2）
+  - Admin 管理后台
 - **开发建议**: 可以直接参考和借鉴 KiroGate 的实现思路，有问题可以与 aliom-v 讨论
 
 **访问方式**（工作区外文件）:
@@ -52,6 +56,19 @@ Get-Content "E:\VSCodeSpace\Kiro\KiroGate\文件路径" -Raw
 - `kiro_gateway/metrics.py` - Metrics 系统（SQLite 持久化）
 - `kiro_gateway/models.py` - 数据模型定义
 - `kiro_gateway/websearch.py` - WebSearch 工具集成
+- `kiro_gateway/auth.py` - Token 管理和刷新
+- `kiro_gateway/user_manager.py` - 用户系统和 OAuth2
+- `kiro_gateway/token_allocator.py` - Token 智能分配
+- `kiro_gateway/health_checker.py` - Token 健康检查
+
+### 1.1. Jwadow/kiro-openai-gateway ⭐⭐⭐⭐⭐ KiroGate 上游
+- **GitHub**: https://github.com/Jwadow/kiro-openai-gateway
+- **技术栈**: Python + FastAPI
+- **特点**:
+  - KiroGate 的原始版本
+  - 基础的 OpenAI/Anthropic 兼容实现
+  - 简洁的架构设计
+- **参考用途**: 了解 KiroGate 的基础架构和设计思路
 
 ### 2. justlovemaki/AIClient-2-API ⭐⭐⭐⭐ 架构参考
 - **GitHub**: https://github.com/justlovemaki/AIClient-2-API
