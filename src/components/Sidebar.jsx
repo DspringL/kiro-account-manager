@@ -134,29 +134,35 @@ function Sidebar({ activeMenu, onMenuChange }) {
                     />
                   )
                 }
-                className={isActive ? colors.sidebarActive : colors.sidebarHover}
                 style={{
                   borderRadius: 12,
                   animation: 'slideInLeft 0.5s ease-out',
                   animationDelay: `${0.15 + index * 0.05}s`,
                   animationFillMode: 'both',
                   fontWeight: isActive ? 500 : 400,
+                  backgroundColor: isActive ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
                 }}
                 styles={{
                   root: {
                     color: 'rgba(255, 255, 255, 0.9)',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                      color: 'rgba(255, 255, 255, 1)',
+                    },
+                    '&[data-active]': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      color: 'rgba(255, 255, 255, 1)',
                     },
                   },
                   label: {
-                    color: 'rgba(255, 255, 255, 0.9)',
+                    color: 'inherit',
+                    fontWeight: 'inherit',
                   },
                   description: {
                     color: 'rgba(255, 255, 255, 0.6)',
                   },
                   section: {
-                    color: 'rgba(255, 255, 255, 0.9)',
+                    color: 'inherit',
                   },
                 }}
               />
