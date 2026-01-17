@@ -66,10 +66,10 @@
 - **MCP 服务器** - 增删改查、启用/禁用
 - **Steering 规则** - 查看、编辑
 
-### ⚡ KiroGate
-- 内置 OpenAI 兼容 API 代理服务
-- 独立 Token 管理
-- 支持多种 AI 客户端接入
+### ⚡ API 代理服务
+- 需要 OpenAI 兼容 API？请使用独立项目 **[kiro-gate](https://github.com/hj01857655/kiro-gate)**
+- 功能更强大：多账号轮询、Token 自动刷新、流式响应、工具调用
+- 支持 OpenAI 和 Anthropic 格式接口
 
 ### ⚙️ 系统设置
 - 四种主题（浅色/深色/紫色/绿色）
@@ -138,6 +138,10 @@ A: 网络超时，手动再刷新一次或换个网络试试。
   <img src="src/assets/donate/wechat.jpg" alt="微信" width="200">
   <img src="src/assets/donate/alipay.jpg" alt="支付宝" width="200">
 </p>
+
+## 🔗 相关项目
+
+- **[kiro-gate](https://github.com/hj01857655/kiro-gate)** - Kiro API 网关，提供 OpenAI/Anthropic 兼容接口
 
 ---
 
