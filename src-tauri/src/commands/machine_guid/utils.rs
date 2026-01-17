@@ -8,10 +8,10 @@ use super::types::MachineGuidBackup;
 
 // 预编译正则表达式
 static UUID_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").unwrap()
+    Regex::new(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$").expect("Failed to compile UUID regex")
 });
 static HEX32_REGEX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^[0-9a-f]{32}$").unwrap()
+    Regex::new(r"^[0-9a-f]{32}$").expect("Failed to compile HEX32 regex")
 });
 
 pub fn get_backup_path() -> PathBuf {

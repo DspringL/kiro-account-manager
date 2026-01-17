@@ -26,14 +26,14 @@ pub struct AddKiroAccountParams {
 
 #[tauri::command]
 pub fn get_current_user(state: State<AppState>) -> Option<User> {
-    state.auth.user.lock().unwrap().clone()
+    state.auth.user.lock().expect("Failed to acquire lock").clone()
 }
 
 #[tauri::command]
 pub fn logout(state: State<AppState>) {
-    *state.auth.user.lock().unwrap() = None;
-    *state.auth.csrf_token.lock().unwrap() = None;
-    *state.auth.access_token.lock().unwrap() = None;
+    *state.auth.user.lock().expect("Failed to acquire lock") = None;
+    *state.auth.csrf_token.lock().expect("Failed to acquire lock") = None;
+    *state.auth.access_token.lock().expect("Failed to acquire lock") = None;
 }
 
 #[tauri::command]
@@ -76,7 +76,7 @@ async fn login_social(
     // 获取不到邮箱直接报错
     let final_email = new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?;
 
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &provider_id, &auth_result.refresh_token);
     
     let account = if let Some(idx) = existing_idx {
@@ -142,7 +142,7 @@ async fn login_idc(
     // 获取不到邮箱直接报错
     let final_email = new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?;
 
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &provider_id, &auth_result.refresh_token);
     
     let account = if let Some(idx) = existing_idx {
@@ -201,10 +201,10 @@ fn update_auth_state(state: &State<'_, AppState>, email: &str, provider: &str, a
         avatar: None,
         provider: provider.to_string(),
     };
-    *state.auth.user.lock().unwrap() = Some(user);
-    *state.auth.access_token.lock().unwrap() = Some(access_token.to_string());
-    *state.auth.refresh_token.lock().unwrap() = Some(refresh_token.to_string());
-    *state.pending_login.lock().unwrap() = None;
+    *state.auth.user.lock().expect("Failed to acquire lock") = Some(user);
+    *state.auth.access_token.lock().expect("Failed to acquire lock") = Some(access_token.to_string());
+    *state.auth.refresh_token.lock().expect("Failed to acquire lock") = Some(refresh_token.to_string());
+    *state.pending_login.lock().expect("Failed to acquire lock") = None;
 }
 
 #[tauri::command]
@@ -215,7 +215,7 @@ pub async fn handle_kiro_social_callback(
     callback_state: String,
 ) -> Result<(), String> {
     let pending = {
-        let lock = state.pending_login.lock().unwrap();
+        let lock = state.pending_login.lock().expect("Failed to acquire lock");
         lock.clone().ok_or("No pending login found")?
     };
     
@@ -242,7 +242,7 @@ pub async fn handle_kiro_social_callback(
     // 获取不到邮箱直接报错
     let final_email = new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?;
 
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &pending.provider, &token_response.refresh_token);
     
     let account = if let Some(idx) = existing_idx {
@@ -300,11 +300,11 @@ pub async fn add_kiro_account(
         serde_json::from_value(usage_result.usage_data.clone()).ok();
     let (new_email, user_id) = extract_user_info(&usage);
 
-    *state.auth.access_token.lock().unwrap() = Some(access_token.clone());
-    *state.auth.refresh_token.lock().unwrap() = Some(refresh_token.clone());
-    *state.auth.csrf_token.lock().unwrap() = Some(csrf_token.clone());
+    *state.auth.access_token.lock().expect("Failed to acquire lock") = Some(access_token.clone());
+    *state.auth.refresh_token.lock().expect("Failed to acquire lock") = Some(refresh_token.clone());
+    *state.auth.csrf_token.lock().expect("Failed to acquire lock") = Some(csrf_token.clone());
     
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire lock");
     
     // 查找已有账号
     let existing_idx = if let Some(e) = &new_email {
@@ -352,8 +352,8 @@ pub async fn add_kiro_account(
         avatar: None,
         provider: idp.clone(),
     };
-    *state.auth.user.lock().unwrap() = Some(user);
-    *state.pending_login.lock().unwrap() = None;
+    *state.auth.user.lock().expect("Failed to acquire lock") = Some(user);
+    *state.pending_login.lock().expect("Failed to acquire lock") = None;
     
     store.save_to_file();
     Ok(account)

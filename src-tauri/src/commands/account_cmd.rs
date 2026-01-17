@@ -39,7 +39,7 @@ pub struct VerifyAccountParams {
 
 #[tauri::command]
 pub fn get_accounts(state: State<AppState>) -> Vec<Account> {
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire store lock");
     // 每次获取前重新从文件加载，确保数据最新
     store.reload();
     store.get_all()
@@ -47,18 +47,18 @@ pub fn get_accounts(state: State<AppState>) -> Vec<Account> {
 
 #[tauri::command]
 pub fn delete_account(state: State<AppState>, id: String) -> bool {
-    state.store.lock().unwrap().delete(&id)
+    state.store.lock().expect("Failed to acquire store lock").delete(&id)
 }
 
 #[tauri::command]
 pub fn delete_accounts(state: State<AppState>, ids: Vec<String>) -> usize {
-    state.store.lock().unwrap().delete_many(&ids)
+    state.store.lock().expect("Failed to acquire store lock").delete_many(&ids)
 }
 
 #[tauri::command]
 pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Account, String> {
     let account = {
-        let store = state.store.lock().unwrap();
+        let store = state.store.lock().expect("Failed to acquire store lock");
         store.accounts.iter().find(|a| a.id == id).cloned()
     }.ok_or("Account not found")?;
 
@@ -84,7 +84,7 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
             Err(e) => {
                 // 刷新失败，检查是否封禁
                 if e.starts_with("BANNED:") {
-                    let mut store = state.store.lock().unwrap();
+                    let mut store = state.store.lock().expect("Failed to acquire store lock");
                     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
                         a.status = "banned".to_string();
                         store.save_to_file();
@@ -98,7 +98,7 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
     // 获取配额失败时直接返回错误
     let usage = usage_result?;
 
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire store lock");
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
         // 如果刷新了 token，更新 token 相关字段
         if let Some(ref result) = refresh_result {
@@ -137,7 +137,7 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
 #[tauri::command]
 pub async fn refresh_account_token(state: State<'_, AppState>, id: String) -> Result<Account, String> {
     let account = {
-        let store = state.store.lock().unwrap();
+        let store = state.store.lock().expect("Failed to acquire store lock");
         store.accounts.iter().find(|a| a.id == id).cloned()
     }.ok_or("Account not found")?;
 
@@ -154,7 +154,7 @@ pub async fn refresh_account_token(state: State<'_, AppState>, id: String) -> Re
 
     let refresh_result = refresh_token_by_provider(&account).await?;
 
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire store lock");
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
         a.access_token = Some(refresh_result.access_token);
         if let Some(rt) = refresh_result.refresh_token { a.refresh_token = Some(rt.clone()); }
@@ -188,7 +188,7 @@ pub async fn verify_account(
         let (cid, csec, reg) = if client_id.is_some() && client_secret.is_some() {
             (client_id, client_secret, region)
         } else {
-            let store = state.store.lock().unwrap();
+            let store = state.store.lock().expect("Failed to acquire store lock");
             store.accounts.iter().find(|a| a.refresh_token.as_ref() == Some(&refresh_token))
                 .map(|a| (a.client_id.clone(), a.client_secret.clone(), a.region.clone()))
                 .unwrap_or((None, None, None))
@@ -215,7 +215,7 @@ pub async fn verify_account(
     
     // 更新数据库
     {
-        let mut store = state.store.lock().unwrap();
+        let mut store = state.store.lock().expect("Failed to acquire store lock");
         if let Some(account) = store.accounts.iter_mut().find(|a| a.refresh_token.as_ref() == Some(&refresh_token)) {
             account.access_token = Some(new_access_token.clone());
             account.refresh_token = Some(new_refresh_token.clone());
@@ -281,7 +281,7 @@ pub async fn add_account_by_social(
         else { "Google".to_string() }
     });
     
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire store lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &Some(final_email.clone()), &idp, &refresh_token);
     
     let account = if let Some(idx) = existing_idx {
@@ -317,20 +317,20 @@ pub async fn add_account_by_social(
         avatar: None,
         provider: idp,
     };
-    *state.auth.user.lock().unwrap() = Some(user);
-    *state.auth.access_token.lock().unwrap() = Some(final_access_token);
+    *state.auth.user.lock().expect("Failed to acquire auth user lock") = Some(user);
+    *state.auth.access_token.lock().expect("Failed to acquire auth access_token lock") = Some(final_access_token);
     
     Ok(account)
 }
 
 #[tauri::command]
 pub fn import_accounts(state: State<AppState>, json: String) -> Result<usize, String> {
-    state.store.lock().unwrap().import_from_json(&json)
+    state.store.lock().expect("Failed to acquire store lock").import_from_json(&json)
 }
 
 #[tauri::command]
 pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> String {
-    let store = state.store.lock().unwrap();
+    let store = state.store.lock().expect("Failed to acquire store lock");
     match ids {
         Some(id_list) if !id_list.is_empty() => {
             // 导出选中的账号
@@ -458,7 +458,7 @@ pub async fn add_account_by_idc(
     
     let client_id_hash = calc_client_id_hash();
     
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire store lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &Some(final_email.clone()), "BuilderId", &refresh_token);
     
     let account = if let Some(idx) = existing_idx {
@@ -524,7 +524,7 @@ pub fn update_account(
     // 机器码
     machine_id: Option<String>,
 ) -> Result<Account, String> {
-    let mut store = state.store.lock().unwrap();
+    let mut store = state.store.lock().expect("Failed to acquire store lock");
     
     // 先找到索引，避免借用冲突
     let idx = store.accounts.iter().position(|a| a.id == id);
@@ -571,7 +571,7 @@ pub async fn delete_account_remote(
     
     // 获取账号信息
     let account = {
-        let store = state.store.lock().unwrap();
+        let store = state.store.lock().expect("Failed to acquire store lock");
         store.accounts.iter().find(|a| a.id == id).cloned()
     }.ok_or("账号不存在")?;
     
@@ -593,7 +593,7 @@ pub async fn delete_account_remote(
     
     // 如果需要同时删除本地记录
     if delete_local {
-        let mut store = state.store.lock().unwrap();
+        let mut store = state.store.lock().expect("Failed to acquire store lock");
         store.delete(&id);
     }
     
@@ -608,20 +608,20 @@ pub async fn delete_account_remote(
 /// 获取可用账号列表（用于自动换号）
 #[tauri::command]
 pub fn get_available_accounts(state: State<AppState>) -> Vec<Account> {
-    let store = state.store.lock().unwrap();
+    let store = state.store.lock().expect("Failed to acquire store lock");
     store.get_available_accounts().into_iter().cloned().collect()
 }
 
 /// 按分组筛选账号
 #[tauri::command]
 pub fn get_accounts_by_group(state: State<AppState>, group_id: String) -> Vec<Account> {
-    let store = state.store.lock().unwrap();
+    let store = state.store.lock().expect("Failed to acquire store lock");
     store.get_accounts_by_group(&group_id).into_iter().cloned().collect()
 }
 
 /// 按标签筛选账号
 #[tauri::command]
 pub fn get_accounts_by_tag(state: State<AppState>, tag_id: String) -> Vec<Account> {
-    let store = state.store.lock().unwrap();
+    let store = state.store.lock().expect("Failed to acquire store lock");
     store.get_accounts_by_tag(&tag_id).into_iter().cloned().collect()
 }

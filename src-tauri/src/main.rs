@@ -10,7 +10,6 @@ mod deep_link_handler;
 
 mod kiro;
 mod kiro_auth_client;
-mod kiro_gate;
 mod kiro_portal_client;
 mod mcp;
 
@@ -49,8 +48,6 @@ use commands::proxy_cmd::*;
 use commands::sso_import_cmd::*;
 use commands::update_cmd::*;
 use commands::steering_cmd::*;
-use commands::kiro_gate_cmd::*;
-use commands::claude_code_cmd::*;
 use kiro::{
     get_kiro_local_token, switch_kiro_account,
 };
@@ -92,9 +89,6 @@ fn main() {
             }
         }))
         .setup(|app| {
-            // 初始化 KiroGate 日志发送器
-            kiro_gate::init_logger(app.handle().clone());
-            
             // 首次启动时检查命令行参数中的 deep link（Windows/Linux）
             for arg in std::env::args() {
                 if arg.starts_with("kiro://") {
@@ -249,25 +243,7 @@ fn main() {
             get_steering_file,
             save_steering_file,
             delete_steering_file,
-            create_steering_file,
-            // KiroGate 命令
-            start_kiro_gate,
-            stop_kiro_gate,
-            get_kiro_gate_status,
-            get_kiro_gate_metrics,
-            get_kiro_gate_tokens,
-            add_kiro_gate_token,
-            update_kiro_gate_token,
-            delete_kiro_gate_token,
-            get_api_keys,
-            generate_api_key,
-            delete_api_key,
-            find_token_by_api_key,
-            get_kiro_gate_token_usage,
-            // Claude Code 配置命令
-            get_claude_code_settings,
-            configure_claude_code,
-            clear_claude_code_config
+            create_steering_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

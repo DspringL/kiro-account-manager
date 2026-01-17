@@ -129,7 +129,7 @@ impl AuthProvider for IdcProvider {
             
             loop {
                 if start.elapsed() > timeout {
-                    if let Some(tx) = tx_clone.lock().unwrap().take() {
+                    if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
                         let _ = tx.send(Err("授权超时".to_string()));
                     }
                     break;
@@ -154,14 +154,14 @@ impl AuthProvider for IdcProvider {
                         let response = tiny_http::Response::from_string(
                             "<html><body><h1>授权成功</h1><p>您可以关闭此窗口</p></body></html>"
                         ).with_header(
-                            tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()
+                            tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).expect("Failed to create header")
                         );
                         let _ = request.respond(response);
 
                         // 验证 state
                         if let Some(returned_state) = params.get("state") {
                             if *returned_state != state_clone {
-                                if let Some(tx) = tx_clone.lock().unwrap().take() {
+                                if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
                                     let _ = tx.send(Err("State 不匹配".to_string()));
                                 }
                                 break;
@@ -170,7 +170,7 @@ impl AuthProvider for IdcProvider {
 
                         // 检查错误
                         if let Some(error) = params.get("error") {
-                            if let Some(tx) = tx_clone.lock().unwrap().take() {
+                            if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
                                 let desc = params.get("error_description").unwrap_or(&"未知错误");
                                 let _ = tx.send(Err(format!("{}: {}", error, desc)));
                             }
@@ -179,10 +179,10 @@ impl AuthProvider for IdcProvider {
 
                         // 获取 code
                         if let Some(code) = params.get("code") {
-                            if let Some(tx) = tx_clone.lock().unwrap().take() {
+                            if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
                                 let _ = tx.send(Ok((code.to_string(), state_clone.clone())));
                             }
-                        } else if let Some(tx) = tx_clone.lock().unwrap().take() {
+                        } else if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
                             let _ = tx.send(Err("未收到授权码".to_string()));
                         }
                         break;

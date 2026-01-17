@@ -32,7 +32,7 @@ impl DeepLinkCallbackWaiter {
 
     /// 等待回调结果
     pub fn wait_for_callback(&self) -> Result<OAuthCallbackResult, String> {
-        let rx = self.result_rx.lock().unwrap().take()
+        let rx = self.result_rx.lock().expect("Failed to acquire result_rx lock").take()
             .ok_or("Callback channel already consumed")?;
 
         match rx.recv_timeout(self.timeout) {
@@ -51,7 +51,7 @@ pub fn register_waiter(state: &str) -> DeepLinkCallbackWaiter {
     
     // 存储发送端
     let storage = PENDING_SENDER.get_or_init(|| Mutex::new(None));
-    *storage.lock().unwrap() = Some((state.to_string(), tx));
+    *storage.lock().expect("Failed to acquire pending sender lock") = Some((state.to_string(), tx));
     
     DeepLinkCallbackWaiter {
         result_rx: Arc::new(Mutex::new(Some(rx))),
@@ -66,7 +66,7 @@ pub fn handle_deep_link(url: &str) -> bool {
         None => return false,
     };
     
-    let mut guard = storage.lock().unwrap();
+    let mut guard = storage.lock().expect("Failed to acquire pending sender lock");
     let (expected_state, tx) = match guard.take() {
         Some(s) => s,
         None => return false,

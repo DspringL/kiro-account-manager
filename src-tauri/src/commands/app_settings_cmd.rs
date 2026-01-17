@@ -18,9 +18,6 @@ pub struct AppSettings {
     pub bind_machine_id_to_account: Option<bool>,  // true=绑定模式（每个账号固定机器码），false=随机模式
     // 隐私模式：脱敏显示邮箱
     pub privacy_mode: Option<bool>,
-    // KiroGate 配置
-    pub kiro_gate_server: Option<String>,    // KiroGate 服务地址
-    pub kiro_gate_proxy_key: Option<String>, // PROXY_API_KEY
 }
 
 // 兼容旧配置文件中的 redeem_server 字段（已废弃）
@@ -39,8 +36,6 @@ impl Default for AppSettings {
             browser_path: None,
             bind_machine_id_to_account: Some(true),
             privacy_mode: Some(true),  // 默认开启
-            kiro_gate_server: None,
-            kiro_gate_proxy_key: None,
         }
     }
 }
@@ -94,8 +89,6 @@ fn save_app_settings_inner(updates: AppSettings) -> Result<(), String> {
     if updates.browser_path.is_some() { current.browser_path = updates.browser_path; }
     if updates.bind_machine_id_to_account.is_some() { current.bind_machine_id_to_account = updates.bind_machine_id_to_account; }
     if updates.privacy_mode.is_some() { current.privacy_mode = updates.privacy_mode; }
-    if updates.kiro_gate_server.is_some() { current.kiro_gate_server = updates.kiro_gate_server; }
-    if updates.kiro_gate_proxy_key.is_some() { current.kiro_gate_proxy_key = updates.kiro_gate_proxy_key; }
     
     save_settings_to_file(&current)
 }

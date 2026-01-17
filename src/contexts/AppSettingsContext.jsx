@@ -12,9 +12,7 @@ const DEFAULT_SETTINGS = {
   autoRefreshInterval: 50,
   autoChangeMachineId: false,
   bindMachineIdToAccount: false,
-  browserPath: '',
-  kiroGatePort: 8000,
-  kiroGateProxyKey: ''
+  browserPath: ''
 }
 
 export function AppSettingsProvider({ children }) {
