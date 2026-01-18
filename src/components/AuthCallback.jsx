@@ -88,8 +88,8 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${isLightTheme ? 'bg-gradient-to-br from-blue-50 to-indigo-100' : 'bg-gradient-to-br from-gray-900 to-gray-800'}`}>
-      <div className={`${isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'} rounded-2xl shadow-xl p-8 max-w-md w-full border ${colors.cardBorder}`}>
+    <div className={`min-h-screen flex items-center justify-center p-4 ${colors.main}`}>
+      <div className={`${colors.card} rounded-2xl shadow-xl p-8 max-w-md w-full border ${colors.cardBorder}`}>
         {getStatusIcon()}
         
         <h1 className={`text-2xl font-bold text-center mb-4 ${getStatusColor()}`}>
@@ -120,7 +120,7 @@ export default function AuthCallback() {
           <div className="text-center">
             <button
               onClick={() => window.close()}
-              className={`px-6 py-2 ${isLightTheme ? 'bg-gray-500 hover:bg-gray-600' : 'bg-gray-700 hover:bg-gray-600'} text-white rounded-lg transition-colors`}
+              className={`px-6 py-2 ${colors.btnSecondary} text-white rounded-lg transition-colors`}
             >
               {t('callback.closeWindow')}
             </button>

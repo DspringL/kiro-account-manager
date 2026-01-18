@@ -264,7 +264,7 @@ export function ThemeProvider({ children }) {
     defaultRadius: 'md',
     components: {
       Select: {
-        styles: {
+        styles: (theme) => ({
           input: {
             backgroundColor: 'transparent',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
@@ -279,14 +279,14 @@ export function ThemeProvider({ children }) {
           },
           option: {
             color: 'inherit',
-            '&[data-selected]': {
+            '&[data-combobox-selected]': {
               backgroundColor: isLightTheme ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.2)',
             },
-            '&[data-hovered]': {
+            '&:hover': {
               backgroundColor: isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)',
             },
           },
-        },
+        }),
       },
       TextInput: {
         styles: {

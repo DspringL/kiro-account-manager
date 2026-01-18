@@ -82,9 +82,9 @@ function ConfirmDialog({
       <div 
         className={`
           relative overflow-hidden
-          ${isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'} 
+          ${colors.card} 
           rounded-2xl w-full max-w-[400px] 
-          shadow-2xl ${isLightTheme ? 'shadow-gray-200/50' : 'shadow-black/50'}
+          shadow-2xl
           border ${colors.cardBorder}
         `}
         onClick={e => e.stopPropagation()}
