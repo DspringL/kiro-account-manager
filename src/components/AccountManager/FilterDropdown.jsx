@@ -35,18 +35,23 @@ const USAGE_RANGE_OPTIONS = [
 
 // 通用筛选下拉组件
 function FilterSelect({ label, value, options, onChange, onClear, colors }) {
-  const hasValue = !!value
+  const hasValue = value && value !== ''
   
   return (
     <div>
       <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{label}</label>
       <div className="relative">
         <Select
-          value={value}
-          onChange={onChange}
+          value={value || null}
+          onChange={(v) => {
+            if (!v || v === '') {
+              onClear?.()
+            } else {
+              onChange(v)
+            }
+          }}
           data={options}
           clearable={hasValue}
-          onClear={onClear}
           classNames={{
             input: `${colors.input} ${colors.text} ${colors.inputFocus}`,
             dropdown: `${colors.card} border ${colors.cardBorder}`,
@@ -186,7 +191,7 @@ function FilterDropdown({
 
             <FilterSelect
               label={t('filter.subscription')}
-              value={filters.subscriptions?.[0] || ''}
+              value={filters.subscriptions?.length > 0 ? filters.subscriptions[0] : ''}
               options={SUBSCRIPTION_OPTIONS}
               onChange={(v) => onFiltersChange({ ...filters, subscriptions: v ? [v] : [] })}
               onClear={() => onFiltersChange({ ...filters, subscriptions: [] })}
@@ -195,7 +200,7 @@ function FilterDropdown({
 
             <FilterSelect
               label={t('filter.status')}
-              value={filters.statuses?.[0] || ''}
+              value={filters.statuses?.length > 0 ? filters.statuses[0] : ''}
               options={STATUS_OPTIONS}
               onChange={(v) => onFiltersChange({ ...filters, statuses: v ? [v] : [] })}
               onClear={() => onFiltersChange({ ...filters, statuses: [] })}
@@ -204,7 +209,7 @@ function FilterDropdown({
 
             <FilterSelect
               label={t('filter.provider')}
-              value={filters.providers?.[0] || ''}
+              value={filters.providers?.length > 0 ? filters.providers[0] : ''}
               options={PROVIDER_OPTIONS}
               onChange={(v) => onFiltersChange({ ...filters, providers: v ? [v] : [] })}
               onClear={() => onFiltersChange({ ...filters, providers: [] })}
