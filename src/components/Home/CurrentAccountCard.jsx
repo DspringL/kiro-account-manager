@@ -50,7 +50,7 @@ function CurrentAccountCard({ localToken, refreshing, handleRefresh, isLightThem
                   {t('home.loggedIn')}
                 </Badge>
               </Group>
-              <Text size="sm" c="dimmed">{localToken.authMethod || 'social'}</Text>
+              <Text size="sm" className={colors.textMuted}>{localToken.authMethod || 'social'}</Text>
             </Stack>
             
             {/* Hover 显示 Token 详情 */}
@@ -61,8 +61,8 @@ function CurrentAccountCard({ localToken, refreshing, handleRefresh, isLightThem
             <div className={`w-16 h-16 rounded-full flex items-center justify-center animate-float ${colors.cardSecondary}`}>
               <Users size={28} className={colors.textMuted} />
             </div>
-            <Text c="dimmed" fw={500}>{t('home.notLoggedIn')}</Text>
-            <Text size="sm" c="dimmed">{t('home.clickToSwitch')}</Text>
+            <Text className={colors.textMuted} fw={500}>{t('home.notLoggedIn')}</Text>
+            <Text size="sm" className={colors.textMuted}>{t('home.clickToSwitch')}</Text>
           </Stack>
         )}
       </div>
@@ -82,17 +82,17 @@ function TokenDetailPopover({ localToken, isLightTheme, colors, t }) {
     >
       <Stack gap="xs">
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">Access Token</Text>
+          <Text size="xs" className={colors.textMuted}>Access Token</Text>
           <Tooltip label={localToken.accessToken}>
-            <Text size="xs" c="dimmed" className="font-mono truncate" style={{ maxWidth: 140 }}>
+            <Text size="xs" className={`font-mono truncate ${colors.textMuted}`} style={{ maxWidth: 140 }}>
               {localToken.accessToken?.substring(0, 12)}...
             </Text>
           </Tooltip>
         </Group>
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">Refresh Token</Text>
+          <Text size="xs" className={colors.textMuted}>Refresh Token</Text>
           <Tooltip label={localToken.refreshToken}>
-            <Text size="xs" c="dimmed" className="font-mono truncate" style={{ maxWidth: 140 }}>
+            <Text size="xs" className={`font-mono truncate ${colors.textMuted}`} style={{ maxWidth: 140 }}>
               {localToken.refreshToken?.substring(0, 12)}...
             </Text>
           </Tooltip>
@@ -100,28 +100,28 @@ function TokenDetailPopover({ localToken, isLightTheme, colors, t }) {
         {localToken.authMethod === 'IdC' ? (
           <>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">Client ID Hash</Text>
-              <Text size="xs" c="dimmed" className="font-mono truncate" style={{ maxWidth: 140 }}>
+              <Text size="xs" className={colors.textMuted}>Client ID Hash</Text>
+              <Text size="xs" className={`font-mono truncate ${colors.textMuted}`} style={{ maxWidth: 140 }}>
                 {localToken.clientIdHash || '-'}
               </Text>
             </Group>
             <Group justify="space-between">
-              <Text size="xs" c="dimmed">Region</Text>
-              <Text size="xs" c="dimmed" className="font-mono">{localToken.region || '-'}</Text>
+              <Text size="xs" className={colors.textMuted}>Region</Text>
+              <Text size="xs" className={`font-mono ${colors.textMuted}`}>{localToken.region || '-'}</Text>
             </Group>
           </>
         ) : (
           <Group justify="space-between">
-            <Text size="xs" c="dimmed">Profile ARN</Text>
+            <Text size="xs" className={colors.textMuted}>Profile ARN</Text>
             <Tooltip label={localToken.profileArn}>
-              <Text size="xs" c="dimmed" className="font-mono truncate" style={{ maxWidth: 140 }}>
+              <Text size="xs" className={`font-mono truncate ${colors.textMuted}`} style={{ maxWidth: 140 }}>
                 {localToken.profileArn || '-'}
               </Text>
             </Tooltip>
           </Group>
         )}
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">{t('home.expiresAt')}</Text>
+          <Text size="xs" className={colors.textMuted}>{t('home.expiresAt')}</Text>
           <Group gap={4}>
             <Clock size={10} />
             <Text size="xs" className={colors.text}>

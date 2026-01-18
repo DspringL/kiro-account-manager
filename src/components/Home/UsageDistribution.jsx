@@ -74,7 +74,7 @@ function UsageDistribution({ tokens, isLightTheme, colors, t }) {
               <div key={i}>
                 <Group justify="space-between" mb={4}>
                   <Text size="sm" className={colors.text}>
-                    {item.label} <Text span c="dimmed">({item.desc})</Text>
+                    {item.label} <Text span className={colors.textMuted}>({item.desc})</Text>
                   </Text>
                   <Text size="sm" fw={500} className={colors.text}>
                     {item.value} {t('stats.accounts')}
@@ -116,7 +116,7 @@ function UsageDistribution({ tokens, isLightTheme, colors, t }) {
                   <Text size="xs" className={colors.text} truncate style={{ maxWidth: 140 }}>
                     {maskEmail(account.email).split('@')[0]}
                   </Text>
-                  <Text size="xs" c="dimmed">
+                  <Text size="xs" className={colors.textMuted}>
                     {account.usedStr}/{account.limitStr} ({account.percent}%)
                   </Text>
                 </Group>

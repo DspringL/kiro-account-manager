@@ -49,7 +49,7 @@ function QuotaOverviewCard({ stats, isLightTheme, colors, t }) {
       </Group>
       
       <Group justify="space-between">
-        <Text size="sm" c="dimmed">{t('home.usedTotal')}</Text>
+        <Text size="sm" className={colors.textMuted}>{t('home.usedTotal')}</Text>
         <Text size="sm" fw={500} className={colors.text}>
           {stats.totalUsedStr} / {stats.totalQuotaStr}
         </Text>

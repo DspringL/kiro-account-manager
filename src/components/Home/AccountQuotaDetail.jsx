@@ -153,7 +153,7 @@ function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refr
               </Badge>
             )}
           </Group>
-          <Text size="xs" c="dimmed">
+          <Text size="xs" className={colors.textMuted}>
             {currentAccount.provider}
             {daysUntilReset != null && ` · ${daysUntilReset === 0 ? t('home.resetToday') : `${daysUntilReset} ${t('home.daysUntilReset')}`}`}
           </Text>
@@ -207,7 +207,7 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isLig
           >
             {currentPercent}%
           </Text>
-          <Text size="xs" c="dimmed">
+          <Text size="xs" className={colors.textMuted}>
             {currentUsed} / {currentQuota}
           </Text>
         </Group>
@@ -242,11 +242,11 @@ function SubscriptionDetails({ subInfo, overageConfig, isLightTheme, colors, t }
       </Text>
       <Stack gap={6}>
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">{t('home.type')}</Text>
+          <Text size="xs" className={colors.textMuted}>{t('home.type')}</Text>
           <Text size="xs" className={colors.text}>{subInfo.subscriptionTitle || '-'}</Text>
         </Group>
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">{t('home.overage')}</Text>
+          <Text size="xs" className={colors.textMuted}>{t('home.overage')}</Text>
           <Text 
             size="xs" 
             style={{ color: subInfo.overageCapability === 'OVERAGE_CAPABLE' ? 'rgb(34, 197, 94)' : undefined }}
@@ -256,7 +256,7 @@ function SubscriptionDetails({ subInfo, overageConfig, isLightTheme, colors, t }
           </Text>
         </Group>
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">{t('home.upgrade')}</Text>
+          <Text size="xs" className={colors.textMuted}>{t('home.upgrade')}</Text>
           <Text 
             size="xs"
             style={{ color: subInfo.upgradeCapability === 'UPGRADE_CAPABLE' ? 'rgb(34, 197, 94)' : undefined }}
@@ -267,7 +267,7 @@ function SubscriptionDetails({ subInfo, overageConfig, isLightTheme, colors, t }
         </Group>
         {overageConfig && (
           <Group justify="space-between">
-            <Text size="xs" c="dimmed">{t('home.status')}</Text>
+            <Text size="xs" className={colors.textMuted}>{t('home.status')}</Text>
             <Text 
               size="xs"
               style={{ color: overageConfig.overageStatus === 'ENABLED' ? 'rgb(34, 197, 94)' : undefined }}
@@ -301,23 +301,23 @@ function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, isLig
       </Text>
       <Stack gap={6}>
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">IDP</Text>
+          <Text size="xs" className={colors.textMuted}>IDP</Text>
           <Text size="xs" className={colors.text}>{currentAccount.provider || '-'}</Text>
         </Group>
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">{t('home.reset')}</Text>
+          <Text size="xs" className={colors.textMuted}>{t('home.reset')}</Text>
           <Text size="xs" className={colors.text}>
             {nextDateReset ? new Date(nextDateReset * 1000).toLocaleDateString() : '-'}
           </Text>
         </Group>
         {breakdown?.overageRate && (
           <Group justify="space-between">
-            <Text size="xs" c="dimmed">{t('home.rate')}</Text>
+            <Text size="xs" className={colors.textMuted}>{t('home.rate')}</Text>
             <Text size="xs" className={colors.text}>${breakdown.overageRate}/次</Text>
           </Group>
         )}
         <Group justify="space-between">
-          <Text size="xs" c="dimmed">ID</Text>
+          <Text size="xs" className={colors.textMuted}>ID</Text>
           <Tooltip label={userInfo?.userId}>
             <Text size="xs" className={`${colors.text} font-mono`} truncate style={{ maxWidth: 80 }}>
               {userInfo?.userId?.split('.').pop()?.substring(0, 8) || '-'}

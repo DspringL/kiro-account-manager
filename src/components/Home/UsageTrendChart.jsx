@@ -165,7 +165,7 @@ export default function UsageTrendChart({ accounts, stats }) {
       <Group justify="center" gap="md" mt="xs">
         <Group gap="xs">
           <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <Text size="xs" c="dimmed">{t('stats.totalUsed')}</Text>
+          <Text size="xs" className={colors.textMuted}>{t('stats.totalUsed')}</Text>
         </Group>
       </Group>
     </Card>
