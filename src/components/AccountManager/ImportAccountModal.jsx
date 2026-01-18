@@ -285,11 +285,11 @@ function ImportAccountModal({ onClose, onSuccess }) {
       ) : importing || ssoImporting ? (
         <Stack gap="md">
           <Group>
-            <Loader2 size={20} className="animate-spin text-blue-500" />
+            <Loader2 size={20} className={`animate-spin ${colors.primary}`} />
             <Text>{importing ? t('import.importing') : t('import.ssoImporting')}</Text>
           </Group>
           <Progress value={(importing ? importProgress : ssoProgress).current / (importing ? importProgress : ssoProgress).total * 100} />
-          <Text size="sm" c="dimmed">
+          <Text size="sm" className={colors.textMuted}>
             {(importing ? importProgress : ssoProgress).current}/{(importing ? importProgress : ssoProgress).total}
           </Text>
         </Stack>
@@ -366,7 +366,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
             <Stack gap="md">
               <Alert color="blue" variant="light">
                 <Text size="sm" fw={500}>{t('import.ssoGuide')}</Text>
-                <ol className="list-decimal list-inside space-y-1 text-xs mt-2">
+                <ol className={`list-decimal list-inside space-y-1 text-xs mt-2 ${colors.text}`}>
                   <li>{t('import.ssoStep1')}</li>
                   <li>{t('import.ssoStep2')}</li>
                   <li>{t('import.ssoStep3')}</li>

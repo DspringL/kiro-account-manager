@@ -100,11 +100,11 @@ function AddAccountModal({ onClose, onSuccess }) {
         >
           <div className="text-left w-full">
             <div className="font-medium">{t('addAccount.saveLocal')}</div>
-            <div className="text-xs opacity-70">{t('addAccount.saveLocalDesc')}</div>
+            <div className={`text-xs opacity-70 ${colors.textMuted}`}>{t('addAccount.saveLocalDesc')}</div>
           </div>
         </Button>
 
-        <Text size="sm" c="dimmed" ta="center">{t('addAccount.orManual')}</Text>
+        <Text size="sm" className={colors.textMuted} ta="center">{t('addAccount.orManual')}</Text>
 
         {/* 账号类型选择 */}
         <SegmentedControl

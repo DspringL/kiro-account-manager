@@ -222,7 +222,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         )}
 
         <div>
-          <div className="text-sm font-medium mb-2 flex items-center gap-1.5">
+          <div className={`text-sm font-medium mb-2 flex items-center gap-1.5 ${colors.text}`}>
             <Folder size={14} />
             {t('groups.title') || '分组'}
           </div>

@@ -148,7 +148,7 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
           type="button"
           onClick={handleAddTag}
           disabled={!newTagName.trim()}
-          className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 disabled:opacity-50 flex items-center gap-1"
+          className={`px-3 py-1.5 ${colors.accentBg || 'bg-purple-500'} text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 flex items-center gap-1`}
           title={t('tags.addTag')}
         >
           <Plus size={14} />
@@ -283,7 +283,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               onClick={() => handleTabChange('tags')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'tags'
-                  ? 'bg-purple-500 text-white'
+                  ? `${colors.accentBg || 'bg-purple-500'} text-white`
                   : `${colors.text} ${colors.cardSecondary} ${colors.cardHover}`
               }`}
             >
@@ -294,7 +294,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               onClick={() => handleTabChange('groups')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'groups'
-                  ? 'bg-blue-500 text-white'
+                  ? `${colors.primary} bg-blue-500 text-white`
                   : `${colors.text} ${colors.cardSecondary} ${colors.cardHover}`
               }`}
             >
@@ -345,7 +345,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
             <button
               onClick={handleAdd}
               disabled={!newName.trim()}
-              className={`px-4 py-2 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 ${isTagMode ? 'bg-purple-500' : 'bg-blue-500'}`}
+              className={`px-4 py-2 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 ${isTagMode ? (colors.accentBg || 'bg-purple-500') : 'bg-blue-500'}`}
             >
               <Plus size={16} />
             </button>
@@ -356,7 +356,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               <button
                 key={color}
                 onClick={() => setNewColor(color)}
-                className={`w-6 h-6 rounded-full ${newColor === color ? `ring-2 ring-offset-2 ${isTagMode ? 'ring-purple-500' : 'ring-blue-500'}` : ''}`}
+                className={`w-6 h-6 rounded-full ${newColor === color ? `ring-2 ring-offset-2 ${isTagMode ? (colors.accentBg || 'ring-purple-500') : 'ring-blue-500'}` : ''}`}
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -411,7 +411,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
                         }}
                         autoFocus
                       />
-                      <button onClick={saveEdit} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded">
+                      <button onClick={saveEdit} className={`p-1.5 ${colors.iconSuccess} rounded transition-colors ${colors.hoverBg || 'hover:bg-green-500/10'}`}>
                         <Check size={16} />
                       </button>
                       <button onClick={() => setEditingId(null)} className={`p-1.5 ${colors.textMuted} ${colors.cardHover} rounded`}>
@@ -430,13 +430,13 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
                       )}
                       <button 
                         onClick={() => startEdit(item)} 
-                        className={`p-1.5 ${colors.textMuted} hover:text-blue-500 hover:bg-blue-500/10 rounded`}
+                        className={`p-1.5 ${colors.textMuted} rounded transition-colors ${colors.cardHover}`}
                       >
                         <Edit2 size={14} />
                       </button>
                       <button 
                         onClick={() => handleDelete(item.id)} 
-                        className={`p-1.5 ${colors.textMuted} hover:text-red-500 hover:bg-red-500/10 rounded`}
+                        className={`p-1.5 ${colors.textMuted} rounded transition-colors ${colors.dangerHover || 'hover:bg-red-500/10'}`}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -452,7 +452,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
         <div className={`flex justify-end px-5 py-4 border-t ${colors.cardBorder}`}>
           <button 
             onClick={() => { onSuccess?.(); onClose() }} 
-            className={`px-4 py-2 text-white rounded-lg text-sm font-medium hover:opacity-90 ${isTagMode ? 'bg-purple-500' : 'bg-blue-500'}`}
+            className={`px-4 py-2 text-white rounded-lg text-sm font-medium hover:opacity-90 ${isTagMode ? (colors.accentBg || 'bg-purple-500') : 'bg-blue-500'}`}
           >
             {t('common.close')}
           </button>

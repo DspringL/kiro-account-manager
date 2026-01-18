@@ -53,11 +53,11 @@ export default function AuthCallback() {
       case 'loading':
       case 'processing':
         return (
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className={`w-16 h-16 border-4 ${colors.statusLoadingBorder} border-t-transparent rounded-full animate-spin mx-auto mb-4`}></div>
         )
       case 'success':
         return (
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className={`w-16 h-16 ${colors.statusSuccessBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
@@ -65,7 +65,7 @@ export default function AuthCallback() {
         )
       case 'error':
         return (
-          <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className={`w-16 h-16 ${colors.statusErrorBg} rounded-full flex items-center justify-center mx-auto mb-4`}>
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -79,11 +79,11 @@ export default function AuthCallback() {
   const getStatusColor = () => {
     switch (status) {
       case 'success':
-        return 'text-green-600'
+        return colors.text
       case 'error':
-        return 'text-red-600'
+        return colors.text
       default:
-        return 'text-blue-600'
+        return colors.text
     }
   }
 
@@ -109,7 +109,7 @@ export default function AuthCallback() {
             </p>
             <button
               onClick={() => window.close()}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className={`px-6 py-2 ${colors.btnPrimary} rounded-lg transition-colors`}
             >
               {t('callback.closeWindow')}
             </button>
@@ -120,7 +120,7 @@ export default function AuthCallback() {
           <div className="text-center">
             <button
               onClick={() => window.close()}
-              className={`px-6 py-2 ${colors.btnSecondary} text-white rounded-lg transition-colors`}
+              className={`px-6 py-2 ${colors.btnSecondary} rounded-lg transition-colors`}
             >
               {t('callback.closeWindow')}
             </button>

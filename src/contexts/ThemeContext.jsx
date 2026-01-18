@@ -23,7 +23,8 @@ export const themes = {
     textMuted: 'text-gray-500',
     input: 'bg-white border-gray-200',
     inputFocus: 'focus:ring-blue-500/20 focus:border-blue-500',
-    btnSecondary: 'bg-gray-100 hover:bg-gray-200 border-gray-300',
+    btnPrimary: 'bg-blue-500 hover:bg-blue-600 text-white',
+    btnSecondary: 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700',
     btnDisabled: 'bg-gray-100 text-gray-400',
     iconColor: '#1a1a1a',
     // 下拉菜单样式
@@ -105,6 +106,11 @@ export const themes = {
     dateExpired: 'text-red-500',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    iconError: 'text-red-500',
+    // 状态图标背景
+    statusSuccessBg: 'bg-green-500',
+    statusErrorBg: 'bg-red-500',
+    statusLoadingBorder: 'border-blue-500',
     // Ring 颜色
     ringColor: 'ring-black/5',
   },
@@ -126,7 +132,8 @@ export const themes = {
     textMuted: 'text-gray-400',
     input: 'bg-[#252540] border-gray-700',
     inputFocus: 'focus:ring-blue-500/30 focus:border-blue-500',
-    btnSecondary: 'bg-[#1a1a1a] hover:bg-[#252525] border-[#333]',
+    btnPrimary: 'bg-blue-500 hover:bg-blue-600 text-white',
+    btnSecondary: 'bg-[#1a1a1a] hover:bg-[#252525] border-[#333] text-gray-300',
     btnDisabled: 'bg-white/5 text-gray-500',
     iconColor: 'white',
     // 下拉菜单样式
@@ -212,6 +219,11 @@ export const themes = {
     dateExpired: 'text-red-400',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    iconError: 'text-red-500',
+    // 状态图标背景
+    statusSuccessBg: 'bg-green-500',
+    statusErrorBg: 'bg-red-500',
+    statusLoadingBorder: 'border-blue-400',
     // Ring 颜色
     ringColor: 'ring-white/10',
   },
@@ -233,6 +245,8 @@ export const themes = {
     textMuted: 'text-purple-500',
     input: 'bg-purple-50/50 border-purple-200',
     inputFocus: 'focus:ring-purple-500/30 focus:border-purple-500',
+    btnPrimary: 'bg-purple-500 hover:bg-purple-600 text-white',
+    btnSecondary: 'bg-purple-100 hover:bg-purple-200 border-purple-300 text-purple-700',
     accent: 'text-purple-600',
     accentBg: 'bg-purple-500',
     loginBtn: 'bg-purple-100 hover:bg-purple-200 border-purple-300',
@@ -293,6 +307,11 @@ export const themes = {
     dateExpired: 'text-red-500',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    iconError: 'text-red-500',
+    // 状态图标背景
+    statusSuccessBg: 'bg-green-500',
+    statusErrorBg: 'bg-red-500',
+    statusLoadingBorder: 'border-purple-500',
     // Ring 颜色
     ringColor: 'ring-black/5',
   },
@@ -314,6 +333,8 @@ export const themes = {
     textMuted: 'text-emerald-600',
     input: 'bg-emerald-50/50 border-emerald-200',
     inputFocus: 'focus:ring-emerald-500/30 focus:border-emerald-500',
+    btnPrimary: 'bg-emerald-500 hover:bg-emerald-600 text-white',
+    btnSecondary: 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300 text-emerald-700',
     accent: 'text-emerald-600',
     accentBg: 'bg-emerald-500',
     loginBtn: 'bg-emerald-100 hover:bg-emerald-200 border-emerald-300',
@@ -374,6 +395,11 @@ export const themes = {
     dateExpired: 'text-red-500',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    iconError: 'text-red-500',
+    // 状态图标背景
+    statusSuccessBg: 'bg-green-500',
+    statusErrorBg: 'bg-red-500',
+    statusLoadingBorder: 'border-emerald-500',
     // Ring 颜色
     ringColor: 'ring-black/5',
   },
