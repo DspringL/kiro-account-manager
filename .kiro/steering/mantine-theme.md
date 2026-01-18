@@ -16,41 +16,41 @@ Mantine 组件有自己的默认颜色系统，不会自动继承父元素的颜
 ## 解决方案
 
 ### 1. ThemeContext 配置
-在 `src/contexts/ThemeContext.jsx` 的 `mantineTheme.components` 中为所有 Mantine 组件添加颜色继承：
+在 `src/contexts/ThemeContext.jsx` 的 `mantineTheme.components` 中为所有 Mantine 组件添加颜色配置：
 
 ```jsx
 const mantineTheme = {
   colorScheme: isLightTheme ? 'light' : 'dark',
   components: {
-    // Card 只设置背景和边框，不设置文字颜色
+    // Card 必须设置 color，确保深色主题下文字是浅色
     Card: {
       styles: {
         root: {
           backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
           borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
-          // 不设置 color，让内部组件继承或使用 Tailwind className
+          color: isLightTheme ? '#1f2937' : '#e5e7eb', // 关键：设置文字颜色
         },
       },
     },
-    // Text、Group、Stack 必须设置 color: 'inherit'
+    // Text、Group、Stack 设置 color: 'inherit' 继承父元素颜色
     Text: {
       styles: {
         root: {
-          color: 'inherit', // 关键：继承父元素颜色
+          color: 'inherit',
         },
       },
     },
     Group: {
       styles: {
         root: {
-          color: 'inherit', // 关键：继承父元素颜色
+          color: 'inherit',
         },
       },
     },
     Stack: {
       styles: {
         root: {
-          color: 'inherit', // 关键：继承父元素颜色
+          color: 'inherit',
         },
       },
     },
@@ -59,9 +59,9 @@ const mantineTheme = {
 ```
 
 **关键点**：
-- Card 组件：只设置 `backgroundColor` 和 `borderColor`，不设置 `color`
-- Text/Group/Stack 组件：必须设置 `color: 'inherit'` 以继承父元素颜色
-- 这样可以让 Tailwind 的 `className={colors.text}` 正常工作
+- **Card 组件**：必须设置 `color` 属性，深色主题用浅色 `#e5e7eb`，浅色主题用深色 `#1f2937`
+- **Text/Group/Stack 组件**：设置 `color: 'inherit'` 继承父元素（Card）的颜色
+- **Select 组件**：input 和 option 都要设置 color
 
 ### 2. 避免使用 Mantine 的颜色属性
 ❌ **错误做法**：
@@ -106,25 +106,26 @@ const mantineTheme = {
 
 ## 常见错误
 
-### 错误 1：Card 设置了固定的 color
+### 错误 1：Card 没有设置 color
 ```jsx
-// ❌ 错误：Card 设置了固定颜色，会覆盖子组件的 className
+// ❌ 错误：Card 不设置 color，Mantine 会使用默认深色文字
 Card: {
   styles: {
     root: {
-      color: isLightTheme ? '#1f2937' : '#e5e7eb',
+      backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
+      // 没有设置 color
     },
   },
 }
 ```
 
 ```jsx
-// ✅ 正确：Card 不设置 color，让子组件自由控制
+// ✅ 正确：Card 必须设置 color，深色主题用浅色文字
 Card: {
   styles: {
     root: {
       backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
-      // 不设置 color
+      color: isLightTheme ? '#1f2937' : '#e5e7eb', // 关键
     },
   },
 }
@@ -165,4 +166,5 @@ Text: {
 ## 历史问题
 - 2026-01-18：修复首页所有组件的 `c="dimmed"` 问题（24处）
 - 2026-01-18：在 ThemeContext 中添加 Text、Group、Stack 的 `color: 'inherit'` 配置
-- 2026-01-18：移除 Card 组件的固定 color 设置，只保留背景和边框配置
+- 2026-01-18：修复 Select 组件 input 文字颜色缺失问题
+- 2026-01-18：**重要修正**：Card 组件必须设置 color，不能省略，否则深色主题下会显示深色文字
