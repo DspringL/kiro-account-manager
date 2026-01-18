@@ -184,7 +184,7 @@ function AccountDetailModal({ account, onClose }) {
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <div className="p-8 space-y-8" style={{ padding: 'var(--mantine-spacing-lg)' }}>
+          <div className="p-12 space-y-8">
             {/* 配额总览 */}
             <div className={`${colors.card} rounded-xl p-8 shadow-sm border ${colors.cardBorder}`}>
               <div className="flex items-center justify-between mb-4">

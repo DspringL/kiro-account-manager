@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Tag, Plus } from 'lucide-react'
+import { Stack } from '@mantine/core'
 import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
 import { getTags, setAccountTags } from '../../api/groupTag'
 import { invoke } from '@tauri-apps/api/core'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '../ui/dialog'
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalFooter,
+} from '../../ui/modal'
 import { Button } from '../ui/button'
 
 const PRESET_COLORS = [
@@ -118,17 +119,17 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
       <DialogContent maxWidth="480px">
         <DialogHeader icon={Tag} iconColor="text-purple-400" iconBg="bg-gradient-to-br from-purple-500/20 to-pink-500/10">
           <DialogTitle>{t('tags.batchSet')}</DialogTitle>
-          <p className={`text-xs ${colors.textMuted} mt-0.5`}>{accountIds.length} 个账号</p>
+          <p className={`text-sm ${colors.text} mt-1 opacity-80`}>{accountIds.length} 个账号</p>
         </DialogHeader>
 
         <DialogDescription>
-          <div className="space-y-6">
+          <Stack gap="md" p="md">
         {/* 已选标签 - 点击 ❌ 取消 */}
         <div>
-            <label className={`block text-sm font-medium ${colors.text} mb-2`}>{t('tags.selected')}</label>
+            <label className={`block text-sm font-semibold ${colors.text} mb-3`}>{t('tags.selected')}</label>
             <div className="flex flex-wrap gap-2 min-h-[36px]">
               {selectedTagIds.length === 0 ? (
-                <span className={`text-sm ${colors.textMuted}`}>{t('tags.noTags')}</span>
+                <span className={`text-sm ${colors.text} opacity-60`}>{t('tags.noTags')}</span>
               ) : (
                 selectedTagIds.map(tagId => {
                   const tag = tags.find(t => t.id === tagId)
@@ -150,8 +151,8 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
 
           {/* 搜索/添加标签 - 合并输入框 */}
           <div>
-            <label className={`block text-sm font-medium ${colors.text} mb-3`}>{t('tags.addOrSelect')}</label>
-            <div className="flex gap-2">
+            <label className={`block text-sm font-semibold ${colors.text} mb-3`}>{t('tags.addOrSelect')}</label>
+            <div className="flex gap-3">
               <div className="flex-1 relative" ref={inputContainerRef}>
                 <input
                   type="text"
@@ -169,7 +170,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
                     }
                   }}
                   placeholder={t('tags.searchOrCreate') || '搜索或输入新标签...'}
-                  className={`w-full px-4 py-2.5 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2`}
+                  className={`w-full px-4 py-3 border-2 rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2 transition-all`}
                 />
                 {/* 搜索建议下拉 - 聚焦就显示 */}
                 {showDropdown && availableTags.length > 0 && (
@@ -194,15 +195,15 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
                 type="button" 
                 onClick={handleAddTag} 
                 disabled={!newTagName.trim()}
-                className="px-3 py-2.5 bg-purple-500 text-white rounded-xl text-sm hover:bg-purple-600 disabled:opacity-50"
+                className="px-4 py-3 bg-purple-500 text-white rounded-xl text-sm hover:bg-purple-600 disabled:opacity-50 transition-all shadow-lg shadow-purple-500/30 hover:shadow-xl disabled:shadow-none"
                 title={t('tags.addTag')}
               >
-                <Plus size={16} />
+                <Plus size={18} />
               </button>
             </div>
-            <p className={`text-xs ${colors.textMuted} mt-1.5`}>{t('tags.hint') || '输入搜索已有标签，或直接输入创建新标签'}</p>
+            <p className={`text-xs ${colors.text} opacity-60 mt-2 leading-relaxed`}>{t('tags.hint') || '输入搜索已有标签，或直接输入创建新标签'}</p>
           </div>
-          </div>
+          </Stack>
         </DialogDescription>
 
         <DialogFooter>

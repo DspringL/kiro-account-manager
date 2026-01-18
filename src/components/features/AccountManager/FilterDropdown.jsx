@@ -34,6 +34,9 @@ const USAGE_RANGE_OPTIONS = [
 
 // 通用筛选下拉组件
 function FilterSelect({ label, value, options, onChange, onClear, colors }) {
+  // value 可能是数组或字符串，统一处理
+  const displayValue = Array.isArray(value) ? (value[0] || '') : (value || '')
+  
   return (
     <div>
       <label className={`block text-xs font-semibold ${colors.text} mb-2.5 flex items-center gap-2`}>
@@ -41,12 +44,15 @@ function FilterSelect({ label, value, options, onChange, onClear, colors }) {
         {label}
       </label>
       <select
-        value={value || ''}
+        value={displayValue}
         onChange={(e) => {
           const v = e.target.value
+          console.log(`[FilterSelect] ${label} 选择:`, v)
           if (v === '') {
+            console.log(`[FilterSelect] ${label} 清空`)
             onClear?.()
           } else {
+            console.log(`[FilterSelect] ${label} 设置为:`, v)
             onChange(v)
           }
         }}

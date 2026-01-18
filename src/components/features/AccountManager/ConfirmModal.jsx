@@ -2,17 +2,17 @@ import { useState } from 'react'
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '../ui/dialog'
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalFooter,
+} from '../../ui/modal'
 import { Button } from '../ui/button'
 
 /**
- * 通用确认/提示对话框
+ * 通用确认/提示模态框
  * @param {string} type - 'confirm' | 'success' | 'error' | 'info'
  * @param {string} title - 标题
  * @param {string} message - 内容
@@ -22,7 +22,7 @@ import { Button } from '../ui/button'
  * @param {string} confirmText - 确认按钮文字
  * @param {string} cancelText - 取消按钮文字
  */
-function ConfirmDialog({
+function ConfirmModal({
   type = 'confirm',
   title,
   message,
@@ -71,13 +71,13 @@ function ConfirmDialog({
   const { icon: Icon, iconColor, iconBg, btnVariant } = config[type]
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent maxWidth="400px">
-        <DialogHeader icon={Icon} iconColor={iconColor} iconBg={iconBg}>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
+    <Modal open={true} onOpenChange={(open) => !open && onCancel()}>
+      <ModalContent maxWidth="400px">
+        <ModalHeader icon={Icon} iconColor={iconColor} iconBg={iconBg}>
+          <ModalTitle>{title}</ModalTitle>
+        </ModalHeader>
 
-        <DialogDescription>
+        <ModalDescription>
           <p className={`${colors.text} text-base leading-relaxed whitespace-pre-line`}>
             {message}
           </p>
@@ -134,4 +134,4 @@ function ConfirmDialog({
   )
 }
 
-export default ConfirmDialog
+export default ConfirmModal

@@ -4,12 +4,12 @@ import { X } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { useApp } from "../../hooks/useApp"
 
-const Dialog = DialogPrimitive.Root
-const DialogTrigger = DialogPrimitive.Trigger
-const DialogPortal = DialogPrimitive.Portal
-const DialogClose = DialogPrimitive.Close
+const Modal = DialogPrimitive.Root
+const ModalTrigger = DialogPrimitive.Trigger
+const ModalPortal = DialogPrimitive.Portal
+const ModalClose = DialogPrimitive.Close
 
-const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
+const ModalOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
@@ -21,9 +21,9 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
     {...props}
   />
 ))
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
+ModalOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-const DialogContent = React.forwardRef(({ 
+const ModalContent = React.forwardRef(({ 
   className, 
   children, 
   maxWidth = "400px",
@@ -33,8 +33,8 @@ const DialogContent = React.forwardRef(({
   const { colors } = useApp()
   
   return (
-    <DialogPortal>
-      <DialogOverlay />
+    <ModalPortal>
+      <ModalOverlay />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
@@ -69,12 +69,12 @@ const DialogContent = React.forwardRef(({
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
-    </DialogPortal>
+    </ModalPortal>
   )
 })
-DialogContent.displayName = DialogPrimitive.Content.displayName
+ModalContent.displayName = DialogPrimitive.Content.displayName
 
-const DialogHeader = React.forwardRef(({ className, icon: Icon, iconColor, iconBg, children, ...props }, ref) => {
+const ModalHeader = React.forwardRef(({ className, icon: Icon, iconColor, iconBg, children, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -95,9 +95,9 @@ const DialogHeader = React.forwardRef(({ className, icon: Icon, iconColor, iconB
     </div>
   )
 })
-DialogHeader.displayName = "DialogHeader"
+ModalHeader.displayName = "ModalHeader"
 
-const DialogTitle = React.forwardRef(({ className, ...props }, ref) => {
+const ModalTitle = React.forwardRef(({ className, ...props }, ref) => {
   const { colors } = useApp()
   
   return (
@@ -112,9 +112,9 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => {
     />
   )
 })
-DialogTitle.displayName = DialogPrimitive.Title.displayName
+ModalTitle.displayName = DialogPrimitive.Title.displayName
 
-const DialogDescription = React.forwardRef(({ className, ...props }, ref) => {
+const ModalDescription = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -123,9 +123,9 @@ const DialogDescription = React.forwardRef(({ className, ...props }, ref) => {
     />
   )
 })
-DialogDescription.displayName = "DialogDescription"
+ModalDescription.displayName = "ModalDescription"
 
-const DialogFooter = React.forwardRef(({ className, ...props }, ref) => {
+const ModalFooter = React.forwardRef(({ className, ...props }, ref) => {
   const { colors } = useApp()
   
   return (
@@ -140,17 +140,17 @@ const DialogFooter = React.forwardRef(({ className, ...props }, ref) => {
     />
   )
 })
-DialogFooter.displayName = "DialogFooter"
+ModalFooter.displayName = "ModalFooter"
 
 export {
-  Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogClose,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
+  Modal,
+  ModalPortal,
+  ModalOverlay,
+  ModalClose,
+  ModalTrigger,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalTitle,
+  ModalDescription,
 }

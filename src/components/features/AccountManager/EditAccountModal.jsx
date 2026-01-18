@@ -8,13 +8,13 @@ import { setAccountTags, setAccountGroup, getGroups, addGroup } from '../../api/
 import { TagSelector } from './GroupTagManager'
 import { TokenJsonView } from './TokenJsonView'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '../ui/dialog'
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalFooter,
+} from '../../ui/modal'
 import { Button } from '../ui/button'
 
 const PRESET_COLORS = [

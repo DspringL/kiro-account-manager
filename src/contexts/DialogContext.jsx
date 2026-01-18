@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from 'react'
-import ConfirmDialog from '../components/AccountManager/ConfirmDialog'
-import UpdateDialog from '../components/UpdateDialog'
+import ConfirmModal from '../components/features/AccountManager/ConfirmModal'
+import UpdateDialog from '../components/modals/UpdateDialog'
 
 const DialogContext = createContext(null)
 
@@ -90,7 +90,7 @@ export function DialogProvider({ children }) {
     <DialogContext.Provider value={{ showConfirm, showSuccess, showError, showInfo, showUpdate, closeUpdate }}>
       {children}
       {dialog && (
-        <ConfirmDialog
+        <ConfirmModal
           type={dialog.type}
           title={dialog.title}
           message={dialog.message}

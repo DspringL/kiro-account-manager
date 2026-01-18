@@ -17,7 +17,7 @@ import RefreshProgressModal from './RefreshProgressModal'
 import AccountDetailModal from '../AccountDetailModal'
 import EditAccountModal from './EditAccountModal'
 import BatchTagModal from './BatchTagModal'
-import ConfirmDialog from './ConfirmDialog'
+import ConfirmModal from './ConfirmModal'
 import { AccountListSkeleton, AccountTableSkeleton } from '../Skeleton'
 
 function AccountManager() {
@@ -386,7 +386,7 @@ function AccountManager() {
       
       {/* 切换账号弹窗 */}
       {switchDialog && (
-        <ConfirmDialog
+        <ConfirmModal
           type={switchDialog.type}
           title={switchDialog.title}
           message={switchDialog.message}

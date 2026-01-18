@@ -4,13 +4,13 @@ import { SegmentedControl, Stack, Alert, Button as MantineButton } from '@mantin
 import { Download, Key, AlertCircle } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '../ui/dialog'
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalFooter,
+} from '../../ui/modal'
 import { Button } from '../ui/button'
 
 function AddAccountModal({ onClose, onSuccess }) {
@@ -89,14 +89,14 @@ function AddAccountModal({ onClose, onSuccess }) {
   }
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent maxWidth="480px">
-        <DialogHeader icon={Key} iconColor="text-blue-400" iconBg="bg-gradient-to-br from-blue-500/20 to-purple-500/10">
-          <DialogTitle>{t('addAccount.title')}</DialogTitle>
+    <Modal open={true} onOpenChange={(open) => !open && onClose()}>
+      <ModalContent maxWidth="480px">
+        <ModalHeader icon={Key} iconColor="text-blue-400" iconBg="bg-gradient-to-br from-blue-500/20 to-purple-500/10">
+          <ModalTitle>{t('addAccount.title')}</ModalTitle>
           <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('addAccount.subtitle') || '添加新账号到管理器'}</p>
-        </DialogHeader>
+        </ModalHeader>
 
-        <DialogDescription>
+        <ModalDescription>
           <Stack gap="xl" p="md">
             {/* 保存本地账号 */}
             <div className={`p-5 rounded-xl border-2 border-dashed ${colors.cardBorder} ${colors.cardSecondary} hover:border-teal-500/50 group`}>
@@ -231,9 +231,9 @@ function AddAccountModal({ onClose, onSuccess }) {
               </Alert>
             )}
           </Stack>
-        </DialogDescription>
+        </ModalDescription>
 
-        <DialogFooter>
+        <ModalFooter>
           <Button variant="secondary" onClick={onClose}>
             {t('common.cancel')}
           </Button>
@@ -245,9 +245,9 @@ function AddAccountModal({ onClose, onSuccess }) {
             <Key size={16} className="mr-1.5" />
             {t('addAccount.add')}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }
 
