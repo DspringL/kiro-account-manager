@@ -34,7 +34,7 @@ const USAGE_RANGE_OPTIONS = [
 ]
 
 // 通用筛选下拉组件
-function FilterSelect({ label, value, options, onChange, onClear, colors, isLightTheme }) {
+function FilterSelect({ label, value, options, onChange, onClear, colors }) {
   const hasValue = !!value
   
   return (
@@ -82,8 +82,7 @@ function FilterDropdown({
   selectedStatus,
   onStatusFilter,
 }) {
-  const { colors, theme } = useTheme()
-  const isLightTheme = theme === 'light'
+  const { colors } = useTheme()
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -119,7 +118,7 @@ function FilterDropdown({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} transition-all ${activeCount > 0 ? 'border-blue-500/50 shadow-sm shadow-blue-500/20' : ''}`}
+        className={`flex items-center gap-2 px-3 py-2 ${colors.card} border ${colors.cardBorder} rounded-xl ${colors.cardHover} transition-all ${activeCount > 0 ? 'border-blue-500/50 shadow-sm shadow-blue-500/20' : ''}`}
       >
         <Filter size={16} className={activeCount > 0 ? 'text-blue-500' : colors.textMuted} />
         <span className={`text-sm ${activeCount > 0 ? 'text-blue-500 font-medium' : colors.textMuted}`}>
@@ -195,7 +194,6 @@ function FilterDropdown({
               onChange={(v) => onFiltersChange({ ...filters, subscriptions: v ? [v] : [] })}
               onClear={() => onFiltersChange({ ...filters, subscriptions: [] })}
               colors={colors}
-              isLightTheme={isLightTheme}
             />
 
             <FilterSelect
@@ -205,7 +203,6 @@ function FilterDropdown({
               onChange={(v) => onFiltersChange({ ...filters, statuses: v ? [v] : [] })}
               onClear={() => onFiltersChange({ ...filters, statuses: [] })}
               colors={colors}
-              isLightTheme={isLightTheme}
             />
 
             <FilterSelect
@@ -215,7 +212,6 @@ function FilterDropdown({
               onChange={(v) => onFiltersChange({ ...filters, providers: v ? [v] : [] })}
               onClear={() => onFiltersChange({ ...filters, providers: [] })}
               colors={colors}
-              isLightTheme={isLightTheme}
             />
 
             <FilterSelect
@@ -225,7 +221,6 @@ function FilterDropdown({
               onChange={(v) => onFiltersChange({ ...filters, usageRange: v || null })}
               onClear={() => onFiltersChange({ ...filters, usageRange: null })}
               colors={colors}
-              isLightTheme={isLightTheme}
             />
           </div>
 

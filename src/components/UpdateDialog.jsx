@@ -172,7 +172,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
                   <FileText size={16} className={colors.text} />
                   <Text size="sm" fw={500} className={colors.text}>{t('update.releaseNotes')}</Text>
                 </Group>
-                <div className={`text-sm ${colors.textMuted} max-h-40 overflow-y-auto p-3 rounded-lg whitespace-pre-wrap leading-relaxed ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
+                <div className={`text-sm ${colors.textMuted} max-h-40 overflow-y-auto p-3 rounded-lg whitespace-pre-wrap leading-relaxed border ${colors.cardBorder} ${colors.cardSecondary}`}>
                   {updateInfo.body}
                 </div>
               </Stack>

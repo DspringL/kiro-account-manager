@@ -37,23 +37,23 @@ function buildCredentialsJson(account) {
 }
 
 // 可折叠的字符串值
-function CollapsibleValue({ value, isLightTheme, threshold = 50 }) {
+function CollapsibleValue({ value, colors, threshold = 50 }) {
   const [expanded, setExpanded] = useState(false)
   const isLong = value.length > threshold
   
   if (!isLong) {
-    return <span className={isLightTheme ? 'text-green-600' : 'text-green-400'}>"{value}"</span>
+    return <span className="text-green-500">"{value}"</span>
   }
   
   const displayValue = expanded ? value : `${value.slice(0, threshold)}...`
   
   return (
     <span className="inline">
-      <span className={isLightTheme ? 'text-green-600' : 'text-green-400'}>"{displayValue}"</span>
+      <span className="text-green-500">"{displayValue}"</span>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
-        className={`ml-1 text-xs px-1 rounded ${isLightTheme ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' : 'bg-white/10 text-gray-400 hover:bg-white/20'}`}
+        className={`ml-1 text-xs px-1 rounded ${colors.cardSecondary} ${colors.textMuted} ${colors.cardHover}`}
       >
         {expanded ? '收起' : `+${value.length - threshold}`}
       </button>
@@ -62,7 +62,7 @@ function CollapsibleValue({ value, isLightTheme, threshold = 50 }) {
 }
 
 // JSON 渲染（带折叠）
-function JsonRenderer({ json, isLightTheme, indent = 0 }) {
+function JsonRenderer({ json, colors, indent = 0 }) {
   const entries = Object.entries(json)
   const pad = '  '.repeat(indent)
   const padInner = '  '.repeat(indent + 1)
@@ -73,18 +73,18 @@ function JsonRenderer({ json, isLightTheme, indent = 0 }) {
       {entries.map(([key, value], i) => (
         <div key={key}>
           <span>{padInner}</span>
-          <span className={isLightTheme ? 'text-purple-600' : 'text-purple-400'}>"{key}"</span>
+          <span className="text-purple-500">"{key}"</span>
           <span>: </span>
           {typeof value === 'string' ? (
-            <CollapsibleValue value={value} isLightTheme={isLightTheme} />
+            <CollapsibleValue value={value} colors={colors} />
           ) : value === null ? (
-            <span className={isLightTheme ? 'text-blue-600' : 'text-blue-400'}>null</span>
+            <span className="text-blue-500">null</span>
           ) : typeof value === 'boolean' ? (
-            <span className={isLightTheme ? 'text-blue-600' : 'text-blue-400'}>{String(value)}</span>
+            <span className="text-blue-500">{String(value)}</span>
           ) : typeof value === 'number' ? (
-            <span className={isLightTheme ? 'text-orange-600' : 'text-orange-400'}>{value}</span>
+            <span className="text-orange-500">{value}</span>
           ) : (
-            <span className={isLightTheme ? 'text-green-600' : 'text-green-400'}>{JSON.stringify(value)}</span>
+            <span className="text-green-500">{JSON.stringify(value)}</span>
           )}
           {i < entries.length - 1 && <span>,</span>}
         </div>
@@ -96,8 +96,7 @@ function JsonRenderer({ json, isLightTheme, indent = 0 }) {
 
 // Token JSON 视图（只读）
 export function TokenJsonView({ account, defaultExpanded = true }) {
-  const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const { t, colors } = useApp()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef(null)
@@ -117,13 +116,13 @@ export function TokenJsonView({ account, defaultExpanded = true }) {
   return (
     <div className={`${colors.card} rounded-xl shadow-sm overflow-hidden`}>
       <div 
-        className={`flex items-center justify-between px-5 py-4 cursor-pointer ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} transition-colors`}
+        className={`flex items-center justify-between px-5 py-4 cursor-pointer ${colors.cardHover} transition-colors`}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2">
           <Key size={18} className={colors.textMuted} />
           <span className={`font-medium ${colors.text}`}>{t('detail.tokenCredentials') || 'Token 凭证'}</span>
-          <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-400'}`}>JSON</span>
+          <span className={`text-xs px-2 py-0.5 rounded ${colors.badgeInfo}`}>JSON</span>
         </div>
         <div className="flex items-center gap-3">
           {account.expiresAt && (
@@ -141,14 +140,14 @@ export function TokenJsonView({ account, defaultExpanded = true }) {
             <button 
               type="button" 
               onClick={handleCopy}
-              className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1 px-2 py-1 rounded ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}
+              className={`text-xs ${colors.textMuted} hover:text-blue-500 flex items-center gap-1 px-2 py-1 rounded ${colors.cardHover}`}
             >
               {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
               {copied ? t('common.copied') : t('common.copyAll')}
             </button>
           </div>
-          <div className={`p-4 rounded-lg ${isLightTheme ? 'bg-gray-50' : 'bg-black/30'} border ${colors.cardBorder} max-h-80 overflow-auto`}>
-            <JsonRenderer json={credentialsJson} isLightTheme={isLightTheme} />
+          <div className={`p-4 rounded-lg ${colors.cardSecondary} border ${colors.cardBorder} max-h-80 overflow-auto`}>
+            <JsonRenderer json={credentialsJson} colors={colors} />
           </div>
         </div>
       )}

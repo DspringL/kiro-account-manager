@@ -95,7 +95,7 @@ const AccountCard = memo(function AccountCard({
     { icon: Copy, label: t('accountCard.copyJson'), onClick: handleCopyJson },
     { divider: true },
     { icon: RefreshCw, label: t('accountCard.refresh'), onClick: () => onRefresh(account.id), disabled: refreshingId === account.id },
-    { icon: Repeat, label: t('accountCard.switchAccount'), onClick: () => onSwitch(account), disabled: switchingId === account.id },
+    { icon: Repeat, label: t('accountCard.switchAccount'), onClick: () => onSwitch(account), disabled: switchingId === account.id || isBanned },
     { divider: true },
     { icon: Trash2, label: t('accountCard.delete'), onClick: () => onDelete(account.id), danger: true },
     ...(account.provider !== 'Enterprise' && !isBanned && onDeleteRemote ? [
@@ -257,26 +257,26 @@ const AccountCard = memo(function AccountCard({
         )}
 
         {/* 配额进度 */}
-        <div className={`p-3 rounded-xl mb-3 ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
+        <div className={`p-3 rounded-xl mb-3 ${colors.cardSecondary}`}>
           <div className="flex items-center justify-between text-xs mb-2">
             <span className={colors.textMuted}>{t('common.usage')}</span>
             <span className={`font-semibold ${percent > 80 ? 'text-red-500' : percent > 50 ? 'text-yellow-500' : 'text-green-500'}`}>
               {Math.round(percent)}%
             </span>
           </div>
-          <div className={`h-2 ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'} rounded-full overflow-hidden mb-2`}>
+          <div className={`h-2 ${colors.cardSecondary} rounded-full overflow-hidden mb-2`}>
             <div 
               className={`h-full rounded-full transition-all duration-500 ${getProgressBarColor(percent)}`} 
               style={{ width: `${Math.min(percent, 100)}%` }} 
             />
           </div>
           <div className="flex items-center justify-between text-xs">
-            <span className={`font-medium ${isLightTheme ? 'text-gray-700' : 'text-gray-300'}`}>{formatUsage(used)} / {formatUsage(quota)}</span>
+            <span className={`font-medium ${colors.text}`}>{formatUsage(used)} / {formatUsage(quota)}</span>
             <span className={colors.textMuted}>{t('common.remaining')} {formatUsage(quota - used)}</span>
           </div>
           {/* 日期信息 - 单行紧凑显示 */}
           {(nextDateReset || (breakdown?.freeTrialInfo?.freeTrialExpiry && breakdown.freeTrialInfo.freeTrialStatus === 'ACTIVE') || breakdown?.bonuses?.some(b => b.status === 'ACTIVE' && b.expiresAt)) && (
-            <div className={`mt-2 pt-2 border-t ${isLightTheme ? 'border-gray-200' : 'border-white/10'} flex items-center gap-2 flex-wrap text-[10px]`}>
+            <div className={`mt-2 pt-2 border-t ${colors.cardBorder} flex items-center gap-2 flex-wrap text-[10px]`}>
               <Clock size={10} className={colors.textMuted} />
               {nextDateReset && (
                 <span className={colors.textMuted}>{t('common.reset')} {new Date(nextDateReset * 1000).toLocaleDateString()}</span>
@@ -302,12 +302,12 @@ const AccountCard = memo(function AccountCard({
 
         {/* 机器码 - 红色高亮 */}
         {account.machineId && (
-          <div className={`text-xs flex items-center gap-1.5 mt-2 px-2 py-1 rounded-lg ${isLightTheme ? 'bg-red-50' : 'bg-red-500/10'}`}>
+          <div className={`text-xs flex items-center gap-1.5 mt-2 px-2 py-1 rounded-lg ${colors.cardSecondary}`}>
             <span className={`font-medium shrink-0 ${isLightTheme ? 'text-red-600' : 'text-red-400'}`}>机器码:</span>
             <span className={`font-mono text-[10px] break-all ${isLightTheme ? 'text-red-700' : 'text-red-300'}`}>{account.machineId}</span>
             <button 
               onClick={() => onCopy(account.machineId, `${account.id}-mid`)} 
-              className={`btn-icon p-0.5 rounded flex-shrink-0 ${isLightTheme ? 'hover:bg-red-100' : 'hover:bg-red-500/20'}`}
+              className={`btn-icon p-0.5 rounded flex-shrink-0 ${colors.cardHover}`}
             >
               {copiedId === `${account.id}-mid` ? <Check size={10} className="text-green-500" /> : <Copy size={10} className={isLightTheme ? 'text-red-500' : 'text-red-400'} />}
             </button>
@@ -315,7 +315,7 @@ const AccountCard = memo(function AccountCard({
         )}
 
         {/* 底部操作栏 */}
-        <div className={`mt-auto pt-3 border-t ${isLightTheme ? 'border-gray-200' : 'border-white/10'} flex items-center justify-between`}>
+        <div className={`mt-auto pt-3 border-t ${colors.cardBorder} flex items-center justify-between`}>
           {/* 左侧：右键提示 */}
           <span className={`text-[10px] ${colors.textMuted} opacity-60`}>{t('accountCard.rightClickTip')}</span>
           {/* 右侧：快捷操作按钮 */}
@@ -323,10 +323,10 @@ const AccountCard = memo(function AccountCard({
             {/* 查看详情 */}
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(account) }}
-              className={`p-1.5 rounded-lg transition-colors ${
+              className={`p-1.5 rounded-lg transition-colors ${colors.cardHover} ${
                 isLightTheme 
-                  ? 'hover:bg-purple-100 text-purple-600' 
-                  : 'hover:bg-purple-500/20 text-purple-400'
+                  ? 'text-purple-600' 
+                  : 'text-purple-400'
               }`}
               title={t('accountCard.viewDetails')}
             >
@@ -336,10 +336,10 @@ const AccountCard = memo(function AccountCard({
             <button
               onClick={(e) => { e.stopPropagation(); onRefresh(account.id) }}
               disabled={refreshingId === account.id}
-              className={`p-1.5 rounded-lg transition-colors ${
+              className={`p-1.5 rounded-lg transition-colors ${colors.cardHover} ${
                 isLightTheme 
-                  ? 'hover:bg-blue-100 text-blue-600' 
-                  : 'hover:bg-blue-500/20 text-blue-400'
+                  ? 'text-blue-600' 
+                  : 'text-blue-400'
               } disabled:opacity-50`}
               title={t('accountCard.refresh')}
             >
@@ -349,13 +349,13 @@ const AccountCard = memo(function AccountCard({
             {!isCurrentAccount && (
               <button
                 onClick={(e) => { e.stopPropagation(); onSwitch(account) }}
-                disabled={switchingId === account.id}
-                className={`p-1.5 rounded-lg transition-colors ${
+                disabled={switchingId === account.id || isBanned}
+                className={`p-1.5 rounded-lg transition-colors ${colors.cardHover} ${
                   isLightTheme 
-                    ? 'hover:bg-green-100 text-green-600' 
-                    : 'hover:bg-green-500/20 text-green-400'
-                } disabled:opacity-50`}
-                title={t('accountCard.switchAccount')}
+                    ? 'text-green-600' 
+                    : 'text-green-400'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={isBanned ? t('accountCard.bannedCannotSwitch') : t('accountCard.switchAccount')}
               >
                 <Repeat size={14} className={switchingId === account.id ? 'animate-spin' : ''} />
               </button>

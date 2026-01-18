@@ -70,13 +70,14 @@ function Home({ onNavigate }) {
   }
 
   const statCards = [
-    { icon: Users, iconBg: isLightTheme ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/20 text-blue-400', value: stats.total, label: t('home.totalAccounts'), delay: 'delay-100' },
-    { icon: Shield, iconBg: isLightTheme ? 'bg-green-100 text-green-600' : 'bg-green-500/20 text-green-400', value: `${stats.active}/${stats.banned}`, label: t('home.activeVsBanned'), delay: 'delay-200' },
-    { icon: Zap, iconBg: isLightTheme ? 'bg-purple-100 text-purple-600' : 'bg-purple-500/20 text-purple-400', value: stats.proPlus + stats.pro, label: t('home.proAccounts'), delay: 'delay-300' },
-    { icon: TrendingUp, iconBg: isLightTheme ? 'bg-orange-100 text-orange-600' : 'bg-orange-500/20 text-orange-400', value: `${stats.usagePercent}%`, label: t('home.usagePercent'), delay: 'delay-400' },
+    { icon: Users, iconBg: colors.badgeInfo, iconColor: 'text-blue-500', value: stats.total, label: t('home.totalAccounts'), delay: 'delay-100' },
+    { icon: Shield, iconBg: colors.badgeSuccess, iconColor: 'text-green-500', value: `${stats.active}/${stats.banned}`, label: t('home.activeVsBanned'), delay: 'delay-200' },
+    { icon: Zap, iconBg: colors.badgePurple, iconColor: 'text-purple-500', value: stats.proPlus + stats.pro, label: t('home.proAccounts'), delay: 'delay-300' },
+    { icon: TrendingUp, iconBg: colors.badgeWarning, iconColor: 'text-orange-500', value: `${stats.usagePercent}%`, label: t('home.usagePercent'), delay: 'delay-400' },
     { 
       icon: Server, 
-      iconBg: isLightTheme ? 'bg-cyan-100 text-cyan-600' : 'bg-cyan-500/20 text-cyan-400', 
+      iconBg: colors.badgeCyan, 
+      iconColor: 'text-cyan-500',
       value: mcpToolCount, 
       label: 'MCP 工具', 
       delay: 'delay-500',

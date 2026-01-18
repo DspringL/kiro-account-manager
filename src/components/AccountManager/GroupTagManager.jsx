@@ -14,8 +14,7 @@ const PRESET_COLORS = [
 
 // 标签选择器（用于账号编辑）
 export function TagSelector({ selectedTagIds, onChange, allTags }) {
-  const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const { t, colors } = useApp()
   const [newTagName, setNewTagName] = useState('')
   const [tags, setTags] = useState(allTags || [])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -131,7 +130,7 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
                   key={tag.id} 
                   type="button"
                   onClick={() => { onChange([...selectedTagIds, tag.id]); setNewTagName(''); setShowDropdown(false) }}
-                  className={`w-full px-3 py-2 text-left text-sm ${colors.text} hover:opacity-80 flex items-center gap-2 transition-colors`}
+                  className={`w-full px-3 py-2 text-left text-sm ${colors.text} hover:opacity-80 flex items-center gap-2 transition-colors ${colors.cardHover}`}
                 >
                   <span className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                   {tag.name}
@@ -162,9 +161,8 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
 
 // 标签管理弹窗（全局标签和分组管理）
 function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
-  const { t, theme, colors } = useApp()
+  const { t, colors } = useApp()
   const { showError, showConfirm } = useDialog()
-  const isLightTheme = theme === 'light'
   
   const [activeTab, setActiveTab] = useState(defaultTab)
   const [tags, setTags] = useState([])
@@ -286,7 +284,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'tags'
                   ? 'bg-purple-500 text-white'
-                  : `${colors.text} ${colors.cardSecondary || (isLightTheme ? 'bg-gray-100' : 'bg-white/5')} hover:opacity-80`
+                  : `${colors.text} ${colors.cardSecondary} ${colors.cardHover}`
               }`}
             >
               <Tag size={16} />
@@ -297,7 +295,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'groups'
                   ? 'bg-blue-500 text-white'
-                  : `${colors.text} ${colors.cardSecondary || (isLightTheme ? 'bg-gray-100' : 'bg-white/5')} hover:opacity-80`
+                  : `${colors.text} ${colors.cardSecondary} ${colors.cardHover}`
               }`}
             >
               <Folder size={16} />
@@ -378,7 +376,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               {items.map(item => (
                 <div 
                   key={item.id} 
-                  className={`flex items-center gap-3 p-3 rounded-lg ${colors.cardSecondary || (isLightTheme ? 'bg-gray-50' : 'bg-white/5')}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg ${colors.cardSecondary}`}
                 >
                   {editingId === item.id ? (
                     <>
@@ -416,7 +414,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
                       <button onClick={saveEdit} className="p-1.5 text-green-500 hover:bg-green-500/10 rounded">
                         <Check size={16} />
                       </button>
-                      <button onClick={() => setEditingId(null)} className={`p-1.5 ${colors.textMuted} hover:bg-gray-500/10 rounded`}>
+                      <button onClick={() => setEditingId(null)} className={`p-1.5 ${colors.textMuted} ${colors.cardHover} rounded`}>
                         <X size={16} />
                       </button>
                     </>

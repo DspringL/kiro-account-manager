@@ -62,7 +62,7 @@ const ListRow = memo(function ListRow({
   return (
     <div 
       onContextMenu={handleContextMenu}
-      className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? (isLightTheme ? 'bg-blue-50' : 'bg-blue-500/10') : ''} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'} cursor-context-menu`}
+      className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? (isLightTheme ? 'bg-blue-50' : 'bg-blue-500/10') : ''} ${colors.cardHover} cursor-context-menu`}
     >
       {contextMenu && (
         <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={() => setContextMenu(null)} items={getMenuItems()} isLightTheme={isLightTheme} />
@@ -226,12 +226,12 @@ function AccountListView({
     return (
       <div className="flex-1 flex flex-col overflow-hidden p-6">
         <div className={`flex flex-col items-center justify-center py-20 ${colors.textMuted}`}>
-          <div className={`w-20 h-20 rounded-full ${isLightTheme ? 'bg-gray-100' : 'bg-white/5'} flex items-center justify-center mb-4`}>
+          <div className={`w-20 h-20 rounded-full ${colors.cardSecondary} flex items-center justify-center mb-4`}>
             <Users size={40} strokeWidth={1} className="opacity-50" />
           </div>
           <p className="font-medium mb-1">{t('common.noAccounts')}</p>
           <p className="text-sm opacity-75">{t('common.addAccountHint')}</p>
-          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/10 hover:bg-white/20'}`}>
+          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${colors.cardSecondary} ${colors.cardHover}`}>
             <Plus size={16} className="inline mr-1" />{t('common.addAccount')}
           </button>
         </div>
@@ -260,7 +260,7 @@ function AccountListView({
       </div>
 
       {/* 表头 */}
-      <div className={`flex items-center gap-3 px-4 py-3 ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'} border ${colors.cardBorder} rounded-t-xl ${colors.textMuted} text-xs font-semibold uppercase tracking-wider`}>
+      <div className={`flex items-center gap-3 px-4 py-3 ${colors.cardSecondary} border ${colors.cardBorder} rounded-t-xl ${colors.textMuted} text-xs font-semibold uppercase tracking-wider`}>
         <div className="w-4" />
         <div className="w-48">邮箱</div>
         <div className="w-20 text-center">账号类型</div>

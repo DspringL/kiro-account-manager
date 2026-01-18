@@ -40,7 +40,9 @@ function AccountDetailModal({ account, onClose }) {
     setRefreshing(true)
     try {
       const updated = await invoke('sync_account', { id: account.id })
-      const quota = updated.usageData?.usageBreakdownList?.[0]?.usageLimit ?? 50
+      // 封禁账号额度为 0
+      const isBanned = updated.status === 'banned' || updated.status === '封禁' || updated.status === '已封禁'
+      const quota = isBanned ? 0 : (updated.usageData?.usageBreakdownList?.[0]?.usageLimit ?? 50)
       const used = updated.usageData?.usageBreakdownList?.[0]?.currentUsage ?? 0
       setForm(prev => ({ ...prev, quota, used, status: updated.status }))
     } catch (e) {
@@ -103,8 +105,8 @@ function AccountDetailModal({ account, onClose }) {
         {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 ${colors.card} border-b ${colors.cardBorder}`}>
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${account.provider === 'Google' ? (isLightTheme ? 'bg-red-100' : 'bg-red-500/20') : account.provider === 'Github' ? (isLightTheme ? 'bg-gray-200' : 'bg-gray-600') : (isLightTheme ? 'bg-blue-100' : 'bg-blue-500/20')}`}>
-              <User size={24} className={account.provider === 'Google' ? (isLightTheme ? 'text-red-600' : 'text-red-400') : account.provider === 'Github' ? (isLightTheme ? 'text-gray-700' : 'text-gray-300') : (isLightTheme ? 'text-blue-600' : 'text-blue-400')} />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${account.provider === 'Google' ? 'bg-red-500/20' : account.provider === 'Github' ? `${colors.cardSecondary}` : 'bg-blue-500/20'}`}>
+              <User size={24} className={account.provider === 'Google' ? 'text-red-400' : account.provider === 'Github' ? `${colors.text}` : 'text-blue-400'} />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -118,7 +120,7 @@ function AccountDetailModal({ account, onClose }) {
                         ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
                         : (account.usageData?.subscriptionInfo?.subscriptionTitle?.toUpperCase()?.includes('KIRO'))
                           ? 'bg-gradient-to-r from-teal-500 to-cyan-500 text-white'
-                          : (isLightTheme ? 'bg-gray-200 text-gray-600' : 'bg-gray-700 text-gray-300')
+                          : `${colors.cardSecondary} ${colors.textMuted}`
                 }`}>
                   {account.usageData?.subscriptionInfo?.subscriptionTitle || 'Free'}
                 </span>
@@ -126,7 +128,7 @@ function AccountDetailModal({ account, onClose }) {
               <p className={`text-sm ${colors.textMuted}`}>
                 <span className={`${
                   account.provider === 'Google' ? 'text-red-500'
-                    : account.provider === 'GitHub' ? (isLightTheme ? 'text-gray-700' : 'text-gray-300')
+                    : account.provider === 'GitHub' ? colors.text
                     : account.provider === 'BuilderId' ? 'text-orange-500'
                     : colors.textMuted
                 }`}>{account.provider || t('common.unknown')}</span>
@@ -136,10 +138,10 @@ function AccountDetailModal({ account, onClose }) {
               {account.machineId && (
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-xs ${colors.textMuted}`}>ID:</span>
-                  <code className={`text-xs font-mono px-2 py-0.5 rounded ${isLightTheme ? 'bg-red-100 text-red-700' : 'bg-red-500/20 text-red-300'}`}>
+                  <code className={`text-xs font-mono px-2 py-0.5 rounded bg-red-500/20 text-red-300`}>
                     {account.machineId}
                   </code>
-                  <button type="button" onClick={() => handleCopy(account.machineId, 'machineId')} className={`p-1 rounded ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'}`}>
+                  <button type="button" onClick={() => handleCopy(account.machineId, 'machineId')} className={`p-1 rounded ${colors.cardHover}`}>
                     {copied === 'machineId' ? <Check size={12} className="text-green-500" /> : <Copy size={12} className={colors.textMuted} />}
                   </button>
                 </div>
@@ -160,7 +162,7 @@ function AccountDetailModal({ account, onClose }) {
                   <CreditCard size={18} className={colors.textMuted} />
                   <span className={`font-medium ${colors.text}`}>{t('detail.quotaOverview')}</span>
                 </div>
-                <button type="button" onClick={handleRefresh} disabled={refreshing} className={`p-2 ${isLightTheme ? 'bg-blue-50 hover:bg-blue-100' : 'bg-blue-500/20 hover:bg-blue-500/30'} rounded-lg transition-colors disabled:opacity-50`} title={t('detail.syncQuota')}>
+                <button type="button" onClick={handleRefresh} disabled={refreshing} className={`p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-lg transition-colors disabled:opacity-50`} title={t('detail.syncQuota')}>
                   <RefreshCw size={16} className={`text-blue-500 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
               </div>
@@ -190,9 +192,9 @@ function AccountDetailModal({ account, onClose }) {
                   {account.usageData?.nextDateReset && <div className={`text-xs ${colors.textMuted} mt-1`}>{new Date(account.usageData.nextDateReset * 1000).toLocaleDateString()} {t('detail.reset')}</div>}
                 </div>
                 
-                <div className={`rounded-lg p-3 ${freeTrialQuota && freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? (isLightTheme ? 'bg-cyan-50' : 'bg-cyan-500/20') : colors.cardSecondary}`}>
+                <div className={`rounded-lg p-3 ${freeTrialQuota && freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500/20' : colors.cardSecondary}`}>
                   <div className="flex items-center gap-1.5 mb-1">
-                    <div className={`w-2 h-2 rounded-full ${freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500' : 'bg-gray-300'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500' : `${colors.cardBorder}`}`}></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.freeTrial')}</span>
                     {freeTrialInfo?.freeTrialStatus && <span className={`text-xs ${freeTrialInfo.freeTrialStatus === 'ACTIVE' ? 'text-cyan-500' : colors.textMuted}`}>({freeTrialInfo.freeTrialStatus})</span>}
                   </div>
@@ -200,9 +202,9 @@ function AccountDetailModal({ account, onClose }) {
                   {freeTrialInfo?.freeTrialExpiry && <div className={`text-xs ${colors.textMuted} mt-1`}>{new Date(freeTrialInfo.freeTrialExpiry * 1000).toLocaleDateString()} {t('detail.expires')}</div>}
                 </div>
                 
-                <div className={`rounded-lg p-3 ${bonusQuota ? (isLightTheme ? 'bg-purple-50' : 'bg-purple-500/20') : colors.cardSecondary}`}>
+                <div className={`rounded-lg p-3 ${bonusQuota ? 'bg-purple-500/20' : colors.cardSecondary}`}>
                   <div className="flex items-center gap-1.5 mb-1">
-                    <div className={`w-2 h-2 rounded-full ${bonusQuota ? 'bg-purple-500' : 'bg-gray-300'}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${bonusQuota ? 'bg-purple-500' : `${colors.cardBorder}`}`}></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.bonusTotal')}</span>
                   </div>
                   <div className={`text-lg font-semibold ${colors.text}`}>{bonusQuota ? `${formatUsage(bonusUsed)} / ${formatUsage(bonusQuota)}` : '-'}</div>
@@ -216,11 +218,11 @@ function AccountDetailModal({ account, onClose }) {
                   <div className={`text-xs font-medium ${colors.textMuted} mb-2`}>{t('detail.bonusDetails')}</div>
                   <div className="space-y-2">
                     {bonuses.map((bonus, idx) => (
-                      <div key={idx} className={`flex items-center justify-between p-2.5 rounded-lg ${bonus.status === 'ACTIVE' ? (isLightTheme ? 'bg-purple-50' : 'bg-purple-500/10') : bonus.status === 'EXHAUSTED' ? (isLightTheme ? 'bg-gray-100' : 'bg-gray-500/10') : colors.cardSecondary}`}>
+                      <div key={idx} className={`flex items-center justify-between p-2.5 rounded-lg ${bonus.status === 'ACTIVE' ? 'bg-purple-500/10' : bonus.status === 'EXHAUSTED' ? `${colors.cardSecondary}` : colors.cardSecondary}`}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className={`text-sm font-medium ${colors.text}`}>{bonus.displayName || bonus.bonusCode}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${bonus.status === 'ACTIVE' ? 'bg-green-500/20 text-green-500' : bonus.status === 'EXHAUSTED' ? 'bg-gray-500/20 text-gray-500' : 'bg-yellow-500/20 text-yellow-600'}`}>{bonus.status}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${bonus.status === 'ACTIVE' ? 'bg-green-500/20 text-green-500' : bonus.status === 'EXHAUSTED' ? `${colors.cardSecondary} ${colors.textMuted}` : 'bg-yellow-500/20 text-yellow-600'}`}>{bonus.status}</span>
                           </div>
                           <div className={`text-xs ${colors.textMuted} mt-0.5`}>
                             {bonus.description && <span>{bonus.description} · </span>}

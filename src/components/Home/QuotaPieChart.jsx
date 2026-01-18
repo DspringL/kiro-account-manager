@@ -10,6 +10,10 @@ const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4
 
 // 获取账号配额
 const getQuota = (account) => {
+  // 封禁账号返回 0
+  const isBanned = account.status === 'banned' || account.status === '封禁' || account.status === '已封禁'
+  if (isBanned) return 0
+
   const breakdown = account.usageData?.usageBreakdownList?.[0] || account.usageData?.usageBreakdown
   return breakdown?.usageLimit ?? 50
 }

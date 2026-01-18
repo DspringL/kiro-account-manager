@@ -12,9 +12,8 @@ const PRESET_COLORS = [
 ]
 
 function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
-  const { t, theme, colors } = useApp()
+  const { t, colors } = useApp()
   const { showError } = useDialog()
-  const isLightTheme = theme === 'light'
   
   const [tags, setTags] = useState([])
   const [selectedTagIds, setSelectedTagIds] = useState([])
@@ -119,7 +118,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
             <h3 className={`font-medium ${colors.text}`}>{t('tags.batchSet')}</h3>
             <span className={`text-sm ${colors.textMuted}`}>({accountIds.length})</span>
           </div>
-          <button onClick={onClose} className={`p-1.5 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg`}>
+          <button onClick={onClose} className={`p-1.5 rounded-lg ${colors.cardHover} transition-colors`}>
             <X size={18} className={colors.textMuted} />
           </button>
         </div>
@@ -186,7 +185,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
                   <div className={`absolute top-full left-0 right-0 mt-1 ${colors.card} border ${colors.cardBorder} rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto`}>
                     {filteredTags.map(tag => (
                       <button key={tag.id} onClick={() => { setSelectedTagIds([...selectedTagIds, tag.id]); setNewTagName(''); setShowDropdown(false) }}
-                        className={`w-full px-3 py-2 text-left text-sm ${colors.text} hover:opacity-80 flex items-center gap-2 transition-colors`}
+                        className={`w-full px-3 py-2 text-left text-sm ${colors.text} hover:opacity-80 flex items-center gap-2 transition-colors ${colors.cardHover}`}
                       >
                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color }} />
                         {tag.name}
@@ -212,11 +211,11 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
         </div>
 
         <div className={`flex justify-end gap-3 px-5 py-4 border-t ${colors.cardBorder}`}>
-          <button onClick={onClose} className={`px-4 py-2 ${isLightTheme ? 'hover:bg-gray-100' : 'hover:bg-white/10'} rounded-lg text-sm ${colors.text}`}>
+          <button onClick={onClose} className={`px-4 py-2 rounded-lg text-sm ${colors.text} ${colors.cardHover} transition-colors`}>
             {t('common.cancel')}
           </button>
           <button onClick={handleSubmit} disabled={loading}
-            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 disabled:opacity-50"
+            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-medium hover:bg-purple-600 disabled:opacity-50 transition-colors"
           >
             {loading ? t('common.saving') : t('common.confirm')}
           </button>

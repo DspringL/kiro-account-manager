@@ -90,19 +90,15 @@ function MCPPanel({ onCountChange }) {
     <div className="h-full flex flex-col">
       {/* 警告横幅 */}
       {toolCount > 50 && (
-        <div className={`mx-6 mt-4 mb-2 px-4 py-3 rounded-xl border-2 ${
-          isLightTheme 
-            ? 'bg-orange-50 border-orange-200' 
-            : 'bg-orange-500/10 border-orange-500/30'
-        } flex items-start gap-3`}>
-          <div className={`mt-0.5 ${isLightTheme ? 'text-orange-600' : 'text-orange-400'}`}>
+        <div className={`mx-6 mt-4 mb-2 px-4 py-3 rounded-xl border-2 ${colors.warning} ${colors.warningBorder} flex items-start gap-3`}>
+          <div className={`mt-0.5 ${colors.text}`}>
             ⚠️
           </div>
           <div className="flex-1">
-            <div className={`text-sm font-medium ${isLightTheme ? 'text-orange-900' : 'text-orange-300'} mb-1`}>
+            <div className={`text-sm font-medium ${colors.text} mb-1`}>
               MCP 工具数量较多
             </div>
-            <div className={`text-xs ${isLightTheme ? 'text-orange-700' : 'text-orange-400/80'}`}>
+            <div className={`text-xs ${colors.textMuted}`}>
               您已配置约 {toolCount} 个 MCP 工具（{serverList.length} 个服务器）。过多的工具可能导致工具选择性能下降和上下文消耗增加。建议禁用不常用的服务器。
             </div>
           </div>
@@ -200,12 +196,12 @@ function MCPServerItem({ name, config, isLightTheme, colors, onToggle, onEdit, o
         {(envCount > 0 || autoApproveCount > 0) && (
           <div className={`flex items-center gap-3 mt-1.5 text-xs ${colors.textMuted} ${isDisabled ? 'opacity-50' : ''}`}>
             {envCount > 0 && (
-              <span className={`px-1.5 py-0.5 rounded ${isLightTheme ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/20 text-blue-400'}`}>
+              <span className={`px-1.5 py-0.5 rounded ${colors.badgeInfo}`}>
                 {envCount} {t('mcpManager.envVars')}
               </span>
             )}
             {autoApproveCount > 0 && (
-              <span className={`px-1.5 py-0.5 rounded ${isLightTheme ? 'bg-green-50 text-green-600' : 'bg-green-500/20 text-green-400'}`}>
+              <span className={`px-1.5 py-0.5 rounded ${colors.badgeSuccess}`}>
                 {t('mcpManager.autoApprove')} {autoApproveCount} {t('mcpManager.tools')}
               </span>
             )}

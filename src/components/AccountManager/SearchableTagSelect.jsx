@@ -17,8 +17,7 @@ function SearchableTagSelect({
   hasLabel = '有标签',
   className = '',
 }) {
-  const { colors, theme } = useTheme()
-  const isLightTheme = theme === 'light'
+  const { colors } = useTheme()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef(null)
@@ -97,7 +96,7 @@ function SearchableTagSelect({
                 type="button"
                 onClick={() => handleSelect(null)}
                 className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                  !value ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`
+                  !value ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <Tag size={14} className={colors.textMuted} />
@@ -111,7 +110,7 @@ function SearchableTagSelect({
                 type="button"
                 onClick={() => handleSelect('__has__')}
                 className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                  value === '__has__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`
+                  value === '__has__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <span className={`w-3 h-3 rounded-full bg-green-500`} />
@@ -125,7 +124,7 @@ function SearchableTagSelect({
                 type="button"
                 onClick={() => handleSelect('__none__')}
                 className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                  value === '__none__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`
+                  value === '__none__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <span className={`w-3 h-3 rounded-full border-2 border-dashed ${colors.cardBorder}`} />
@@ -141,7 +140,7 @@ function SearchableTagSelect({
                   type="button"
                   onClick={() => handleSelect(tag.id)}
                   className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                    value === tag.id ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${isLightTheme ? 'hover:bg-gray-50' : 'hover:bg-white/5'}`
+                    value === tag.id ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
                   }`}
                 >
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />

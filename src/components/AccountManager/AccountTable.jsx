@@ -33,7 +33,6 @@ const VirtualRow = memo(function VirtualRow({
   localToken,
   tagDefinitions,
   groupDefinitions,
-  isLightTheme,
   colors,
   t,
 }) {
@@ -76,7 +75,6 @@ const VirtualRow = memo(function VirtualRow({
   if (prev.localToken !== next.localToken) return false
   if (prev.tagDefinitions !== next.tagDefinitions) return false
   if (prev.groupDefinitions !== next.groupDefinitions) return false
-  if (prev.isLightTheme !== next.isLightTheme) return false
   // selectedIdsSet 比较：检查行内账号的选中状态是否变化
   for (const item of prev.row) {
     if (item._isAddButton) continue
@@ -108,8 +106,7 @@ function AccountTable({
   tagDefinitions = [],
   groupDefinitions = [],
 }) {
-  const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const { t, colors } = useApp()
   const containerRef = useRef(null)
   const scrollRef = useRef(null)
   const [columns, setColumns] = useState(4)
@@ -171,12 +168,12 @@ function AccountTable({
 
       {accounts.length === 0 ? (
         <div className={`flex flex-col items-center justify-center py-20 ${colors.textMuted}`}>
-          <div className={`w-20 h-20 rounded-full ${isLightTheme ? 'bg-gray-100' : 'bg-white/5'} flex items-center justify-center animate-float mb-4`}>
+          <div className={`w-20 h-20 rounded-full ${colors.cardSecondary} flex items-center justify-center animate-float mb-4`}>
             <Users size={40} strokeWidth={1} className="opacity-50" />
           </div>
           <p className="font-medium mb-1">{t('common.noAccounts')}</p>
           <p className="text-sm opacity-75">{t('common.addAccountHint')}</p>
-          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${isLightTheme ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/10 hover:bg-white/20'} transition-colors`}>
+          <button onClick={onAdd} className={`mt-4 px-4 py-2 rounded-xl ${colors.cardSecondary} ${colors.cardHover} transition-colors`}>
             <Plus size={16} className="inline mr-1" />
             {t('common.addAccount')}
           </button>
@@ -217,7 +214,6 @@ function AccountTable({
                     localToken={localToken}
                     tagDefinitions={tagDefinitions}
                     groupDefinitions={groupDefinitions}
-                    isLightTheme={isLightTheme}
                     colors={colors}
                     t={t}
                   />
@@ -231,7 +227,7 @@ function AccountTable({
   )
 }
 
-const AddButton = memo(function AddButton({ onClick, isLightTheme, colors, t }) {
+const AddButton = memo(function AddButton({ onClick, colors, t }) {
   return (
     <button
       onClick={onClick}

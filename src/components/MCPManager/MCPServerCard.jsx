@@ -18,7 +18,7 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
             isDisabled ? colors.cardSecondary : colors.badgeActive
           }`}>
-            <Server size={20} className={isDisabled ? 'text-gray-400' : 'text-green-500'} />
+            <Server size={20} className={isDisabled ? colors.textMuted : 'text-green-500'} />
           </div>
           
           <div className="flex-1 min-w-0">
@@ -41,12 +41,12 @@ function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
             {/* 标签 */}
             <div className="flex items-center gap-2 mt-2">
               {autoApproveCount > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-blue-50 text-blue-600' : 'bg-blue-500/20 text-blue-300'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded ${colors.badgeInfo}`}>
                   {t('mcpManager.autoApprove')}: {autoApproveCount} {t('mcpManager.tools')}
                 </span>
               )}
               {envCount > 0 && (
-                <span className={`text-xs px-2 py-0.5 rounded ${isLightTheme ? 'bg-purple-50 text-purple-600' : 'bg-purple-500/20 text-purple-300'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded ${colors.badgePurple}`}>
                   {t('mcpManager.envVars')}: {envCount}
                 </span>
               )}

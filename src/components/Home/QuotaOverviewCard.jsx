@@ -24,7 +24,7 @@ function QuotaOverviewCard({ stats, isLightTheme, colors, t }) {
       withBorder
     >
       <Group gap="sm" mb="md">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isLightTheme ? 'bg-emerald-100' : 'bg-emerald-500/20'}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.cardSecondary}`}>
           <TrendingUp size={20} className="text-emerald-500" />
         </div>
         <Text fw={600} className={colors.text}>{t('home.quotaOverview')}</Text>

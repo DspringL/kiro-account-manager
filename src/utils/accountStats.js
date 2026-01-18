@@ -14,6 +14,10 @@ const getBreakdown = (a) => {
 
 // 获取总配额（主配额 + 未过期的试用 + 未过期的奖励）
 const getQuota = (a) => {
+  // 封禁账号返回 0
+  const isBanned = a.status === 'banned' || a.status === '封禁' || a.status === '已封禁'
+  if (isBanned) return 0
+
   const breakdown = getBreakdown(a)
   if (!breakdown) return a.quota ?? 50
   

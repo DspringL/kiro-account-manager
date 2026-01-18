@@ -35,6 +35,14 @@ export const themes = {
     // 状态徽章
     badgeDisabled: 'bg-gray-200 text-gray-500',
     badgeActive: 'bg-green-50 text-green-600',
+    badgeInfo: 'bg-blue-50 text-blue-600',
+    badgePurple: 'bg-purple-50 text-purple-600',
+    badgeSuccess: 'bg-green-50 text-green-600',
+    badgeInfo: 'bg-blue-100 text-blue-600',
+    badgeSuccess: 'bg-green-100 text-green-600',
+    badgePurple: 'bg-purple-100 text-purple-600',
+    badgeWarning: 'bg-orange-100 text-orange-600',
+    badgeCyan: 'bg-cyan-100 text-cyan-600',
     // 开关按钮
     toggleOff: 'bg-gray-300',
     toggleOn: 'bg-green-500',
@@ -95,6 +103,14 @@ export const themes = {
     // 状态徽章
     badgeDisabled: 'bg-gray-500/30 text-gray-400',
     badgeActive: 'bg-green-500/20 text-green-400',
+    badgeInfo: 'bg-blue-500/20 text-blue-400',
+    badgePurple: 'bg-purple-500/20 text-purple-400',
+    badgeSuccess: 'bg-green-500/20 text-green-400',
+    badgeInfo: 'bg-blue-500/20 text-blue-400',
+    badgeSuccess: 'bg-green-500/20 text-green-400',
+    badgePurple: 'bg-purple-500/20 text-purple-400',
+    badgeWarning: 'bg-orange-500/20 text-orange-400',
+    badgeCyan: 'bg-cyan-500/20 text-cyan-400',
     // 开关按钮
     toggleOff: 'bg-gray-600',
     toggleOn: 'bg-green-500',
@@ -124,6 +140,10 @@ export const themes = {
     // 危险按钮样式
     danger: 'bg-red-500/20 text-red-400',
     dangerHover: 'hover:bg-red-500/30',
+    // 通用 hover 背景
+    hoverBg: 'hover:bg-white/5',
+    // 空状态背景
+    emptyBg: 'bg-white/5',
   },
   purple: {
     nameKey: 'theme.purple',
@@ -150,6 +170,14 @@ export const themes = {
     // 下拉菜单样式
     menuHover: 'hover:bg-purple-100',
     primary: 'text-purple-600',
+    // 状态徽章
+    badgeDisabled: 'bg-gray-200 text-gray-500',
+    badgeActive: 'bg-green-100 text-green-600',
+    badgeInfo: 'bg-blue-100 text-blue-600',
+    badgeSuccess: 'bg-green-100 text-green-600',
+    badgePurple: 'bg-purple-100 text-purple-600',
+    badgeWarning: 'bg-orange-100 text-orange-600',
+    badgeCyan: 'bg-cyan-100 text-cyan-600',
     // 错误样式
     error: 'bg-red-100 text-red-600',
     errorBorder: 'border-red-300',
@@ -188,6 +216,14 @@ export const themes = {
     // 下拉菜单样式
     menuHover: 'hover:bg-emerald-100',
     primary: 'text-emerald-600',
+    // 状态徽章
+    badgeDisabled: 'bg-gray-200 text-gray-500',
+    badgeActive: 'bg-green-100 text-green-600',
+    badgeInfo: 'bg-blue-100 text-blue-600',
+    badgeSuccess: 'bg-green-100 text-green-600',
+    badgePurple: 'bg-purple-100 text-purple-600',
+    badgeWarning: 'bg-orange-100 text-orange-600',
+    badgeCyan: 'bg-cyan-100 text-cyan-600',
     // 错误样式
     error: 'bg-red-100 text-red-600',
     errorBorder: 'border-red-300',

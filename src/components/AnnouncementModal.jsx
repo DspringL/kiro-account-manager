@@ -183,7 +183,7 @@ export default function AnnouncementModal() {
 
           {/* 官方开源信息 */}
           {(announcement.websiteUrl || announcement.officialUrl || announcement.qqGroup) && (
-            <div className={`mt-5 p-4 rounded-xl ${colors.cardSecondary || (isLightTheme ? 'bg-gray-50' : 'bg-white/5')}`}>
+            <div className={`mt-5 p-4 rounded-xl ${colors.cardSecondary}`}>
               <p className={`text-sm font-medium mb-3 ${colors.text}`}>相关链接</p>
               <div className="flex flex-wrap gap-2">
                 {announcement.websiteUrl && (
@@ -236,7 +236,7 @@ export default function AnnouncementModal() {
 
           {/* 续杯交流群 */}
           {announcement.buyGroup && (
-            <div className={`mt-3 p-4 rounded-xl ${colors.cardSecondary || (isLightTheme ? 'bg-gray-50' : 'bg-white/5')}`}>
+            <div className={`mt-3 p-4 rounded-xl ${colors.cardSecondary}`}>
               <p className={`text-sm font-medium mb-3 ${colors.text}`}>账号购买需求：</p>
               <div className="space-y-2">
                 {announcement.buyUrl && (

@@ -28,14 +28,13 @@ const buildContent = (inclusion, filePattern, body) => {
 const formatSize = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 
 // inclusion 标签颜色映射
-const getInclusionStyle = (inclusion, isLightTheme) => {
+const getInclusionStyle = (inclusion, colors) => {
   const styles = {
-    always: { color: 'green', light: 'bg-green-50 text-green-600', dark: 'bg-green-500/20 text-green-400' },
-    fileMatch: { color: 'blue', light: 'bg-blue-50 text-blue-600', dark: 'bg-blue-500/20 text-blue-400' },
-    manual: { color: 'orange', light: 'bg-orange-50 text-orange-600', dark: 'bg-orange-500/20 text-orange-400' }
+    always: colors.badgeSuccess,
+    fileMatch: colors.badgeInfo,
+    manual: colors.badgeWarning
   }
-  const s = styles[inclusion] || { light: 'bg-gray-100 text-gray-600', dark: 'bg-gray-500/20 text-gray-400' }
-  return isLightTheme ? s.light : s.dark
+  return styles[inclusion] || colors.cardSecondary
 }
 
 function SteeringPanel({ onCountChange }) {
@@ -242,7 +241,7 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
                 <div className={`flex items-center gap-2 text-xs ${colors.textMuted} mt-1`}>
                   <span>{formatSize(file.size)}</span>
                   <span>·</span>
-                  <span className={`px-1.5 py-0.5 rounded ${getInclusionStyle(parsed.inclusion, isLightTheme)}`}>
+                  <span className={`px-1.5 py-0.5 rounded ${getInclusionStyle(parsed.inclusion, colors)}`}>
                     {t(`steering.inclusion${parsed.inclusion.charAt(0).toUpperCase() + parsed.inclusion.slice(1)}`)}
                   </span>
                 </div>

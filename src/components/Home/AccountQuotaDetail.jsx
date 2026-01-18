@@ -183,15 +183,17 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isLig
     return 'blue'
   }
 
+  const getPercentColor = () => {
+    if (currentPercent > 80) return 'rgb(239, 68, 68)'
+    if (currentPercent > 50) return 'rgb(245, 158, 11)'
+    return isLightTheme ? 'rgb(37, 99, 235)' : 'rgb(96, 165, 250)'
+  }
+
   return (
     <Card
       padding="md"
       radius="lg"
-      style={{ 
-        background: isLightTheme 
-          ? 'linear-gradient(to right, rgb(239 246 255), rgb(250 245 255))' 
-          : 'linear-gradient(to right, rgba(59, 130, 246, 0.1), rgba(168, 85, 247, 0.1))'
-      }}
+      className={colors.cardSecondary}
     >
       <Group justify="space-between" mb="xs">
         <Text size="sm" fw={500} className={colors.text}>
@@ -201,11 +203,7 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isLig
           <Text 
             size="lg" 
             fw={700}
-            style={{
-              color: currentPercent > 80 ? 'rgb(239, 68, 68)' : 
-                     currentPercent > 50 ? 'rgb(245, 158, 11)' : 
-                     isLightTheme ? 'rgb(37, 99, 235)' : 'rgb(96, 165, 250)'
-            }}
+            style={{ color: getPercentColor() }}
           >
             {currentPercent}%
           </Text>
@@ -231,16 +229,14 @@ function SubscriptionDetails({ subInfo, overageConfig, isLightTheme, colors, t }
     <Card
       padding="sm"
       radius="md"
-      style={{ 
-        background: isLightTheme ? 'rgb(249 250 251)' : 'rgba(255, 255, 255, 0.05)'
-      }}
+      className={colors.cardSecondary}
     >
       <Text 
         size="10px" 
         fw={500} 
         tt="uppercase" 
         mb="xs"
-        style={{ color: isLightTheme ? 'rgb(37, 99, 235)' : 'rgb(96, 165, 250)' }}
+        className={colors.primary}
       >
         {t('home.subscriptionDetails')}
       </Text>
@@ -292,16 +288,14 @@ function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, isLig
     <Card
       padding="sm"
       radius="md"
-      style={{ 
-        background: isLightTheme ? 'rgb(249 250 251)' : 'rgba(255, 255, 255, 0.05)'
-      }}
+      className={colors.cardSecondary}
     >
       <Text 
         size="10px" 
         fw={500} 
         tt="uppercase" 
         mb="xs"
-        className={isLightTheme ? 'text-purple-600' : 'text-purple-400'}
+        className="text-purple-500"
       >
         {t('home.accountInfo')}
       </Text>
@@ -341,9 +335,7 @@ function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, 
     <Card
       padding="sm"
       radius="md"
-      style={{ 
-        background: isLightTheme ? 'rgb(249 250 251)' : 'rgba(255, 255, 255, 0.05)'
-      }}
+      className={colors.cardSecondary}
     >
       <Text size="10px" fw={500} tt="uppercase" mb="xs" className={colors.text}>
         {t('home.quotaDetails')}
@@ -400,13 +392,13 @@ function QuotaRow({ label, used, limit, percent, color, expiry, isLightTheme, co
       dot: 'bg-purple-500', 
       bar: 'bg-purple-500', 
       text: 'text-purple-500', 
-      barBg: isLightTheme ? 'bg-purple-100' : 'bg-purple-500/20' 
+      barBg: colors.badgePurple
     },
     amber: { 
       dot: 'bg-amber-500', 
       bar: 'bg-amber-500', 
       text: 'text-amber-600', 
-      barBg: isLightTheme ? 'bg-amber-100' : 'bg-amber-500/20' 
+      barBg: colors.badgeWarning
     }
   }
   const c = colorMap[color] || colorMap.blue

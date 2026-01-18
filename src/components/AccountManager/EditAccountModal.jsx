@@ -137,7 +137,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
       title={
         <div>
           <div className="font-medium">{t('editAccount.title')}</div>
-          <div className="text-xs text-gray-500">{account.email}</div>
+          <div className={`text-xs ${colors.textMuted}`}>{account.email}</div>
         </div>
       }
       size="lg"

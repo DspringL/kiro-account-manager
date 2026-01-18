@@ -9,6 +9,10 @@ function UsageDistribution({ tokens, isLightTheme, colors, t }) {
   
   // 计算使用率分组
   const getUsagePercent = (account) => {
+    // 封禁账号返回 0
+    const isBanned = account.status === 'banned' || account.status === '封禁' || account.status === '已封禁'
+    if (isBanned) return 0
+
     const breakdown = account.usageData?.usageBreakdownList?.[0] || account.usageData?.usageBreakdown
     const used = breakdown?.currentUsage ?? 0
     const limit = breakdown?.usageLimit ?? 50
@@ -24,6 +28,12 @@ function UsageDistribution({ tokens, isLightTheme, colors, t }) {
   // 账号配额排行（前5）
   const topAccounts = [...tokens]
     .map(a => {
+      // 封禁账号返回 0
+      const isBanned = a.status === 'banned' || a.status === '封禁' || a.status === '已封禁'
+      if (isBanned) {
+        return { email: a.email, used: 0, limit: 0, percent: 0, usedStr: '0', limitStr: '0' }
+      }
+
       const breakdown = a.usageData?.usageBreakdownList?.[0] || a.usageData?.usageBreakdown
       const used = breakdown?.currentUsage ?? 0
       const limit = breakdown?.usageLimit ?? 50

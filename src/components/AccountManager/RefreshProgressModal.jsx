@@ -2,8 +2,7 @@ import { RefreshCw } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 
 function RefreshProgressModal({ refreshProgress }) {
-  const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const { t, colors } = useApp()
 
   if (!refreshProgress || refreshProgress.total === 0) return null
 
@@ -13,7 +12,7 @@ function RefreshProgressModal({ refreshProgress }) {
         className={`${colors.card} rounded-2xl w-[400px] shadow-2xl overflow-hidden`}
         style={{ animation: 'modalBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
       >
-        <div className={`px-5 py-4 border-b ${colors.cardBorder} ${isLightTheme ? 'bg-blue-50' : 'bg-blue-500/20'} flex items-center gap-2`}>
+        <div className={`px-5 py-4 border-b ${colors.cardBorder} ${colors.cardSecondary} flex items-center gap-2`}>
           <RefreshCw size={18} className="text-blue-500 animate-spin" />
           <h2 className={`font-semibold ${colors.text}`}>{t('refresh.title')}</h2>
         </div>
@@ -23,24 +22,28 @@ function RefreshProgressModal({ refreshProgress }) {
               <span className={colors.textMuted}>{t('refresh.progress')}</span>
               <span className="text-blue-500 font-medium">{refreshProgress.current}/{refreshProgress.total}</span>
             </div>
-            <div className={`h-2 ${isLightTheme ? 'bg-gray-200' : 'bg-white/10'} rounded-full overflow-hidden`}>
+            <div className={`h-2 ${colors.cardSecondary} rounded-full overflow-hidden`}>
               <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${(refreshProgress.current / refreshProgress.total) * 100}%` }} />
             </div>
           </div>
           {refreshProgress.currentEmail && (
-            <div className={`text-sm ${colors.textMuted}`}>{t('refresh.refreshing')}: <span className={colors.text}>{refreshProgress.currentEmail}</span></div>
+            <div className={`text-sm ${colors.textMuted}`}>
+              {t('refresh.refreshing')}: <span className={colors.text}>{refreshProgress.currentEmail}</span>
+            </div>
           )}
           {refreshProgress.results.length > 0 && (
             <div className="max-h-48 overflow-y-auto space-y-1">
               {refreshProgress.results.map((r, i) => (
-                <div key={i} className={`text-xs px-3 py-2 rounded-xl flex justify-between ${r.success ? (isLightTheme ? 'bg-green-50 text-green-700' : 'bg-green-500/20 text-green-400') : (isLightTheme ? 'bg-red-50 text-red-600' : 'bg-red-500/20 text-red-400')}`}>
+                <div key={i} className={`text-xs px-3 py-2 rounded-xl flex justify-between ${r.success ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                   <span className="truncate">{r.email}</span>
                   <span>{r.success ? `✓ ${r.message}` : `✗ ${r.message}`}</span>
                 </div>
               ))}
             </div>
           )}
-          {refreshProgress.current === refreshProgress.total && (<div className="text-center text-green-500 font-medium">{t('refresh.complete')}</div>)}
+          {refreshProgress.current === refreshProgress.total && (
+            <div className="text-center text-green-500 font-medium">{t('refresh.complete')}</div>
+          )}
         </div>
       </div>
     </div>
