@@ -164,9 +164,7 @@ export default function AnnouncementModal() {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className={`relative w-[480px] max-w-[90vw] rounded-2xl shadow-2xl border ${
-        isLightTheme ? 'bg-white border-gray-200' : 'bg-[#1a1a2e] border-gray-700'
-      } overflow-hidden animate-fade-in-up`}>
+      <div className={`relative w-[480px] max-w-[90vw] rounded-2xl shadow-2xl border ${colors.card} ${colors.cardBorder} overflow-hidden animate-fade-in-up`}>
         {/* 顶部警告条 */}
         <div className="bg-gradient-to-r from-red-500 to-orange-500 px-6 py-4 flex items-center gap-3">
           <AlertTriangle size={24} className="text-white" />
@@ -185,7 +183,7 @@ export default function AnnouncementModal() {
 
           {/* 官方开源信息 */}
           {(announcement.websiteUrl || announcement.officialUrl || announcement.qqGroup) && (
-            <div className={`mt-5 p-4 rounded-xl ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
+            <div className={`mt-5 p-4 rounded-xl ${colors.cardSecondary || (isLightTheme ? 'bg-gray-50' : 'bg-white/5')}`}>
               <p className={`text-sm font-medium mb-3 ${colors.text}`}>相关链接</p>
               <div className="flex flex-wrap gap-2">
                 {announcement.websiteUrl && (
@@ -238,7 +236,7 @@ export default function AnnouncementModal() {
 
           {/* 续杯交流群 */}
           {announcement.buyGroup && (
-            <div className={`mt-3 p-4 rounded-xl ${isLightTheme ? 'bg-gray-50' : 'bg-white/5'}`}>
+            <div className={`mt-3 p-4 rounded-xl ${colors.cardSecondary || (isLightTheme ? 'bg-gray-50' : 'bg-white/5')}`}>
               <p className={`text-sm font-medium mb-3 ${colors.text}`}>账号购买需求：</p>
               <div className="space-y-2">
                 {announcement.buyUrl && (
