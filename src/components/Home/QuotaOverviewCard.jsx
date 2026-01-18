@@ -41,7 +41,7 @@ function QuotaOverviewCard({ stats, isLightTheme, colors, t }) {
         />
         <Badge
           color={getBadgeColor(stats.usagePercent)}
-          variant={isLightTheme ? 'light' : 'filled'}
+          variant="light"
           size="sm"
         >
           {stats.usagePercent}%

@@ -258,9 +258,7 @@ function About() {
         <div className="relative">
           <Image src={previewImg} alt="预览" maw={320} mah={320} radius="xl" />
           <button 
-            className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform ${
-              isLightTheme ? 'bg-white' : 'bg-[#1a1a2e]'
-            }`}
+            className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform ${colors.card}`}
             onClick={() => setPreviewImg(null)}
           >
             <X size={16} className={colors.text} />

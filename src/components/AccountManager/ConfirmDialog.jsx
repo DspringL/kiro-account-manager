@@ -103,7 +103,7 @@ function ConfirmDialog({
               <div className={`
                 w-12 h-12 rounded-2xl ${iconBg} 
                 flex items-center justify-center
-                ring-1 ${isLightTheme ? 'ring-black/5' : 'ring-white/10'}
+                ring-1 ${colors.ringColor}
                 shadow-lg
               `}>
                 <Icon size={24} className={iconColor} strokeWidth={2} />

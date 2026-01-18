@@ -69,8 +69,10 @@ export default function UsageTrendChart({ accounts, stats }) {
             <line
               key={i}
               x1="40" y1={y} x2="390" y2={y}
-              stroke={isLightTheme ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}
+              stroke="currentColor"
+              className={colors.textMuted}
               strokeDasharray="2,2"
+              opacity="0.2"
             />
           ))}
 
@@ -80,7 +82,7 @@ export default function UsageTrendChart({ accounts, stats }) {
               key={i}
               x="35" y={140 - ratio * 140 + 4}
               textAnchor="end"
-              className={`text-[10px] ${isLightTheme ? 'fill-gray-500' : 'fill-gray-400'}`}
+              className={`text-[10px] fill-current ${colors.textMuted}`}
             >
               {Math.round(maxUsed * ratio)}
             </text>
@@ -150,7 +152,7 @@ export default function UsageTrendChart({ accounts, stats }) {
                   key={h.date}
                   x={x} y="138"
                   textAnchor="middle"
-                  className={`text-[9px] ${isLightTheme ? 'fill-gray-500' : 'fill-gray-400'}`}
+                  className={`text-[9px] fill-current ${colors.textMuted}`}
                 >
                   {h.date.slice(5)}
                 </text>

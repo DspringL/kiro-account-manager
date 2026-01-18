@@ -105,6 +105,8 @@ export const themes = {
     dateExpired: 'text-red-500',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    // Ring 颜色
+    ringColor: 'ring-black/5',
   },
   dark: {
     nameKey: 'theme.dark',
@@ -210,6 +212,8 @@ export const themes = {
     dateExpired: 'text-red-400',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    // Ring 颜色
+    ringColor: 'ring-white/10',
   },
   purple: {
     nameKey: 'theme.purple',
@@ -289,6 +293,8 @@ export const themes = {
     dateExpired: 'text-red-500',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    // Ring 颜色
+    ringColor: 'ring-black/5',
   },
   green: {
     nameKey: 'theme.green',
@@ -368,6 +374,8 @@ export const themes = {
     dateExpired: 'text-red-500',
     // 图标颜色
     iconSuccess: 'text-green-500',
+    // Ring 颜色
+    ringColor: 'ring-black/5',
   },
 }
 

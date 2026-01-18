@@ -145,9 +145,9 @@ function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refr
                 style={{
                   background: subInfo.type.includes('PRO+') ? 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153))' :
                              subInfo.type.includes('PRO') ? 'rgb(59, 130, 246)' :
-                             isLightTheme ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)'
+                             undefined
                 }}
-                className="shrink-0"
+                className={subInfo.type.includes('PRO') ? 'shrink-0' : `shrink-0 ${colors.badgeDisabled}`}
               >
                 {subInfo.subscriptionTitle || 'Free'}
               </Badge>
@@ -186,7 +186,7 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, isLig
   const getPercentColor = () => {
     if (currentPercent > 80) return 'rgb(239, 68, 68)'
     if (currentPercent > 50) return 'rgb(245, 158, 11)'
-    return isLightTheme ? 'rgb(37, 99, 235)' : 'rgb(96, 165, 250)'
+    return 'rgb(59, 130, 246)' // 保留蓝色功能色
   }
 
   return (

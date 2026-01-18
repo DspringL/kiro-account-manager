@@ -62,7 +62,7 @@ const ListRow = memo(function ListRow({
   return (
     <div 
       onContextMenu={handleContextMenu}
-      className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? (isLightTheme ? 'bg-blue-50' : 'bg-blue-500/10') : ''} ${colors.cardHover} cursor-context-menu`}
+      className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? colors.cardCurrent : ''} ${colors.cardHover} cursor-context-menu`}
     >
       {contextMenu && (
         <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={() => setContextMenu(null)} items={getMenuItems()} isLightTheme={isLightTheme} />
@@ -75,8 +75,6 @@ const ListRow = memo(function ListRow({
         styles={{
           input: {
             cursor: 'pointer',
-            backgroundColor: isSelected ? undefined : (isLightTheme ? '#ffffff' : 'rgba(255, 255, 255, 0.05)'),
-            borderColor: isLightTheme ? '#d1d5db' : 'rgba(255, 255, 255, 0.1)',
           }
         }}
       />
@@ -249,8 +247,6 @@ function AccountListView({
             styles={{
               input: {
                 cursor: 'pointer',
-                backgroundColor: (selectedIds.length === accounts.length && accounts.length > 0) ? undefined : (isLightTheme ? '#ffffff' : 'rgba(255, 255, 255, 0.05)'),
-                borderColor: isLightTheme ? '#d1d5db' : 'rgba(255, 255, 255, 0.1)',
               }
             }}
           />

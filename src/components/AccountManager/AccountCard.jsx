@@ -139,8 +139,6 @@ const AccountCard = memo(function AccountCard({
             root: { cursor: 'pointer' },
             input: { 
               cursor: 'pointer',
-              backgroundColor: isSelected ? undefined : (isLightTheme ? 'white' : 'rgba(255, 255, 255, 0.1)'),
-              borderColor: isSelected ? undefined : (isLightTheme ? '#d1d5db' : 'rgba(255, 255, 255, 0.2)'),
             },
           }}
           aria-label={t('accountCard.selectAccount')}
@@ -220,10 +218,10 @@ const AccountCard = memo(function AccountCard({
               if (!group) return null
               return (
                 <span 
-                  className="text-xs px-2 py-0.5 rounded-lg font-medium"
+                  className={`text-xs px-2 py-0.5 rounded-lg font-medium ${colors.cardSecondary}`}
                   style={{ 
-                    backgroundColor: group.color ? `${group.color}20` : (isLightTheme ? '#e5e7eb' : 'rgba(255,255,255,0.1)'),
-                    color: group.color || (isLightTheme ? '#374151' : '#9ca3af')
+                    backgroundColor: group.color ? `${group.color}20` : undefined,
+                    color: group.color || colors.textMuted
                   }}
                 >
                   {group.name}

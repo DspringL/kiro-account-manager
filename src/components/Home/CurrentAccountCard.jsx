@@ -43,7 +43,7 @@ function CurrentAccountCard({ localToken, refreshing, handleRefresh, isLightThem
                 </Text>
                 <Badge
                   color="green"
-                  variant={isLightTheme ? 'light' : 'filled'}
+                  variant="light"
                   size="sm"
                   className="pulse-ring"
                 >
