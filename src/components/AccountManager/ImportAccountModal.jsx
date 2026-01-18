@@ -549,3 +549,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
         }
       `}</style>
     </div>
+  )
+}
+
+export default ImportAccountModal
