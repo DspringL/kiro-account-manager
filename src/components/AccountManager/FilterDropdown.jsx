@@ -48,7 +48,7 @@ function FilterSelect({ label, value, options, onChange, onClear, colors }) {
           clearable={hasValue}
           onClear={onClear}
           classNames={{
-            input: `${colors.input} ${colors.text}`,
+            input: `${colors.input} ${colors.text} ${colors.inputFocus}`,
             dropdown: `${colors.card} border ${colors.cardBorder}`,
             option: `${colors.text}`
           }}
@@ -59,9 +59,6 @@ function FilterSelect({ label, value, options, onChange, onClear, colors }) {
               borderRadius: '0.5rem',
               borderColor: hasValue ? '#3b82f6' : undefined,
               boxShadow: hasValue ? '0 0 0 1px rgba(59, 130, 246, 0.3)' : undefined
-            },
-            dropdown: {
-              borderColor: colors.cardBorder
             }
           }}
         />
