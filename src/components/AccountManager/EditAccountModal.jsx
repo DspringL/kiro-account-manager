@@ -1,13 +1,21 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { CopyButton, Stack, Select, ActionIcon } from '@mantine/core'
+import { CopyButton, Stack } from '@mantine/core'
 import { Copy, Check, Folder, Plus, X } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
 import { setAccountTags, setAccountGroup, getGroups, addGroup } from '../../api/groupTag'
 import { TagSelector } from './GroupTagManager'
 import { TokenJsonView } from './TokenJsonView'
-import { Modal, ModalButton } from '../common/Modal'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../ui/dialog'
+import { Button } from '../ui/button'
 
 const PRESET_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
@@ -136,34 +144,15 @@ function EditAccountModal({ account, onClose, onSuccess }) {
   }
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={t('editAccount.title')}
-      subtitle={account.email}
-      icon={Folder}
-      iconColor="text-emerald-400"
-      gradientFrom="emerald-500"
-      gradientTo="teal-500"
-      maxWidth="480px"
-      footer={
-        <>
-          <ModalButton variant="secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </ModalButton>
-          <ModalButton
-            variant="success"
-            onClick={handleSave}
-            disabled={saving}
-            loading={saving}
-          >
-            {t('common.save')}
-          </ModalButton>
-        </>
-      }
-    >
-      {/* 使用 Mantine 的 style props 设置内边距 */}
-      <Stack gap="xl" p="md">
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent maxWidth="480px">
+        <DialogHeader icon={Folder} iconColor="text-emerald-400" iconBg="bg-gradient-to-br from-emerald-500/20 to-teal-500/10">
+          <DialogTitle>{t('editAccount.title')}</DialogTitle>
+          <p className={`text-xs ${colors.textMuted} mt-0.5`}>{account.email}</p>
+        </DialogHeader>
+
+        <DialogDescription>
+          <Stack gap="xl" p="md">
             <div>
               <label className={`block text-sm font-medium ${colors.text} mb-2`}>
                 {t('accounts.remark')}
@@ -277,8 +266,24 @@ function EditAccountModal({ account, onClose, onSuccess }) {
             />
 
             <TokenJsonView account={account} defaultExpanded={false} />
-      </Stack>
-    </Modal>
+          </Stack>
+        </DialogDescription>
+
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="success"
+            onClick={handleSave}
+            disabled={saving}
+            loading={saving}
+          >
+            {t('common.save')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

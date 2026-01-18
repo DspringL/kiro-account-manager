@@ -4,7 +4,15 @@ import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
 import { getTags, setAccountTags } from '../../api/groupTag'
 import { invoke } from '@tauri-apps/api/core'
-import { Modal, ModalButton } from '../common/Modal'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../ui/dialog'
+import { Button } from '../ui/button'
 
 const PRESET_COLORS = [
   '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', 
@@ -106,38 +114,15 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
     : availableTags
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={t('tags.batchSet')}
-      subtitle={`${accountIds.length} 个账号`}
-      icon={Tag}
-      iconColor="text-purple-400"
-      gradientFrom="purple-500"
-      gradientTo="pink-500"
-      maxWidth="480px"
-      footer={
-        <>
-          <ModalButton variant="secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </ModalButton>
-          <ModalButton
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={loading}
-            loading={loading}
-            style={{
-              background: 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153))',
-              boxShadow: '0 10px 15px -3px rgba(168, 85, 247, 0.3)'
-            }}
-          >
-            {loading ? t('common.saving') : t('common.confirm')}
-          </ModalButton>
-        </>
-      }
-    >
-      {/* 内容区域 - 使用标准内边距 */}
-      <div className="px-6 py-4 space-y-6">
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent maxWidth="480px">
+        <DialogHeader icon={Tag} iconColor="text-purple-400" iconBg="bg-gradient-to-br from-purple-500/20 to-pink-500/10">
+          <DialogTitle>{t('tags.batchSet')}</DialogTitle>
+          <p className={`text-xs ${colors.textMuted} mt-0.5`}>{accountIds.length} 个账号</p>
+        </DialogHeader>
+
+        <DialogDescription>
+          <div className="space-y-6">
         {/* 已选标签 - 点击 ❌ 取消 */}
         <div>
             <label className={`block text-sm font-medium ${colors.text} mb-2`}>{t('tags.selected')}</label>
@@ -216,9 +201,28 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
               </button>
             </div>
             <p className={`text-xs ${colors.textMuted} mt-1.5`}>{t('tags.hint') || '输入搜索已有标签，或直接输入创建新标签'}</p>
-        </div>
-      </div>
-    </Modal>
+          </div>
+          </div>
+        </DialogDescription>
+
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            loading={loading}
+            style={{
+              background: 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153))',
+              boxShadow: '0 10px 15px -3px rgba(168, 85, 247, 0.3)'
+            }}
+          >
+            {loading ? t('common.saving') : t('common.confirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

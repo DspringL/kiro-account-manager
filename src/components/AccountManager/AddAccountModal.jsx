@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { SegmentedControl, Stack, Alert, Button } from '@mantine/core'
+import { SegmentedControl, Stack, Alert, Button as MantineButton } from '@mantine/core'
 import { Download, Key, AlertCircle } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
-import { Modal, ModalButton } from '../common/Modal'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../ui/dialog'
+import { Button } from '../ui/button'
 
 function AddAccountModal({ onClose, onSuccess }) {
   const { t, colors } = useApp()
@@ -81,38 +89,18 @@ function AddAccountModal({ onClose, onSuccess }) {
   }
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title={t('addAccount.title')}
-      subtitle={t('addAccount.subtitle') || '添加新账号到管理器'}
-      icon={Key}
-      iconColor="text-blue-400"
-      gradientFrom="blue-500"
-      gradientTo="purple-500"
-      maxWidth="480px"
-      footer={
-        <>
-          <ModalButton variant="secondary" onClick={onClose}>
-            {t('common.cancel')}
-          </ModalButton>
-          <ModalButton
-            variant="primary"
-            onClick={handleAddManual}
-            disabled={addLoading || !refreshToken}
-            loading={addLoading}
-            icon={Key}
-          >
-            {t('addAccount.add')}
-          </ModalButton>
-        </>
-      }
-    >
-      {/* 使用 Mantine 的 style props 设置内边距 */}
-      <Stack gap="xl" p="md">
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent maxWidth="480px">
+        <DialogHeader icon={Key} iconColor="text-blue-400" iconBg="bg-gradient-to-br from-blue-500/20 to-purple-500/10">
+          <DialogTitle>{t('addAccount.title')}</DialogTitle>
+          <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('addAccount.subtitle') || '添加新账号到管理器'}</p>
+        </DialogHeader>
+
+        <DialogDescription>
+          <Stack gap="xl" p="md">
             {/* 保存本地账号 */}
             <div className={`p-5 rounded-xl border-2 border-dashed ${colors.cardBorder} ${colors.cardSecondary} hover:border-teal-500/50 group`}>
-              <Button
+              <MantineButton
                 onClick={handleSaveLocal}
                 disabled={addLoading}
                 variant="light"
@@ -128,7 +116,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                   <div className="font-semibold text-base">{t('addAccount.saveLocal')}</div>
                   <div className={`text-xs mt-1 opacity-70 ${colors.textMuted}`}>{t('addAccount.saveLocalDesc')}</div>
                 </div>
-              </Button>
+              </MantineButton>
             </div>
 
             <div className="relative">
@@ -242,8 +230,24 @@ function AddAccountModal({ onClose, onSuccess }) {
                 {addError}
               </Alert>
             )}
-      </Stack>
-    </Modal>
+          </Stack>
+        </DialogDescription>
+
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={handleAddManual}
+            disabled={addLoading || !refreshToken}
+            loading={addLoading}
+          >
+            <Key size={16} className="mr-1.5" />
+            {t('addAccount.add')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

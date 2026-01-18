@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
-import { Modal, ModalButton } from '../common/Modal'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../ui/dialog'
+import { Button } from '../ui/button'
 
 /**
  * 通用确认/提示对话框
@@ -37,100 +45,92 @@ function ConfirmDialog({
     confirm: {
       icon: AlertTriangle,
       iconColor: 'text-amber-400',
-      gradientFrom: 'amber-500',
-      gradientTo: 'orange-500',
+      iconBg: 'bg-gradient-to-br from-amber-500/20 to-orange-500/10',
       btnVariant: 'primary',
     },
     success: {
       icon: CheckCircle,
       iconColor: 'text-emerald-400',
-      gradientFrom: 'emerald-500',
-      gradientTo: 'green-500',
+      iconBg: 'bg-gradient-to-br from-emerald-500/20 to-green-500/10',
       btnVariant: 'success',
     },
     error: {
       icon: XCircle,
       iconColor: 'text-red-400',
-      gradientFrom: 'red-500',
-      gradientTo: 'rose-500',
+      iconBg: 'bg-gradient-to-br from-red-500/20 to-rose-500/10',
       btnVariant: 'danger',
     },
     info: {
       icon: Info,
       iconColor: 'text-blue-400',
-      gradientFrom: 'blue-500',
-      gradientTo: 'indigo-500',
+      iconBg: 'bg-gradient-to-br from-blue-500/20 to-indigo-500/10',
       btnVariant: 'primary',
     },
   }
 
-  const { icon: Icon, iconColor, gradientFrom, gradientTo, btnVariant } = config[type]
+  const { icon: Icon, iconColor, iconBg, btnVariant } = config[type]
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={onCancel}
-      title={title}
-      icon={Icon}
-      iconColor={iconColor}
-      gradientFrom={gradientFrom}
-      gradientTo={gradientTo}
-      maxWidth="400px"
-      footer={
-        <>
-          {type === 'confirm' && (
-            <ModalButton variant="secondary" onClick={onCancel}>
-              {finalCancelText}
-            </ModalButton>
+    <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent maxWidth="400px">
+        <DialogHeader icon={Icon} iconColor={iconColor} iconBg={iconBg}>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+
+        <DialogDescription>
+          <p className={`${colors.text} text-base leading-relaxed whitespace-pre-line`}>
+            {message}
+          </p>
+          
+          {/* 原始响应展开区域 */}
+          {rawData && (
+            <div className="mt-4">
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className={`flex items-center gap-1.5 text-xs ${colors.textMuted} hover:text-blue-500 transition-colors`}
+              >
+                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {expanded ? '收起原始响应' : '查看原始响应'}
+              </button>
+              {expanded && (
+                <div className="mt-2 relative">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(rawData, null, 2))
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 2000)
+                    }}
+                    className={`absolute top-2 right-2 p-1.5 rounded ${colors.cardHover} transition-colors`}
+                    title="复制"
+                  >
+                    {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className={colors.textMuted} />}
+                  </button>
+                  <pre className={`text-xs p-3 rounded-lg overflow-auto max-h-48 ${colors.codeBlock}`}>
+                    {JSON.stringify(rawData, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
           )}
-          <ModalButton
+        </DialogDescription>
+
+        <DialogFooter>
+          {type === 'confirm' && (
+            <Button variant="secondary" onClick={onCancel}>
+              {finalCancelText}
+            </Button>
+          )}
+          <Button
             variant={btnVariant}
             onClick={onConfirm}
             disabled={loading}
             loading={loading}
           >
             {finalConfirmText}
-          </ModalButton>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <p className={`${colors.text} text-base leading-relaxed whitespace-pre-line`}>
-          {message}
-        </p>
-        
-        {/* 原始响应展开区域 */}
-        {rawData && (
-          <div>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className={`flex items-center gap-1.5 text-xs ${colors.textMuted} hover:text-blue-500 transition-colors`}
-            >
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {expanded ? '收起原始响应' : '查看原始响应'}
-            </button>
-            {expanded && (
-              <div className="mt-2 relative">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(JSON.stringify(rawData, null, 2))
-                    setCopied(true)
-                    setTimeout(() => setCopied(false), 2000)
-                  }}
-                  className={`absolute top-2 right-2 p-1.5 rounded ${colors.cardHover} transition-colors`}
-                  title="复制"
-                >
-                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className={colors.textMuted} />}
-                </button>
-                <pre className={`text-xs p-3 rounded-lg overflow-auto max-h-48 ${colors.codeBlock}`}>
-                  {JSON.stringify(rawData, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </Modal>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
