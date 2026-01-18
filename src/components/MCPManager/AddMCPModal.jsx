@@ -175,7 +175,7 @@ function AddMCPModal({ onClose, onSuccess }) {
         </div>
 
         {/* 内容 */}
-        <div className="relative flex-1 overflow-auto p-6 space-y-4">
+        <div className="relative flex-1 overflow-auto p-6 space-y-4" style={{ padding: 'var(--mantine-spacing-md)' }}>
           {/* 快速模板 */}
           <div>
             <label className={`block text-xs ${colors.textMuted} mb-1.5`}>快速填充</label>
@@ -232,9 +232,6 @@ function AddMCPModal({ onClose, onSuccess }) {
               onChange={e => setJsonConfig(e.target.value)}
               rows={12}
               spellCheck={false}
-              classNames={{
-                input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-              }}
               styles={{
                 input: {
                   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',

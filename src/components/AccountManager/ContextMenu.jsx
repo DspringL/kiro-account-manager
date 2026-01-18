@@ -49,25 +49,50 @@ const ContextMenu = memo(function ContextMenu({ x, y, onClose, items }) {
   return createPortal(
     <div
       ref={menuRef}
-      className={`fixed z-[9999] min-w-[180px] py-2 rounded-xl shadow-2xl border backdrop-blur-sm ${colors.card} ${colors.cardBorder}`}
-      style={{ left: position.x, top: position.y }}
+      className={`fixed z-[9999] min-w-[200px] py-2 rounded-xl shadow-2xl border backdrop-blur-md ${colors.card} ${colors.cardBorder}`}
+      style={{ 
+        left: position.x, 
+        top: position.y,
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)'
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, idx) =>
         item.divider ? (
-          <div key={idx} className={`my-1.5 mx-3 border-t ${colors.cardBorder}`} />
+          <div key={idx} className={`my-2 mx-3 border-t ${colors.cardBorder} opacity-50`} />
         ) : (
           <button
             key={idx}
             onClick={() => { item.onClick(); onClose() }}
             disabled={item.disabled}
-            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              item.danger ? 'text-red-500 hover:bg-red-500/10' : colors.text + ' ' + colors.cardHover
-            }`}
+            className={`
+              w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 
+              transition-all duration-200
+              disabled:opacity-40 disabled:cursor-not-allowed
+              ${item.danger 
+                ? 'text-red-400 hover:bg-red-500/15 hover:text-red-300' 
+                : `${colors.text} ${colors.cardHover}`
+              }
+            `}
           >
-            {item.icon && <item.icon size={16} className={item.danger ? 'text-red-500' : colors.textMuted} />}
-            <span className="flex-1">{item.label}</span>
-            {item.shortcut && <span className={`text-xs ${colors.textMuted}`}>{item.shortcut}</span>}
+            {item.icon && (
+              <div className={`
+                w-8 h-8 rounded-lg flex items-center justify-center
+                ${item.danger ? 'bg-red-500/10' : colors.cardSecondary}
+              `}>
+                <item.icon 
+                  size={16} 
+                  className={item.danger ? 'text-red-400' : colors.textMuted}
+                  strokeWidth={2}
+                />
+              </div>
+            )}
+            <span className="flex-1 font-medium">{item.label}</span>
+            {item.shortcut && (
+              <span className={`text-xs px-2 py-0.5 rounded ${colors.cardSecondary} ${colors.textMuted}`}>
+                {item.shortcut}
+              </span>
+            )}
           </button>
         )
       )}

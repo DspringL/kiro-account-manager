@@ -1,13 +1,16 @@
 // 筛选器应用函数
 export function applyFilters(accounts, filters) {
   if (!filters) return accounts
-  const hasFilters = (filters.subscriptions?.length > 0) ||
+  const hasFilters = !!(
+    (filters.subscriptions?.length > 0) ||
     (filters.statuses?.length > 0) ||
     (filters.providers?.length > 0) ||
     filters.usageRange
+  )
+  
   if (!hasFilters) return accounts
 
-  return accounts.filter(account => {
+  const result = accounts.filter(account => {
     // 订阅类型筛选 - 使用 subscriptionTitle 字段
     if (filters.subscriptions?.length > 0) {
       const subTitle = (account.usageData?.subscriptionInfo?.subscriptionTitle || '').toUpperCase()
@@ -75,4 +78,6 @@ export function applyFilters(accounts, filters) {
 
     return true
   })
+  
+  return result
 }

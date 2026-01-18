@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 import { Filter, X } from 'lucide-react'
-import { Select } from '@mantine/core'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useTranslation } from 'react-i18next'
 import SearchableTagSelect from './SearchableTagSelect'
@@ -35,53 +34,30 @@ const USAGE_RANGE_OPTIONS = [
 
 // 通用筛选下拉组件
 function FilterSelect({ label, value, options, onChange, onClear, colors }) {
-  const hasValue = value && value !== ''
-  
   return (
     <div>
       <label className={`block text-xs font-semibold ${colors.text} mb-2.5 flex items-center gap-2`}>
         <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
         {label}
       </label>
-      <Select
-        value={value || null}
-        onChange={(v) => {
-          if (!v || v === '') {
+      <select
+        value={value || ''}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === '') {
             onClear?.()
           } else {
             onChange(v)
           }
         }}
-        data={options}
-        clearable={hasValue}
-        size="sm"
-        radius="md"
-        classNames={{
-          input: `${colors.text} transition-all duration-200`,
-          dropdown: `${colors.card} border ${colors.cardBorder} shadow-xl`,
-          option: `${colors.text} hover:bg-blue-500/10`
-        }}
-        styles={{
-          input: {
-            fontSize: '0.875rem',
-            padding: '0.625rem 0.875rem',
-            backgroundColor: hasValue ? 'rgba(59, 130, 246, 0.05)' : undefined,
-            borderColor: hasValue ? 'rgba(59, 130, 246, 0.5)' : undefined,
-            borderWidth: '1px',
-            boxShadow: hasValue ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : undefined,
-            transition: 'all 0.2s ease'
-          },
-          dropdown: {
-            borderRadius: '0.75rem',
-            padding: '0.5rem'
-          },
-          option: {
-            borderRadius: '0.5rem',
-            marginBottom: '0.25rem',
-            fontSize: '0.875rem'
-          }
-        }}
-      />
+        className={`w-full px-3 py-2 text-sm rounded-lg border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all`}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
@@ -95,8 +71,6 @@ function FilterDropdown({
   allTags = [],
   selectedTag,
   onTagFilter,
-  selectedStatus,
-  onStatusFilter,
 }) {
   const { colors } = useTheme()
   const { t } = useTranslation()
@@ -120,14 +94,12 @@ function FilterDropdown({
     filters.usageRange ? 1 : 0,
     selectedGroup ? 1 : 0,
     selectedTag ? 1 : 0,
-    selectedStatus ? 1 : 0,
   ].reduce((a, b) => a + b, 0)
 
   const clearAll = () => {
     onFiltersChange({ subscriptions: [], statuses: [], providers: [], usageRange: null })
     onGroupFilter?.(null)
     onTagFilter(null)
-    onStatusFilter(null)
   }
 
   return (
@@ -258,7 +230,7 @@ function FilterDropdown({
                 label={t('filter.subscription')}
                 value={filters.subscriptions?.length > 0 ? filters.subscriptions[0] : ''}
                 options={SUBSCRIPTION_OPTIONS}
-                onChange={(v) => onFiltersChange({ ...filters, subscriptions: v ? [v] : [] })}
+                onChange={(v) => onFiltersChange({ ...filters, subscriptions: [v] })}
                 onClear={() => onFiltersChange({ ...filters, subscriptions: [] })}
                 colors={colors}
               />
@@ -270,7 +242,7 @@ function FilterDropdown({
                 label={t('filter.status')}
                 value={filters.statuses?.length > 0 ? filters.statuses[0] : ''}
                 options={STATUS_OPTIONS}
-                onChange={(v) => onFiltersChange({ ...filters, statuses: v ? [v] : [] })}
+                onChange={(v) => onFiltersChange({ ...filters, statuses: [v] })}
                 onClear={() => onFiltersChange({ ...filters, statuses: [] })}
                 colors={colors}
               />
@@ -282,7 +254,7 @@ function FilterDropdown({
                 label={t('filter.provider')}
                 value={filters.providers?.length > 0 ? filters.providers[0] : ''}
                 options={PROVIDER_OPTIONS}
-                onChange={(v) => onFiltersChange({ ...filters, providers: v ? [v] : [] })}
+                onChange={(v) => onFiltersChange({ ...filters, providers: [v] })}
                 onClear={() => onFiltersChange({ ...filters, providers: [] })}
                 colors={colors}
               />
@@ -294,7 +266,7 @@ function FilterDropdown({
                 label={t('filter.usageRange')}
                 value={filters.usageRange || ''}
                 options={USAGE_RANGE_OPTIONS}
-                onChange={(v) => onFiltersChange({ ...filters, usageRange: v || null })}
+                onChange={(v) => onFiltersChange({ ...filters, usageRange: v })}
                 onClear={() => onFiltersChange({ ...filters, usageRange: null })}
                 colors={colors}
               />

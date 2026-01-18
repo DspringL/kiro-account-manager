@@ -184,7 +184,7 @@ function AccountDetailModal({ account, onClose }) {
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <div className="p-8 space-y-8">
+          <div className="p-8 space-y-8" style={{ padding: 'var(--mantine-spacing-lg)' }}>
             {/* 配额总览 */}
             <div className={`${colors.card} rounded-xl p-8 shadow-sm border ${colors.cardBorder}`}>
               <div className="flex items-center justify-between mb-4">
@@ -212,8 +212,8 @@ function AccountDetailModal({ account, onClose }) {
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-3">
-                <div className={`${colors.cardSecondary} rounded-lg p-3`}>
+              <div className="grid grid-cols-3 gap-4">
+                <div className={`${colors.cardSecondary} rounded-lg p-4`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.mainQuota')}</span>
@@ -222,7 +222,7 @@ function AccountDetailModal({ account, onClose }) {
                   {account.usageData?.nextDateReset && <div className={`text-xs ${colors.textMuted} mt-1`}>{new Date(account.usageData.nextDateReset * 1000).toLocaleDateString()} {t('detail.reset')}</div>}
                 </div>
                 
-                <div className={`rounded-lg p-3 ${freeTrialQuota && freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500/20' : colors.cardSecondary}`}>
+                <div className={`rounded-lg p-4 ${freeTrialQuota && freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500/20' : colors.cardSecondary}`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className={`w-2 h-2 rounded-full ${freeTrialInfo?.freeTrialStatus === 'ACTIVE' ? 'bg-cyan-500' : `${colors.cardBorder}`}`}></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.freeTrial')}</span>
@@ -232,7 +232,7 @@ function AccountDetailModal({ account, onClose }) {
                   {freeTrialInfo?.freeTrialExpiry && <div className={`text-xs ${colors.textMuted} mt-1`}>{new Date(freeTrialInfo.freeTrialExpiry * 1000).toLocaleDateString()} {t('detail.expires')}</div>}
                 </div>
                 
-                <div className={`rounded-lg p-3 ${bonusQuota ? 'bg-purple-500/20' : colors.cardSecondary}`}>
+                <div className={`rounded-lg p-4 ${bonusQuota ? 'bg-purple-500/20' : colors.cardSecondary}`}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <div className={`w-2 h-2 rounded-full ${bonusQuota ? 'bg-purple-500' : `${colors.cardBorder}`}`}></div>
                     <span className={`text-xs ${colors.textMuted}`}>{t('detail.bonusTotal')}</span>

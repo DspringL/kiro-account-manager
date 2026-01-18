@@ -145,7 +145,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
       iconColor="text-emerald-400"
       gradientFrom="emerald-500"
       gradientTo="teal-500"
-      maxWidth="600px"
+      maxWidth="480px"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
@@ -162,7 +162,8 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         </>
       }
     >
-          <Stack gap="xl">
+      {/* 使用 Mantine 的 style props 设置内边距 */}
+      <Stack gap="xl" p="md">
             <div>
               <label className={`block text-sm font-medium ${colors.text} mb-2`}>
                 {t('accounts.remark')}
@@ -276,7 +277,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
             />
 
             <TokenJsonView account={account} defaultExpanded={false} />
-          </Stack>
+      </Stack>
     </Modal>
   )
 }

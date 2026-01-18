@@ -90,7 +90,7 @@ function AddAccountModal({ onClose, onSuccess }) {
       iconColor="text-blue-400"
       gradientFrom="blue-500"
       gradientTo="purple-500"
-      maxWidth="500px"
+      maxWidth="480px"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
@@ -108,7 +108,8 @@ function AddAccountModal({ onClose, onSuccess }) {
         </>
       }
     >
-          <Stack gap="xl">
+      {/* 使用 Mantine 的 style props 设置内边距 */}
+      <Stack gap="xl" p="md">
             {/* 保存本地账号 */}
             <div className={`p-5 rounded-xl border-2 border-dashed ${colors.cardBorder} ${colors.cardSecondary} hover:border-teal-500/50 group`}>
               <Button
@@ -241,7 +242,7 @@ function AddAccountModal({ onClose, onSuccess }) {
                 {addError}
               </Alert>
             )}
-          </Stack>
+      </Stack>
     </Modal>
   )
 }

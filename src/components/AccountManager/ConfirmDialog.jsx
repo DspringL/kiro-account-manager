@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle, XCircle, Info, X, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
+import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
+import { Modal, ModalButton } from '../common/Modal'
 
 /**
  * 通用确认/提示对话框
@@ -24,8 +25,7 @@ function ConfirmDialog({
   cancelText,
   loading = false,
 }) {
-  const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const { t, colors } = useApp()
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   
@@ -37,159 +37,100 @@ function ConfirmDialog({
     confirm: {
       icon: AlertTriangle,
       iconColor: 'text-amber-400',
-      iconBg: 'bg-gradient-to-br from-amber-500/20 to-orange-500/10',
-      headerGradient: 'from-amber-500/10 via-transparent to-transparent',
-      accentColor: 'amber',
-      btnGradient: 'from-blue-500 to-blue-600',
-      btnShadow: 'shadow-blue-500/30',
+      gradientFrom: 'amber-500',
+      gradientTo: 'orange-500',
+      btnVariant: 'primary',
     },
     success: {
       icon: CheckCircle,
       iconColor: 'text-emerald-400',
-      iconBg: 'bg-gradient-to-br from-emerald-500/20 to-green-500/10',
-      headerGradient: 'from-emerald-500/10 via-transparent to-transparent',
-      accentColor: 'emerald',
-      btnGradient: 'from-emerald-500 to-emerald-600',
-      btnShadow: 'shadow-emerald-500/30',
+      gradientFrom: 'emerald-500',
+      gradientTo: 'green-500',
+      btnVariant: 'success',
     },
     error: {
       icon: XCircle,
       iconColor: 'text-red-400',
-      iconBg: 'bg-gradient-to-br from-red-500/20 to-rose-500/10',
-      headerGradient: 'from-red-500/10 via-transparent to-transparent',
-      accentColor: 'red',
-      btnGradient: 'from-red-500 to-red-600',
-      btnShadow: 'shadow-red-500/30',
+      gradientFrom: 'red-500',
+      gradientTo: 'rose-500',
+      btnVariant: 'danger',
     },
     info: {
       icon: Info,
       iconColor: 'text-blue-400',
-      iconBg: 'bg-gradient-to-br from-blue-500/20 to-indigo-500/10',
-      headerGradient: 'from-blue-500/10 via-transparent to-transparent',
-      accentColor: 'blue',
-      btnGradient: 'from-blue-500 to-blue-600',
-      btnShadow: 'shadow-blue-500/30',
+      gradientFrom: 'blue-500',
+      gradientTo: 'indigo-500',
+      btnVariant: 'primary',
     },
   }
 
-  const { icon: Icon, iconColor, iconBg, headerGradient, btnGradient, btnShadow } = config[type]
+  const { icon: Icon, iconColor, gradientFrom, gradientTo, btnVariant } = config[type]
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in"
-      onClick={onCancel}
-    >
-      <div 
-        className={`
-          relative overflow-hidden
-          ${colors.card} 
-          rounded-2xl w-full max-w-[400px] 
-          shadow-2xl
-          border ${colors.cardBorder}
-        `}
-        onClick={e => e.stopPropagation()}
-        style={{ animation: 'dialogSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
-      >
-        {/* 顶部渐变装饰 */}
-        <div className={`absolute top-0 left-0 right-0 h-32 bg-gradient-to-b ${headerGradient} pointer-events-none`} />
-        
-        {/* 装饰性光晕 */}
-        <div className={`absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br ${iconBg} rounded-full blur-3xl opacity-50`} />
-        
-        {/* Header */}
-        <div className="relative px-6 pt-6 pb-2">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`
-                w-12 h-12 rounded-2xl ${iconBg} 
-                flex items-center justify-center
-                ring-1 ${colors.ringColor}
-                shadow-lg
-              `}>
-                <Icon size={24} className={iconColor} strokeWidth={2} />
-              </div>
-              <div>
-                <h2 className={`text-lg font-semibold ${colors.text} leading-tight`}>{title}</h2>
-              </div>
-            </div>
-            <button
-              onClick={onCancel}
-              className={`p-2 rounded-xl transition-all duration-200 ${colors.cardHover}`}
-            >
-              <X size={18} className={colors.textMuted} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="relative px-6 py-6">
-          <p className={`${colors.textMuted} text-sm leading-relaxed whitespace-pre-line`}>
-            {message}
-          </p>
-          
-          {/* 原始响应展开区域 */}
-          {rawData && (
-            <div className="mt-4">
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className={`flex items-center gap-1.5 text-xs ${colors.textMuted} hover:text-blue-500 transition-colors`}
-              >
-                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                {expanded ? '收起原始响应' : '查看原始响应'}
-              </button>
-              {expanded && (
-                <div className={`mt-2 relative`}>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(rawData, null, 2))
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 2000)
-                    }}
-                    className={`absolute top-2 right-2 p-1.5 rounded ${colors.cardHover} transition-colors`}
-                    title="复制"
-                  >
-                    {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className={colors.textMuted} />}
-                  </button>
-                  <pre className={`text-xs p-3 rounded-lg overflow-auto max-h-48 ${colors.codeBlock}`}>
-                    {JSON.stringify(rawData, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className={`relative px-6 py-5 ${colors.dialogFooter} flex justify-end gap-3`}>
+    <Modal
+      isOpen={true}
+      onClose={onCancel}
+      title={title}
+      icon={Icon}
+      iconColor={iconColor}
+      gradientFrom={gradientFrom}
+      gradientTo={gradientTo}
+      maxWidth="400px"
+      footer={
+        <>
           {type === 'confirm' && (
-            <button
-              onClick={onCancel}
-              className={`px-5 py-2.5 text-sm font-medium rounded-xl ${colors.btnSecondary} transition-all duration-200 active:scale-[0.98]`}
-            >
+            <ModalButton variant="secondary" onClick={onCancel}>
               {finalCancelText}
-            </button>
+            </ModalButton>
           )}
-          <button
+          <ModalButton
+            variant={btnVariant}
             onClick={onConfirm}
             disabled={loading}
-            className={`
-              px-6 py-2.5 text-sm font-medium rounded-xl text-white
-              bg-gradient-to-r ${btnGradient}
-              shadow-lg ${btnShadow}
-              hover:opacity-90 hover:shadow-xl
-              disabled:opacity-50 disabled:cursor-not-allowed 
-              flex items-center gap-2 
-              transition-all duration-200 active:scale-[0.98]
-            `}
+            loading={loading}
           >
-            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
             {finalConfirmText}
-          </button>
-        </div>
+          </ModalButton>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className={`${colors.text} text-base leading-relaxed whitespace-pre-line`}>
+          {message}
+        </p>
+        
+        {/* 原始响应展开区域 */}
+        {rawData && (
+          <div>
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className={`flex items-center gap-1.5 text-xs ${colors.textMuted} hover:text-blue-500 transition-colors`}
+            >
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {expanded ? '收起原始响应' : '查看原始响应'}
+            </button>
+            {expanded && (
+              <div className="mt-2 relative">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(rawData, null, 2))
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className={`absolute top-2 right-2 p-1.5 rounded ${colors.cardHover} transition-colors`}
+                  title="复制"
+                >
+                  {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className={colors.textMuted} />}
+                </button>
+                <pre className={`text-xs p-3 rounded-lg overflow-auto max-h-48 ${colors.codeBlock}`}>
+                  {JSON.stringify(rawData, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-
-    </div>
+    </Modal>
   )
 }
 

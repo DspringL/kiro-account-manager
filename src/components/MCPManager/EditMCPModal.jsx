@@ -110,7 +110,7 @@ function EditMCPModal({ name, config, onClose, onSuccess }) {
         </div>
 
         {/* 内容 */}
-        <div className="relative flex-1 overflow-auto p-6 space-y-4">
+        <div className="relative flex-1 overflow-auto p-6 space-y-4" style={{ padding: 'var(--mantine-spacing-md)' }}>
           {/* JSON 配置 */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1.5">

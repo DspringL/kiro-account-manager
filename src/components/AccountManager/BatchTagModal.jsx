@@ -115,7 +115,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
       iconColor="text-purple-400"
       gradientFrom="purple-500"
       gradientTo="pink-500"
-      maxWidth="lg"
+      maxWidth="480px"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
@@ -136,10 +136,12 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
         </>
       }
     >
-          {/* 已选标签 - 点击 ❌ 取消 */}
-          <div>
+      {/* 内容区域 - 使用标准内边距 */}
+      <div className="px-6 py-4 space-y-6">
+        {/* 已选标签 - 点击 ❌ 取消 */}
+        <div>
             <label className={`block text-sm font-medium ${colors.text} mb-2`}>{t('tags.selected')}</label>
-            <div className="flex flex-wrap gap-1.5 min-h-[32px]">
+            <div className="flex flex-wrap gap-2 min-h-[36px]">
               {selectedTagIds.length === 0 ? (
                 <span className={`text-sm ${colors.textMuted}`}>{t('tags.noTags')}</span>
               ) : (
@@ -163,7 +165,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
 
           {/* 搜索/添加标签 - 合并输入框 */}
           <div>
-            <label className={`block text-sm font-medium ${colors.text} mb-2`}>{t('tags.addOrSelect')}</label>
+            <label className={`block text-sm font-medium ${colors.text} mb-3`}>{t('tags.addOrSelect')}</label>
             <div className="flex gap-2">
               <div className="flex-1 relative" ref={inputContainerRef}>
                 <input
@@ -214,8 +216,8 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
               </button>
             </div>
             <p className={`text-xs ${colors.textMuted} mt-1.5`}>{t('tags.hint') || '输入搜索已有标签，或直接输入创建新标签'}</p>
-          </div>
         </div>
+      </div>
     </Modal>
   )
 }

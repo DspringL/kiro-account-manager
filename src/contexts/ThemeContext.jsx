@@ -185,7 +185,7 @@ export const themes = {
     cardCurrent: 'border-green-500/50 bg-green-500/5',
     cardBanned: 'border-red-500/50 bg-red-500/5',
     cardWarning: 'border-orange-500/50 bg-orange-500/5',
-    cardNormal: 'border-gray-700 bg-gray-800/50 hover:border-gray-600',
+    cardNormal: 'border-gray-700 bg-[#1a1a2e]/80 hover:border-gray-600',
     cardGlowCurrent: 'shadow-green-500/30 hover:shadow-green-500/50',
     cardGlowBanned: 'shadow-red-500/30 hover:shadow-red-500/50',
     cardGlowWarning: 'shadow-orange-500/30 hover:shadow-orange-500/50',
@@ -460,14 +460,14 @@ export function ThemeProvider({ children }) {
     defaultRadius: 'md',
     components: {
       Select: {
+        defaultProps: {
+          comboboxProps: {
+            transitionProps: { transition: 'fade', duration: 150 }
+          }
+        },
         styles: (theme) => ({
           input: {
-            backgroundColor: 'transparent',
-            borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
             color: isLightTheme ? '#1f2937' : '#e5e7eb',
-            '&:focus': {
-              borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
-            },
           },
           dropdown: {
             backgroundColor: isLightTheme ? '#ffffff' : '#1a1a2e',
@@ -475,14 +475,6 @@ export function ThemeProvider({ children }) {
           },
           option: {
             color: isLightTheme ? '#1f2937' : '#e5e7eb',
-            '&[data-combobox-selected]': {
-              backgroundColor: isLightTheme ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.2)',
-              color: isLightTheme ? '#1f2937' : '#ffffff',
-            },
-            '&:hover': {
-              backgroundColor: isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)',
-              color: isLightTheme ? '#1f2937' : '#ffffff',
-            },
           },
         }),
       },
@@ -490,6 +482,7 @@ export function ThemeProvider({ children }) {
         styles: {
           input: {
             backgroundColor: 'transparent',
+            color: isLightTheme ? '#1f2937' : '#e5e7eb',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
@@ -501,9 +494,13 @@ export function ThemeProvider({ children }) {
         styles: {
           input: {
             backgroundColor: 'transparent',
+            color: isLightTheme ? '#1f2937' : '#e5e7eb', // 关键：确保深色主题下文字是浅色
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
+            },
+            '&::placeholder': {
+              color: isLightTheme ? '#9ca3af' : '#6b7280', // placeholder 颜色
             },
           },
         },
@@ -512,6 +509,7 @@ export function ThemeProvider({ children }) {
         styles: {
           input: {
             backgroundColor: 'transparent',
+            color: isLightTheme ? '#1f2937' : '#e5e7eb',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',

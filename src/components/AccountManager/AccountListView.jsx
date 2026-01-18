@@ -62,7 +62,7 @@ const ListRow = memo(function ListRow({
   return (
     <div 
       onContextMenu={handleContextMenu}
-      className={`flex items-center gap-3 px-4 py-2.5 border-b ${colors.cardBorder} ${isCurrent ? colors.cardCurrent : ''} ${colors.cardHover} cursor-context-menu`}
+      className={`flex items-center gap-3 px-4 h-[56px] border-b ${colors.cardBorder} ${isCurrent ? colors.cardCurrent : ''} ${colors.cardHover} cursor-context-menu`}
     >
       {contextMenu && (
         <ContextMenu x={contextMenu.x} y={contextMenu.y} onClose={() => setContextMenu(null)} items={getMenuItems()} isLightTheme={isLightTheme} />
@@ -196,7 +196,7 @@ function AccountListView({
   const rowVirtualizer = useVirtualizer({
     count: accounts.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 52,
+    estimateSize: () => 56,
     overscan: 5,
   })
 
@@ -273,7 +273,7 @@ function AccountListView({
         <div className="flex-1">标签</div>
       </div>
 
-      <div ref={scrollRef} className={`flex-1 overflow-auto border border-t-0 ${colors.cardBorder} rounded-b-xl`}>
+      <div ref={scrollRef} className={`flex-1 overflow-auto border border-t-0 ${colors.cardBorder} rounded-b-xl ${colors.card}`}>
         <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
           {rowVirtualizer.getVirtualItems().map((vRow) => {
             const acc = accounts[vRow.index]

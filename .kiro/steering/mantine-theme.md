@@ -200,7 +200,18 @@ Card (color: 未设置) ← 错误！
 
 ## 历史问题与教训
 
-### 2026-01-18 修复过程
+### 2026-01-18 修复过程（第二轮）
+1. **Textarea/TextInput/NumberInput 文字颜色问题**
+   - **问题**：深色主题下 Mantine 输入组件文字显示为黑色，无法阅读
+   - **根本原因**：ThemeContext 中只配置了 `backgroundColor` 和 `borderColor`，**缺少 `color` 属性**
+   - **解决方案**：在所有输入组件的 styles 中添加 `color: isLightTheme ? '#1f2937' : '#e5e7eb'`
+   - **影响组件**：
+     - `Textarea` - JSON 输入框、规则编辑器
+     - `TextInput` - 所有文本输入框
+     - `NumberInput` - 数字输入框
+   - **修复位置**：`src/contexts/ThemeContext.jsx` 的 `mantineTheme.components`
+
+### 2026-01-18 修复过程（第一轮）
 1. **第一阶段**：修复首页所有组件的 `c="dimmed"` 问题（24处）
 2. **第二阶段**：在 ThemeContext 中添加 Text、Group、Stack 的 `color: 'inherit'` 配置
 3. **第三阶段**：修复 Select 组件 input 文字颜色缺失问题

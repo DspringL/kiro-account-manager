@@ -242,7 +242,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
   }
 
   const renderResult = (result) => (
-    <Stack gap="md">
+    <Stack gap="md" p="sm">
       <Alert icon={<CheckCircle size={20} />} color="teal" variant="light">
         <Text fw={500}>{t('import.successCount', { count: result.success.length })}</Text>
         {result.success.length > 0 && (
@@ -253,7 +253,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
       {result.failed.length > 0 && (
         <Alert icon={<AlertCircle size={20} />} color="red" variant="light">
           <Text fw={500}>{t('import.failedCount', { count: result.failed.length })}</Text>
-          <Stack gap={4} mt="xs">
+          <Stack gap={4} mt="xs" p={0}>
             {result.failed.map((f, i) => (
               <Text key={i} size="sm">#{f.index}: {f.error}</Text>
             ))}
@@ -315,7 +315,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
         <div className="relative max-h-[75vh] overflow-y-auto">
           {importResult || ssoResult ? (
             <div className="px-6 py-6">
-              <Stack gap="lg">
+              <Stack gap="lg" p="md">
                 {importResult && renderResult(importResult)}
                 {ssoResult && renderResult(ssoResult)}
                 <div className="flex justify-end gap-3 mt-4">
@@ -342,7 +342,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
             </div>
           ) : importing || ssoImporting ? (
             <div className="px-6 py-8">
-              <Stack gap="xl">
+              <Stack gap="xl" p="md">
                 <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder}`}>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
@@ -375,7 +375,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
               </Tabs.List>
 
               <Tabs.Panel value="json" pt="md" className="px-6 pb-6">
-                <Stack gap="xl">
+                <Stack gap="xl" p="md">
               <Group>
                 <FileButton onChange={handleFileSelect} accept=".json">
                   {(props) => <Button {...props} variant="light" leftSection={<FileJson size={16} />}>{t('import.selectFile')}</Button>}
@@ -394,14 +394,15 @@ function ImportAccountModal({ onClose, onSuccess }) {
                 onChange={(e) => { setJsonText(e.target.value); parseJson(e.target.value) }}
                 rows={10}
                 placeholder={`[{"refreshToken": "aor...", "provider": "Google"}]`}
-                styles={{ input: { fontFamily: 'monospace' } }}
-                classNames={{
-                  input: `${colors.text} ${colors.input}`
+                styles={{ 
+                  input: { 
+                    fontFamily: 'monospace'
+                  } 
                 }}
               />
 
               {parseResult && (
-                <Stack gap="xs">
+                <Stack gap="xs" p={0}>
                   {parseResult.valid.length > 0 && (
                     <Alert icon={<CheckCircle size={16} />} color="teal" variant="light">
                       {t('import.parseSuccess')}: {parseResult.valid.length} {t('import.validRecords')}
@@ -410,7 +411,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
                   {parseResult.errors.length > 0 && (
                     <Alert icon={<AlertCircle size={16} />} color="red" variant="light">
                       <Text size="sm" fw={500}>{t('import.validationError')}</Text>
-                      <Stack gap={2} mt="xs">
+                      <Stack gap={2} mt="xs" p={0}>
                         {parseResult.errors.slice(0, 5).map((err, i) => (
                           <Text key={i} size="xs">{err}</Text>
                         ))}
@@ -451,7 +452,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
           </Tabs.Panel>
 
           <Tabs.Panel value="sso" pt="md" className="px-6 pb-6">
-            <Stack gap="xl">
+            <Stack gap="xl" p="md">
               <Alert color="blue" variant="light">
                 <Text size="sm" fw={500}>{t('import.ssoGuide')}</Text>
                 <ol className={`list-decimal list-inside space-y-1 text-xs mt-2 ${colors.text}`}>
@@ -469,9 +470,10 @@ function ImportAccountModal({ onClose, onSuccess }) {
                 onChange={(e) => setSsoToken(e.target.value)}
                 rows={6}
                 placeholder={t('import.ssoTokenPlaceholder')}
-                styles={{ input: { fontFamily: 'monospace' } }}
-                classNames={{
-                  input: `${colors.text} ${colors.input}`
+                styles={{ 
+                  input: { 
+                    fontFamily: 'monospace'
+                  } 
                 }}
               />
 

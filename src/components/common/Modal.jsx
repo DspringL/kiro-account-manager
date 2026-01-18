@@ -72,7 +72,7 @@ export function Modal({
         />
         
         {/* Header */}
-        <div className="relative px-6 pt-6 pb-2">
+        <div className="relative px-12 pt-8 pb-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-4">
               {Icon && (
@@ -110,7 +110,7 @@ export function Modal({
 
         {/* Content */}
         <div 
-          className="relative px-6 py-6 overflow-y-auto"
+          className="relative px-12 py-8 overflow-y-auto"
           style={{ maxHeight }}
         >
           {children}
@@ -118,7 +118,7 @@ export function Modal({
 
         {/* Footer */}
         {footer && (
-          <div className={`relative px-6 py-5 ${colors.dialogFooter} flex justify-end gap-3`}>
+          <div className={`relative px-12 py-6 ${colors.dialogFooter} flex justify-end gap-3`}>
             {footer}
           </div>
         )}

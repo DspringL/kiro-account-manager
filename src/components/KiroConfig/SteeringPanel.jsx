@@ -141,7 +141,7 @@ function SteeringPanel({ onCountChange }) {
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex gap-4 p-4">
       {/* 左侧列表 */}
       <FileList
         files={files}
@@ -156,7 +156,7 @@ function SteeringPanel({ onCountChange }) {
       />
 
       {/* 右侧编辑器 */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
         {selectedFile ? (
           <Editor
             file={selectedFile}
@@ -198,54 +198,46 @@ function SteeringPanel({ onCountChange }) {
 
 // 文件列表组件
 function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate, isLightTheme, colors, t }) {
-  return (
-    <div className={`w-72 border-r ${colors.cardBorder} flex flex-col`}>
-      <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
-        <span className={`text-sm font-semibold ${colors.text}`}>Steering 规则 ({files.length})</span>
-        <div className="flex gap-2">
-          <button 
-            onClick={onCreate} 
-            className={`p-2 rounded-lg ${colors.cardHover}`}
-            title="新建规则"
-          >
-            <Plus size={18} className="text-green-500" />
-          </button>
-          <button 
-            onClick={onRefresh} 
-            className={`p-2 rounded-lg ${colors.cardHover}`}
-            title="刷新列表"
-          >
-            <RefreshCw size={18} className={colors.textMuted} />
-          </button>
+  // 按 inclusion 分组
+  const groupedFiles = {
+    always: files.filter(f => parseFrontMatter(f.content).inclusion === 'always'),
+    fileMatch: files.filter(f => parseFrontMatter(f.content).inclusion === 'fileMatch'),
+    manual: files.filter(f => parseFrontMatter(f.content).inclusion === 'manual'),
+  }
+
+  const renderFileGroup = (title, files, icon, badgeColor) => {
+    if (files.length === 0) return null
+    return (
+      <div className="mb-4">
+        <div className={`flex items-center gap-2 px-2 py-1.5 mb-2`}>
+          {icon}
+          <span className={`text-xs font-semibold ${colors.textMuted} uppercase tracking-wide`}>{title}</span>
+          <span className={`text-xs ${colors.textMuted}`}>({files.length})</span>
         </div>
-      </div>
-      <div className="flex-1 overflow-auto p-3 space-y-2">
-        {files.length === 0 ? (
-          <div className={`text-center py-12 ${colors.textMuted}`}>
-            <FileText size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">{t('steering.noFiles')}</p>
-          </div>
-        ) : (
-          files.map(file => {
+        <div className="space-y-1.5">
+          {files.map(file => {
             const parsed = parseFrontMatter(file.content)
             const isSelected = selectedFile?.fileName === file.fileName
             return (
               <div
                 key={file.fileName}
                 onClick={() => onSelect(file)}
-                className={`p-3 rounded-lg cursor-pointer group ${
+                className={`p-3 rounded-xl cursor-pointer group transition-all ${
                   isSelected 
-                    ? `${colors.tagActive} border-2 border-blue-500` 
+                    ? `${colors.tagActive} ring-2 ring-blue-500 shadow-lg` 
                     : `${colors.card} border ${colors.cardBorder} ${colors.cardHover}`
                 }`}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className={`font-medium text-sm ${colors.text} break-all leading-tight`}>
-                    {file.fileName}
-                  </span>
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <FileText size={14} className={isSelected ? 'text-blue-500' : colors.textMuted} />
+                    <span className={`font-medium text-sm ${colors.text} truncate`}>
+                      {file.fileName.replace('.md', '')}
+                    </span>
+                  </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(file.fileName) }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 flex-shrink-0"
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 flex-shrink-0 transition-opacity"
                     title="删除"
                   >
                     <Trash2 size={14} className="text-red-500" />
@@ -253,14 +245,81 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
                 </div>
                 <div className={`flex items-center gap-2 text-xs ${colors.textMuted}`}>
                   <span>{formatSize(file.size)}</span>
-                  <span>·</span>
-                  <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getInclusionStyle(parsed.inclusion, colors)}`}>
-                    {t(`steering.inclusion${parsed.inclusion.charAt(0).toUpperCase() + parsed.inclusion.slice(1)}`)}
-                  </span>
+                  {parsed.filePattern && (
+                    <>
+                      <span>·</span>
+                      <code className={`px-1.5 py-0.5 rounded ${colors.codeBlock} font-mono text-xs`}>
+                        {parsed.filePattern}
+                      </code>
+                    </>
+                  )}
                 </div>
               </div>
             )
-          })
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`w-80 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
+      <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
+        <div className="flex items-center gap-2">
+          <FileText size={18} className="text-blue-500" />
+          <span className={`text-sm font-semibold ${colors.text}`}>Steering 规则</span>
+          <span className={`text-xs ${colors.textMuted}`}>({files.length})</span>
+        </div>
+        <div className="flex gap-2">
+          <button 
+            onClick={onCreate} 
+            className={`p-2 rounded-lg ${colors.cardHover} transition-colors`}
+            title="新建规则"
+          >
+            <Plus size={16} className="text-green-500" />
+          </button>
+          <button 
+            onClick={onRefresh} 
+            className={`p-2 rounded-lg ${colors.cardHover} transition-colors`}
+            title="刷新列表"
+          >
+            <RefreshCw size={16} className={colors.textMuted} />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        {files.length === 0 ? (
+          <div className={`text-center py-16 ${colors.textMuted}`}>
+            <FileText size={48} className="mx-auto mb-3 opacity-20" />
+            <p className="text-sm">{t('steering.noFiles')}</p>
+            <button
+              onClick={onCreate}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors"
+            >
+              创建第一个规则
+            </button>
+          </div>
+        ) : (
+          <>
+            {renderFileGroup(
+              '始终包含',
+              groupedFiles.always,
+              <div className="w-2 h-2 rounded-full bg-green-500" />,
+              'green'
+            )}
+            {renderFileGroup(
+              '文件匹配',
+              groupedFiles.fileMatch,
+              <div className="w-2 h-2 rounded-full bg-blue-500" />,
+              'blue'
+            )}
+            {renderFileGroup(
+              '手动引用',
+              groupedFiles.manual,
+              <div className="w-2 h-2 rounded-full bg-orange-500" />,
+              'orange'
+            )}
+          </>
         )}
       </div>
     </div>
@@ -324,9 +383,6 @@ function Editor({ file, editState, hasChanges, saving, inclusionOptions, onConte
           value={editState.content}
           onChange={(e) => onContentChange(e.target.value)}
           placeholder={t('steering.contentPlaceholder')}
-          classNames={{
-            input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-          }}
           styles={(theme) => ({
             root: {
               height: '100%',
