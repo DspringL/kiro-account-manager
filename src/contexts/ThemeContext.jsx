@@ -464,7 +464,7 @@ export function ThemeProvider({ children }) {
           input: {
             backgroundColor: 'transparent',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-            color: 'inherit',
+            color: isLightTheme ? '#1f2937' : '#e5e7eb',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
             },
@@ -491,7 +491,6 @@ export function ThemeProvider({ children }) {
           input: {
             backgroundColor: 'transparent',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-            color: 'inherit',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
             },
@@ -503,7 +502,6 @@ export function ThemeProvider({ children }) {
           input: {
             backgroundColor: 'transparent',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-            color: 'inherit',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
             },
@@ -515,7 +513,6 @@ export function ThemeProvider({ children }) {
           input: {
             backgroundColor: 'transparent',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
-            color: 'inherit',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
             },
@@ -529,33 +526,35 @@ export function ThemeProvider({ children }) {
           },
         },
       },
+      // 重要：Card 设置背景和边框，但不设置文字颜色
+      // Text、Group、Stack 必须设置 color: 'inherit' 以继承父元素颜色
       Card: {
         styles: {
           root: {
             backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
-            color: isLightTheme ? '#1f2937' : '#e5e7eb',
+            // 不设置 color，让内部组件继承或使用 Tailwind className
           },
         },
       },
       Text: {
         styles: {
           root: {
-            color: 'inherit',
+            color: 'inherit', // 关键：继承父元素颜色
           },
         },
       },
       Group: {
         styles: {
           root: {
-            color: 'inherit',
+            color: 'inherit', // 关键：继承父元素颜色
           },
         },
       },
       Stack: {
         styles: {
           root: {
-            color: 'inherit',
+            color: 'inherit', // 关键：继承父元素颜色
           },
         },
       },
