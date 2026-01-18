@@ -150,7 +150,7 @@ function UpdateDialog({ updateInfo, update, onClose }) {
           <Stack gap="md">
             <Group justify="space-between">
               <Text size="sm" className={colors.text}>{t('update.downloading')}...</Text>
-              <Text size="sm" fw={500} c="blue">{downloadProgress.percent}%</Text>
+              <Text size="sm" fw={500} className="text-blue-600">{downloadProgress.percent}%</Text>
             </Group>
             <Progress value={downloadProgress.percent} color="blue" size="sm" radius="xl" />
             <Group justify="space-between">

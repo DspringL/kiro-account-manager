@@ -11,7 +11,10 @@
 - 即使使用了 `className={colors.text}` 也可能被 Mantine 默认样式覆盖
 
 ### 根本原因
-Mantine 组件有自己的默认颜色系统，不会自动继承父元素的颜色。需要在 MantineProvider 的主题配置中显式设置 `color: 'inherit'`。
+Mantine 组件有自己的默认颜色系统，不会自动继承父元素的颜色。必须：
+1. **Card 组件必须设置 color**：作为基础文字颜色（深色主题用浅色，浅色主题用深色）
+2. **Text/Group/Stack 设置 color: inherit**：继承 Card 的基础颜色
+3. **禁止省略 Card 的 color**：否则会继承 Mantine 默认深色，导致深色背景+深色文字
 
 ## 解决方案
 
@@ -58,9 +61,14 @@ const mantineTheme = {
 }
 ```
 
-**关键点**：
-- **Card 组件**：必须设置 `color` 属性，深色主题用浅色 `#e5e7eb`，浅色主题用深色 `#1f2937`
-- **Text/Group/Stack 组件**：设置 `color: 'inherit'` 继承父元素（Card）的颜色
+**关键点（必须严格遵守）**：
+- **Card 组件**：
+  - ✅ **必须设置 color**：`color: isLightTheme ? '#1f2937' : '#e5e7eb'`
+  - ❌ **禁止省略 color**：否则 Mantine 会使用默认深色，导致深色主题下不可读
+  - 原理：Card 的 color 是所有子组件的基础颜色
+- **Text/Group/Stack 组件**：
+  - ✅ 设置 `color: 'inherit'` 继承父元素（Card）的颜色
+  - 如需特殊颜色，用 `className={colors.xxx}` 覆盖
 - **Select 组件**：input 和 option 都要设置 color
 
 ### 2. 避免使用 Mantine 的颜色属性
@@ -104,16 +112,17 @@ const mantineTheme = {
 - `src/components/Home/*.jsx` - 首页组件（已修复）
 - `src/components/AccountManager/*.jsx` - 账号管理组件
 
-## 常见错误
+## 常见错误（必读）
 
-### 错误 1：Card 没有设置 color
+### ⚠️ 错误 1：Card 没有设置 color（最常见的错误）
 ```jsx
 // ❌ 错误：Card 不设置 color，Mantine 会使用默认深色文字
+// 结果：深色背景 + 深色文字 = 不可读
 Card: {
   styles: {
     root: {
       backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
-      // 没有设置 color
+      // 没有设置 color ← 这是错误的！
     },
   },
 }
@@ -121,15 +130,22 @@ Card: {
 
 ```jsx
 // ✅ 正确：Card 必须设置 color，深色主题用浅色文字
+// 结果：深色背景 + 浅色文字 = 可读
 Card: {
   styles: {
     root: {
       backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
-      color: isLightTheme ? '#1f2937' : '#e5e7eb', // 关键
+      color: isLightTheme ? '#1f2937' : '#e5e7eb', // 必须设置！
     },
   },
 }
 ```
+
+**为什么必须设置？**
+- Card 的 `color` 是所有子组件（Text/Group/Stack）的基础颜色
+- 子组件通过 `color: 'inherit'` 继承这个基础颜色
+- 如果 Card 不设置，子组件会继承 Mantine 的默认深色
+- 深色主题下：深色背景 + 深色文字 = 完全不可读
 
 ### 错误 2：Text/Group/Stack 没有设置 color: 'inherit'
 ```jsx
@@ -154,17 +170,47 @@ Text: {
 }
 ```
 
+## 颜色继承原理图
+
+```
+深色主题下的正确继承链：
+
+Card (color: #e5e7eb 浅色) ← 必须设置！
+  ├─ Text (color: inherit) → 继承到 #e5e7eb ✅ 可读
+  ├─ Text className={colors.text} → 覆盖为 #e5e7eb ✅ 可读
+  └─ Text className={colors.textMuted} → 覆盖为 #9ca3af ✅ 可读
+
+深色主题下的错误继承链：
+
+Card (color: 未设置) ← 错误！
+  └─ Text (color: inherit) → 继承 Mantine 默认深色 ❌ 不可读
+     结果：深色背景 + 深色文字 = 完全看不见
+```
+
 ## 测试方法
 
 修改 ThemeContext 后，必须在所有主题下测试：
 
-1. 切换到深色主题
+1. **切换到深色主题**（最重要）
 2. 检查所有页面的卡片内文字是否清晰可读
 3. 检查是否有深色背景配深色文字的情况
 4. 切换到浅色/紫色/绿色主题重复测试
 
-## 历史问题
-- 2026-01-18：修复首页所有组件的 `c="dimmed"` 问题（24处）
-- 2026-01-18：在 ThemeContext 中添加 Text、Group、Stack 的 `color: 'inherit'` 配置
-- 2026-01-18：修复 Select 组件 input 文字颜色缺失问题
-- 2026-01-18：**重要修正**：Card 组件必须设置 color，不能省略，否则深色主题下会显示深色文字
+**快速检查**：如果深色主题下看不清文字，99% 是 Card 没设置 color
+
+## 历史问题与教训
+
+### 2026-01-18 修复过程
+1. **第一阶段**：修复首页所有组件的 `c="dimmed"` 问题（24处）
+2. **第二阶段**：在 ThemeContext 中添加 Text、Group、Stack 的 `color: 'inherit'` 配置
+3. **第三阶段**：修复 Select 组件 input 文字颜色缺失问题
+4. **第四阶段（关键修正）**：
+   - **错误理解**：以为 Card 不应该设置 color，让子组件自由控制
+   - **实际问题**：Card 不设置 color 会导致子组件继承 Mantine 默认深色
+   - **正确做法**：Card 必须设置 color 作为基础颜色，子组件通过 inherit 继承
+   - **教训**：深色主题下文字不可读，99% 是 Card 没设置 color
+
+### 核心教训
+- ❌ **错误思路**：Card 不设置 color，让子组件用 className 控制
+- ✅ **正确思路**：Card 设置基础 color，子组件 inherit 继承，需要时用 className 覆盖
+- 🔑 **记住**：Card 的 color 不是可选的，是必须的！

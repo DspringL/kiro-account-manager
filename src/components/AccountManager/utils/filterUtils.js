@@ -51,10 +51,20 @@ export function applyFilters(accounts, filters) {
       const min = parseInt(minStr, 10)
       const max = parseInt(maxStr, 10)
       
+      // 计算总配额使用率（与 accountStats.js 保持一致）
       const breakdown = account.usageData?.usageBreakdownList?.[0]
-      const quota = breakdown?.usageLimit || 0
-      const used = breakdown?.currentUsage || 0
-      const percent = quota > 0 ? (used / quota) * 100 : 0
+      if (!breakdown) return false
+      
+      const mainUsed = breakdown.currentUsage || 0
+      const mainLimit = breakdown.usageLimit || 50
+      const trialUsed = breakdown.freeTrialInfo?.currentUsage || 0
+      const trialLimit = breakdown.freeTrialInfo?.usageLimit || 0
+      const bonusUsed = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.currentUsage || 0), 0)
+      const bonusLimit = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.usageLimit || 0), 0)
+      
+      const totalLimit = mainLimit + trialLimit + bonusLimit
+      const totalUsed = mainUsed + trialUsed + bonusUsed
+      const percent = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0
       
       if (max === 100) {
         if (percent < min || percent > max) return false

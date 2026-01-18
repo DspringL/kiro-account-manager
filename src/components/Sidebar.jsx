@@ -184,7 +184,7 @@ function Sidebar({ activeMenu, onMenuChange }) {
         >
           <Group gap="xs" mb="xs">
             <Indicator color="green" processing size={6} />
-            <Text size="xs" c="white" opacity={0.9}>
+            <Text size="xs" style={{ color: 'white', opacity: 0.9 }}>
               {t('nav.kiroConnected')}
             </Text>
           </Group>
