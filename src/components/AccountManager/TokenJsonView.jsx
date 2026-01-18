@@ -42,14 +42,14 @@ function CollapsibleValue({ value, colors, threshold = 50 }) {
   const isLong = value.length > threshold
   
   if (!isLong) {
-    return <span className="text-green-500">"{value}"</span>
+    return <span className="text-emerald-500">"{value}"</span>
   }
   
   const displayValue = expanded ? value : `${value.slice(0, threshold)}...`
   
   return (
     <span className="inline">
-      <span className="text-green-500">"{displayValue}"</span>
+      <span className="text-emerald-500">"{displayValue}"</span>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
@@ -82,9 +82,9 @@ function JsonRenderer({ json, colors, indent = 0 }) {
           ) : typeof value === 'boolean' ? (
             <span className="text-blue-500">{String(value)}</span>
           ) : typeof value === 'number' ? (
-            <span className="text-orange-500">{value}</span>
+            <span className="text-amber-500">{value}</span>
           ) : (
-            <span className="text-green-500">{JSON.stringify(value)}</span>
+            <span className="text-emerald-500">{JSON.stringify(value)}</span>
           )}
           {i < entries.length - 1 && <span>,</span>}
         </div>

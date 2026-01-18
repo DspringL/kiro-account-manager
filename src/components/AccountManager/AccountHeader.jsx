@@ -67,7 +67,7 @@ function AccountHeader({
           <div ref={searchRef} className="relative">
             {searchExpanded || searchTerm ? (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textMuted}`} size={16} />
                 <input
                   type="text"
                   placeholder={t('accounts.search')}

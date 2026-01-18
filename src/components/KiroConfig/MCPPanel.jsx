@@ -179,7 +179,7 @@ function MCPServerItem({ name, config, isLightTheme, colors, onToggle, onEdit, o
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
         isDisabled ? colors.cardSecondary : colors.badgeActive
       }`}>
-        <Server size={20} className={isDisabled ? 'text-gray-400' : 'text-green-500'} />
+        <Server size={20} className={isDisabled ? colors.textMuted : 'text-green-500'} />
       </div>
 
       <div className="flex-1 min-w-0">

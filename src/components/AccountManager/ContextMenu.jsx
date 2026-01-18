@@ -1,8 +1,9 @@
 import { memo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useTheme } from '../../contexts/ThemeContext'
 
 // 右键菜单组件（使用 Portal 渲染到 body）
-const ContextMenu = memo(function ContextMenu({ x, y, onClose, items, isLightTheme }) {
+const ContextMenu = memo(function ContextMenu({ x, y, onClose, items, colors }) {
   const menuRef = useRef(null)
   const [position, setPosition] = useState({ x, y })
 
@@ -47,23 +48,23 @@ const ContextMenu = memo(function ContextMenu({ x, y, onClose, items, isLightThe
   return createPortal(
     <div
       ref={menuRef}
-      className={`fixed z-[9999] min-w-[180px] py-2 rounded-xl shadow-2xl border backdrop-blur-sm ${colors.menuBg} ${colors.menuBorder}`}
+      className={`fixed z-[9999] min-w-[180px] py-2 rounded-xl shadow-2xl border backdrop-blur-sm ${colors.card} ${colors.cardBorder}`}
       style={{ left: position.x, top: position.y }}
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, idx) =>
         item.divider ? (
-          <div key={idx} className={`my-1.5 mx-3 border-t ${colors.menuDivider}`} />
+          <div key={idx} className={`my-1.5 mx-3 border-t ${colors.cardBorder}`} />
         ) : (
           <button
             key={idx}
             onClick={() => { item.onClick(); onClose() }}
             disabled={item.disabled}
             className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
-              item.danger ? colors.danger + ' ' + colors.dangerHover : colors.text + ' ' + colors.menuHover
+              item.danger ? 'text-red-500 hover:bg-red-500/10' : colors.text + ' ' + colors.cardHover
             }`}
           >
-            {item.icon && <item.icon size={16} className={item.danger ? '' : colors.textMuted} />}
+            {item.icon && <item.icon size={16} className={item.danger ? 'text-red-500' : colors.textMuted} />}
             <span className="flex-1">{item.label}</span>
             {item.shortcut && <span className={`text-xs ${colors.textMuted}`}>{item.shortcut}</span>}
           </button>

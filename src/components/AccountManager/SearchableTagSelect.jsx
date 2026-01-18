@@ -113,7 +113,7 @@ function SearchableTagSelect({
                   value === '__has__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
-                <span className={`w-3 h-3 rounded-full bg-green-500`} />
+                <span className="w-3 h-3 rounded-full bg-green-500" />
                 {hasLabel}
               </button>
             )}

@@ -134,7 +134,7 @@ const ListRow = memo(function ListRow({
         <span className={colors.textMuted} title="Token 过期">{account.expiresAt?.slice(11, 16) || '-'}</span>
         {account.usageData?.usageBreakdownList?.[0]?.freeTrialInfo?.freeTrialExpiry && (
           <>
-            <span className="text-gray-500 mx-1">|</span>
+            <span className={`${colors.textMuted} mx-1`}>|</span>
             <span className="text-orange-500" title="试用到期">
               {new Date(account.usageData.usageBreakdownList[0].freeTrialInfo.freeTrialExpiry * 1000).toLocaleDateString().slice(5)}
             </span>
