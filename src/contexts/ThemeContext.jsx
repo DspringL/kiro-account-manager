@@ -534,6 +534,28 @@ export function ThemeProvider({ children }) {
           root: {
             backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.8)',
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)',
+            color: isLightTheme ? '#1f2937' : '#e5e7eb',
+          },
+        },
+      },
+      Text: {
+        styles: {
+          root: {
+            color: 'inherit',
+          },
+        },
+      },
+      Group: {
+        styles: {
+          root: {
+            color: 'inherit',
+          },
+        },
+      },
+      Stack: {
+        styles: {
+          root: {
+            color: 'inherit',
           },
         },
       },
