@@ -120,7 +120,7 @@ export function TokenJsonView({ account, defaultExpanded = true }) {
   return (
     <div className={`${colors.card} rounded-xl shadow-sm overflow-hidden border ${colors.cardBorder}`}>
       <div 
-        className={`flex items-center justify-between px-6 py-4 cursor-pointer ${colors.cardHover} transition-all duration-200`}
+        className={`flex items-center justify-between px-8 py-5 cursor-pointer ${colors.cardHover} transition-all duration-200`}
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-3">
@@ -146,7 +146,7 @@ export function TokenJsonView({ account, defaultExpanded = true }) {
       </div>
       
       {expanded && (
-        <div className={`px-6 pb-6 border-t ${colors.cardBorder} pt-5 animate-in fade-in slide-in-from-top-2 duration-200`}>
+        <div className={`px-8 pb-8 border-t ${colors.cardBorder} pt-6 animate-in fade-in slide-in-from-top-2 duration-200`}>
           <div className="flex items-center justify-between mb-3">
             <span className={`text-xs font-medium ${colors.textMuted}`}>
               {Object.keys(credentialsJson).length} {t('detail.fields') || '个字段'}

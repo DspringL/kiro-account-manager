@@ -7,6 +7,7 @@ import { useDialog } from '../../contexts/DialogContext'
 import { setAccountTags, setAccountGroup, getGroups, addGroup } from '../../api/groupTag'
 import { TagSelector } from './GroupTagManager'
 import { TokenJsonView } from './TokenJsonView'
+import { Modal, ModalButton } from '../common/Modal'
 
 const PRESET_COLORS = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444', 
@@ -135,55 +136,32 @@ function EditAccountModal({ account, onClose, onSuccess }) {
   }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={t('editAccount.title')}
+      subtitle={account.email}
+      icon={Folder}
+      iconColor="text-emerald-400"
+      gradientFrom="emerald-500"
+      gradientTo="teal-500"
+      maxWidth="600px"
+      footer={
+        <>
+          <ModalButton variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </ModalButton>
+          <ModalButton
+            variant="success"
+            onClick={handleSave}
+            disabled={saving}
+            loading={saving}
+          >
+            {t('common.save')}
+          </ModalButton>
+        </>
+      }
     >
-      <div 
-        className={`
-          relative overflow-hidden
-          ${colors.card} 
-          rounded-2xl w-full max-w-[600px] 
-          shadow-2xl
-          border ${colors.cardBorder}
-        `}
-        onClick={e => e.stopPropagation()}
-        
-      >
-        {/* 顶部渐变装饰 */}
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-emerald-500/10 via-transparent to-transparent pointer-events-none" />
-        
-        {/* 装饰性光晕 */}
-        <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-emerald-500/20 to-teal-500/10 rounded-full blur-3xl opacity-50" />
-        
-        {/* Header */}
-        <div className="relative px-6 pt-6 pb-2">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`
-                w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10
-                flex items-center justify-center
-                ring-1 ${colors.ringColor}
-                shadow-lg
-              `}>
-                <Folder size={24} className="text-emerald-400" strokeWidth={2} />
-              </div>
-              <div>
-                <h2 className={`text-lg font-semibold ${colors.text} leading-tight`}>{t('editAccount.title')}</h2>
-                <p className={`text-xs ${colors.textMuted} mt-0.5 truncate max-w-[400px]`}>{account.email}</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-xl ${colors.cardHover}`}
-            >
-              <X size={18} className={colors.textMuted} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="relative px-6 py-6 max-h-[70vh] overflow-y-auto">
           <Stack gap="xl">
             <div>
               <label className={`block text-sm font-medium ${colors.text} mb-2`}>
@@ -299,37 +277,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
 
             <TokenJsonView account={account} defaultExpanded={false} />
           </Stack>
-        </div>
-
-        {/* Footer */}
-        <div className={`relative px-6 py-5 ${colors.dialogFooter} flex justify-end gap-3`}>
-          <button
-            onClick={onClose}
-            className={`px-5 py-2.5 text-sm font-medium rounded-xl ${colors.btnSecondary}`}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`
-              px-6 py-2.5 text-sm font-medium rounded-xl text-white
-              bg-gradient-to-r from-emerald-500 to-teal-600
-              shadow-lg shadow-emerald-500/30
-              hover:opacity-90 hover:shadow-xl
-              disabled:opacity-50 disabled:cursor-not-allowed 
-              flex items-center gap-2 
-             
-            `}
-          >
-            {saving && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            {t('common.save')}
-          </button>
-        </div>
-      </div>
-
-
-    </div>
+    </Modal>
   )
 }
 

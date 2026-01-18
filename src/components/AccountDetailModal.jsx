@@ -184,9 +184,9 @@ function AccountDetailModal({ account, onClose }) {
         </div>
         
         <div className="flex-1 overflow-y-auto">
-          <div className="px-8 py-6 space-y-6">
+          <div className="p-8 space-y-8">
             {/* 配额总览 */}
-            <div className={`${colors.card} rounded-xl p-6 shadow-sm border ${colors.cardBorder}`}>
+            <div className={`${colors.card} rounded-xl p-8 shadow-sm border ${colors.cardBorder}`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <CreditCard size={18} className={colors.textMuted} />
@@ -286,12 +286,12 @@ function AccountDetailModal({ account, onClose }) {
             </div>
 
             {/* 基本信息 */}
-            <div className={`${colors.card} rounded-xl p-6 shadow-sm border ${colors.cardBorder}`}>
-              <div className="flex items-center gap-2 mb-5">
+            <div className={`${colors.card} rounded-xl p-8 shadow-sm border ${colors.cardBorder}`}>
+              <div className="flex items-center gap-2 mb-6">
                 <User size={18} className={colors.textMuted} />
                 <span className={`font-medium ${colors.text}`}>{t('detail.basicInfo')}</span>
               </div>
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
                   <TextInput
                     label={t('detail.emailAddress')}
@@ -339,7 +339,7 @@ function AccountDetailModal({ account, onClose }) {
           </div>
 
           {/* Footer */}
-          <div className={`relative flex justify-between items-center px-8 py-5 ${colors.dialogFooter}`}>
+          <div className={`relative flex justify-between items-center px-8 py-6 ${colors.dialogFooter}`}>
             <div className={`text-sm ${colors.textMuted} flex items-center gap-2`}>
               {account.status === 'active' || account.status === '正常' || account.status === '有效' 
                 ? <><Shield size={14} className="text-green-500" /><span className="text-green-500 font-medium">{t('detail.accountNormal')}</span></> 

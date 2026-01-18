@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { SegmentedControl, Stack, Alert, Button } from '@mantine/core'
-import { Download, Key, AlertCircle, X } from 'lucide-react'
+import { Download, Key, AlertCircle } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
+import { Modal, ModalButton } from '../common/Modal'
 
 function AddAccountModal({ onClose, onSuccess }) {
   const { t, colors } = useApp()
@@ -80,54 +81,33 @@ function AddAccountModal({ onClose, onSuccess }) {
   }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={t('addAccount.title')}
+      subtitle={t('addAccount.subtitle') || '添加新账号到管理器'}
+      icon={Key}
+      iconColor="text-blue-400"
+      gradientFrom="blue-500"
+      gradientTo="purple-500"
+      maxWidth="500px"
+      footer={
+        <>
+          <ModalButton variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </ModalButton>
+          <ModalButton
+            variant="primary"
+            onClick={handleAddManual}
+            disabled={addLoading || !refreshToken}
+            loading={addLoading}
+            icon={Key}
+          >
+            {t('addAccount.add')}
+          </ModalButton>
+        </>
+      }
     >
-      <div 
-        className={`
-          relative overflow-hidden
-          ${colors.card} 
-          rounded-2xl w-full max-w-[500px] 
-          shadow-2xl
-          border ${colors.cardBorder}
-        `}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* 顶部渐变装饰 */}
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-blue-500/10 via-transparent to-transparent pointer-events-none" />
-        
-        {/* 装饰性光晕 */}
-        <div className="absolute -top-20 -right-20 w-40 h-40 bg-gradient-to-br from-blue-500/20 to-purple-500/10 rounded-full blur-3xl opacity-50" />
-        
-        {/* Header */}
-        <div className="relative px-6 pt-6 pb-2">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className={`
-                w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/10
-                flex items-center justify-center
-                ring-1 ${colors.ringColor}
-                shadow-lg
-              `}>
-                <Key size={24} className="text-blue-400" strokeWidth={2} />
-              </div>
-              <div>
-                <h2 className={`text-lg font-semibold ${colors.text} leading-tight`}>{t('addAccount.title')}</h2>
-                <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('addAccount.subtitle') || '添加新账号到管理器'}</p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className={`p-2 rounded-xl ${colors.cardHover}`}
-            >
-              <X size={18} className={colors.textMuted} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="relative px-6 py-6 max-h-[70vh] overflow-y-auto">
           <Stack gap="xl">
             {/* 保存本地账号 */}
             <div className={`p-5 rounded-xl border-2 border-dashed ${colors.cardBorder} ${colors.cardSecondary} hover:border-teal-500/50 group`}>
@@ -262,35 +242,7 @@ function AddAccountModal({ onClose, onSuccess }) {
               </Alert>
             )}
           </Stack>
-        </div>
-
-        {/* Footer */}
-        <div className={`relative px-6 py-5 ${colors.dialogFooter} flex justify-end gap-3`}>
-          <button
-            onClick={onClose}
-            className={`px-5 py-2.5 text-sm font-medium rounded-xl ${colors.btnSecondary}`}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleAddManual}
-            disabled={addLoading || !refreshToken}
-            className={`
-              px-6 py-2.5 text-sm font-medium rounded-xl text-white
-              bg-gradient-to-r from-blue-500 to-purple-600
-              shadow-lg shadow-blue-500/30
-              hover:opacity-90 hover:shadow-xl
-              disabled:opacity-50 disabled:cursor-not-allowed 
-              flex items-center gap-2
-            `}
-          >
-            {addLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            <Key size={16} />
-            {t('addAccount.add')}
-          </button>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }
 

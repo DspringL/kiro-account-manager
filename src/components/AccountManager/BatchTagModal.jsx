@@ -4,6 +4,7 @@ import { useApp } from '../../hooks/useApp'
 import { useDialog } from '../../contexts/DialogContext'
 import { getTags, setAccountTags } from '../../api/groupTag'
 import { invoke } from '@tauri-apps/api/core'
+import { Modal, ModalButton } from '../common/Modal'
 
 const PRESET_COLORS = [
   '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', 
@@ -105,40 +106,36 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
     : availableTags
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
-      onClick={onClose}
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={t('tags.batchSet')}
+      subtitle={`${accountIds.length} 个账号`}
+      icon={Tag}
+      iconColor="text-purple-400"
+      gradientFrom="purple-500"
+      gradientTo="pink-500"
+      maxWidth="lg"
+      footer={
+        <>
+          <ModalButton variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
+          </ModalButton>
+          <ModalButton
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={loading}
+            loading={loading}
+            style={{
+              background: 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153))',
+              boxShadow: '0 10px 15px -3px rgba(168, 85, 247, 0.3)'
+            }}
+          >
+            {loading ? t('common.saving') : t('common.confirm')}
+          </ModalButton>
+        </>
+      }
     >
-      <div 
-        className={`
-          relative overflow-hidden
-          ${colors.card} 
-          rounded-lg w-full max-w-lg 
-          shadow-2xl
-          border ${colors.cardBorder}
-        `}
-        onClick={e => e.stopPropagation()}
-        style={{ animation: 'modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}
-      >
-        {/* 顶部渐变装饰 */}
-        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-purple-500/10 via-transparent to-transparent pointer-events-none" />
-        
-        <div className={`relative flex items-center justify-between px-6 py-4 border-b ${colors.cardBorder}`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/10 flex items-center justify-center shadow-lg">
-              <Tag size={20} className="text-purple-400" />
-            </div>
-            <div>
-              <h3 className={`font-semibold ${colors.text}`}>{t('tags.batchSet')}</h3>
-              <span className={`text-xs ${colors.textMuted}`}>{accountIds.length} 个账号</span>
-            </div>
-          </div>
-          <button onClick={onClose} className={`p-2 rounded-lg ${colors.cardHover}`}>
-            <X size={18} className={colors.textMuted} />
-          </button>
-        </div>
-
-        <div className="relative p-6 space-y-6 max-h-[60vh] overflow-y-auto">
           {/* 已选标签 - 点击 ❌ 取消 */}
           <div>
             <label className={`block text-sm font-medium ${colors.text} mb-2`}>{t('tags.selected')}</label>
@@ -219,36 +216,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
             <p className={`text-xs ${colors.textMuted} mt-1.5`}>{t('tags.hint') || '输入搜索已有标签，或直接输入创建新标签'}</p>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className={`relative px-6 py-5 border-t ${colors.cardBorder} flex justify-end gap-3`}>
-          <button
-            onClick={onClose}
-            className={`px-5 py-2.5 text-sm font-medium rounded-lg ${colors.cardHover} ${colors.text}`}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className={`
-              px-6 py-2.5 text-sm font-medium rounded-lg text-white
-              bg-gradient-to-r from-purple-500 to-pink-600
-              shadow-lg shadow-purple-500/30
-              hover:opacity-90 hover:shadow-xl
-              disabled:opacity-50 disabled:cursor-not-allowed 
-              flex items-center gap-2 
-             
-            `}
-          >
-            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            {loading ? t('common.saving') : t('common.confirm')}
-          </button>
-        </div>
-      </div>
-
-
-    </div>
+    </Modal>
   )
 }
 
