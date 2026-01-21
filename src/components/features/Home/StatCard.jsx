@@ -1,5 +1,5 @@
 import { Card, Badge, Group, Stack, Text } from '@mantine/core'
-import { useApp } from '../../hooks/useApp'
+import { useApp } from '../../../hooks/useApp'
 
 // 统计卡片组件 - 紧凑版
 function StatCard({ icon: Icon, iconBg, iconColor, value, label, delay, onClick, warning }) {

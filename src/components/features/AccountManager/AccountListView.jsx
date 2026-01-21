@@ -187,7 +187,7 @@ function AccountListView({
 }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const scrollRef = useRef(null)
 
   const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])

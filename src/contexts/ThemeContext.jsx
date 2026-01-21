@@ -465,9 +465,10 @@ export function ThemeProvider({ children }) {
             transitionProps: { transition: 'fade', duration: 150 }
           }
         },
-        styles: (theme) => ({
+        styles: {
           input: {
             color: isLightTheme ? '#1f2937' : '#e5e7eb',
+            backgroundColor: 'transparent',
           },
           dropdown: {
             backgroundColor: isLightTheme ? '#ffffff' : '#1a1a2e',
@@ -475,8 +476,28 @@ export function ThemeProvider({ children }) {
           },
           option: {
             color: isLightTheme ? '#1f2937' : '#e5e7eb',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              backgroundColor: isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+            },
           },
-        }),
+        },
+      },
+      // Combobox 组件样式覆盖（消除 data-combobox-selected 警告）
+      Combobox: {
+        styles: {
+          option: {
+            color: isLightTheme ? '#1f2937' : '#e5e7eb',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              backgroundColor: isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+            },
+            // 使用 [data-selected] 替代 [data-combobox-selected]
+            '&[data-selected="true"]': {
+              backgroundColor: isLightTheme ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.2)',
+            },
+          },
+        },
       },
       TextInput: {
         styles: {

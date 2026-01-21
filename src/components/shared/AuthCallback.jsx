@@ -4,7 +4,7 @@ import { useApp } from '../hooks/useApp'
 
 export default function AuthCallback() {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [status, setStatus] = useState('loading')
   const [message, setMessage] = useState('')
 

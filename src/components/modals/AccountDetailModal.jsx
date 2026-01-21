@@ -10,7 +10,7 @@ import { TokenJsonView } from '../features/AccountManager/TokenJsonView'
 function AccountDetailModal({ account, onClose }) {
   const { t, theme, colors } = useApp()
   const { showError } = useDialog()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const initQuota = account.usageData?.usageBreakdownList?.[0]?.usageLimit ?? account.quota ?? 50
   const initUsed = account.usageData?.usageBreakdownList?.[0]?.currentUsage ?? account.used ?? 0
   const [form, setForm] = useState({

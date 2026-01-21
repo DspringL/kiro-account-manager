@@ -16,7 +16,7 @@ const Button = React.forwardRef(({
   
   const variants = {
     primary: "bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg shadow-blue-500/30 hover:opacity-90 hover:shadow-xl text-white",
-    secondary: colors.btnSecondary,
+    secondary: `${colors.btnSecondary} border`,
     success: "bg-gradient-to-r from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/30 hover:opacity-90 hover:shadow-xl text-white",
     danger: "bg-gradient-to-r from-red-500 to-pink-600 shadow-lg shadow-red-500/30 hover:opacity-90 hover:shadow-xl text-white",
   }

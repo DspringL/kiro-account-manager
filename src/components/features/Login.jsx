@@ -3,11 +3,11 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Loader, ArrowRight, X } from 'lucide-react'
 import { Card, Stack, Button, Text, Alert, Group } from '@mantine/core'
-import { useApp } from '../hooks/useApp'
+import { useApp } from '../../hooks/useApp'
 
 function Login({ onLogin }) {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [loadingProvider, setLoadingProvider] = useState(null)
   const [error, setError] = useState('')
 

@@ -1,7 +1,7 @@
 import { Card, Group, Stack, Text, Progress } from '@mantine/core'
 import { PieChart, BarChart2 } from 'lucide-react'
-import { usePrivacy } from '../../contexts/PrivacyContext'
-import { formatUsage } from '../../utils/accountStats'
+import { usePrivacy } from '../../../contexts/PrivacyContext'
+import { formatUsage } from '../../../utils/accountStats'
 
 // 使用率分布统计
 function UsageDistribution({ tokens, isLightTheme, colors, t }) {

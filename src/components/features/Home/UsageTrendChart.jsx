@@ -3,11 +3,11 @@ import { Card, Group, Stack, Text, Badge } from '@mantine/core'
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Calendar } from 'lucide-react'
-import { useApp } from '../../hooks/useApp'
+import { useApp } from '../../../hooks/useApp'
 
 export default function UsageTrendChart({ accounts, stats }) {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [usageHistory, setUsageHistory] = useState([])
 
   // 加载并保存历史记录

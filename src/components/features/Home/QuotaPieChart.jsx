@@ -2,8 +2,8 @@
 import { Card, Group, Stack, Text } from '@mantine/core'
 import { PieChart } from 'lucide-react'
 import { useMemo } from 'react'
-import { useApp } from '../../hooks/useApp'
-import { usePrivacy } from '../../contexts/PrivacyContext'
+import { useApp } from '../../../hooks/useApp'
+import { usePrivacy } from '../../../contexts/PrivacyContext'
 
 // 饼图颜色
 const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
@@ -21,7 +21,7 @@ const getQuota = (account) => {
 export default function QuotaPieChart({ accounts }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
 
   // 计算总配额
   const totalQuota = useMemo(() => 

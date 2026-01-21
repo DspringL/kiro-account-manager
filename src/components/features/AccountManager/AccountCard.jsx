@@ -29,7 +29,7 @@ const AccountCard = memo(function AccountCard({
   const { t } = useTranslation()
   const { theme, colors } = useTheme()
   const { maskEmail } = usePrivacy()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [contextMenu, setContextMenu] = useState(null)
   
   // 从 Set 中计算是否选中

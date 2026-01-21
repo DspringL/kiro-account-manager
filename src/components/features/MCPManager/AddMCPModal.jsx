@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Terminal, AlertCircle, Wand2, ClipboardPaste, Check, AlertTriangle } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { Textarea } from '@mantine/core'
-import { useApp } from '../../hooks/useApp'
+import { useApp } from '../../../hooks/useApp'
 import { MCP_TEMPLATES } from './MCPTemplates'
 
 function AddMCPModal({ onClose, onSuccess }) {

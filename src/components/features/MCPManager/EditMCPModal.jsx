@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Terminal, AlertCircle, Wand2 } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { Textarea } from '@mantine/core'
-import { useApp } from '../../hooks/useApp'
+import { useApp } from '../../../hooks/useApp'
 
 function EditMCPModal({ name, config, onClose, onSuccess }) {
   const { t, colors } = useApp()

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { useApp } from '../../hooks/useApp'
+import { useApp } from '../../../hooks/useApp'
 import { Server, Settings2, FileText } from 'lucide-react'
 import MCPPanel from './MCPPanel'
 import SteeringPanel from './SteeringPanel'
 
 function KiroConfig() {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [activeTab, setActiveTab] = useState('mcp')
   const [mcpCount, setMcpCount] = useState(0)
   const [steeringCount, setSteeringCount] = useState(0)

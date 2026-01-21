@@ -78,7 +78,7 @@ function ConfirmModal({
         </ModalHeader>
 
         <ModalDescription>
-          <p className={`${colors.text} text-base leading-relaxed whitespace-pre-line`}>
+          <p className={`${colors.text} text-sm leading-relaxed whitespace-pre-line`}>
             {message}
           </p>
           
@@ -116,12 +116,17 @@ function ConfirmModal({
 
         <ModalFooter>
           {type === 'confirm' && (
-            <Button variant="secondary" onClick={onCancel}>
+            <Button 
+              variant="secondary" 
+              size="lg"
+              onClick={onCancel}
+            >
               {finalCancelText}
             </Button>
           )}
           <Button
             variant={btnVariant}
+            size="lg"
             onClick={onConfirm}
             disabled={loading}
             loading={loading}

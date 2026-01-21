@@ -6,7 +6,7 @@ import { useApp } from '../../hooks/useApp'
 
 function UpdateDialog({ updateInfo, update, onClose }) {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [installing, setInstalling] = useState(false)
   const [downloadComplete, setDownloadComplete] = useState(false)
   const [downloadProgress, setDownloadProgress] = useState(null)

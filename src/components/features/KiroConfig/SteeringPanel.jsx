@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { useApp } from '../../hooks/useApp'
-import { useDialog } from '../../contexts/DialogContext'
+import { useApp } from '../../../hooks/useApp'
+import { useDialog } from '../../../contexts/DialogContext'
 import { FileText, RefreshCw, Trash2, Save, Plus, X } from 'lucide-react'
 import { TextInput, Select, Textarea } from '@mantine/core'
 
@@ -40,7 +40,7 @@ const getInclusionStyle = (inclusion, colors) => {
 function SteeringPanel({ onCountChange }) {
   const { t, theme, colors } = useApp()
   const { showConfirm, showError } = useDialog()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   
   const [files, setFiles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -169,6 +169,7 @@ function SteeringPanel({ onCountChange }) {
             onFilePatternChange={(v) => updateEditState('filePattern', v)}
             onSave={handleSave}
             isLightTheme={isLightTheme}
+            theme={theme}
             colors={colors}
             t={t}
           />
@@ -208,13 +209,20 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
   const renderFileGroup = (title, files, icon, badgeColor) => {
     if (files.length === 0) return null
     return (
-      <div className="mb-4">
-        <div className={`flex items-center gap-2 px-2 py-1.5 mb-2`}>
-          {icon}
-          <span className={`text-xs font-semibold ${colors.textMuted} uppercase tracking-wide`}>{title}</span>
-          <span className={`text-xs ${colors.textMuted}`}>({files.length})</span>
+      <div className="mb-8">
+        {/* 分组标题 */}
+        <div className={`flex items-center gap-3 px-4 py-3 mb-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} shadow-sm`}>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/10">
+            {icon}
+          </div>
+          <span className={`text-sm font-bold ${colors.text} tracking-wide flex-1`}>{title}</span>
+          <span className={`text-xs px-3 py-1 rounded-full bg-gradient-to-r ${badgeColor} text-white font-semibold shadow-sm`}>
+            {files.length}
+          </span>
         </div>
-        <div className="space-y-1.5">
+        
+        {/* 文件列表 */}
+        <div className="space-y-3">
           {files.map(file => {
             const parsed = parseFrontMatter(file.content)
             const isSelected = selectedFile?.fileName === file.fileName
@@ -222,33 +230,42 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
               <div
                 key={file.fileName}
                 onClick={() => onSelect(file)}
-                className={`p-3 rounded-xl cursor-pointer group transition-all ${
+                className={`p-4 rounded-xl cursor-pointer group transition-all duration-200 ${
                   isSelected 
-                    ? `${colors.tagActive} ring-2 ring-blue-500 shadow-lg` 
-                    : `${colors.card} border ${colors.cardBorder} ${colors.cardHover}`
+                    ? `bg-gradient-to-r from-blue-500/20 to-purple-500/10 ring-2 ring-blue-500/60 shadow-xl border-2 border-blue-500/50 scale-[1.02]` 
+                    : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} hover:shadow-lg hover:scale-[1.01]`
                 }`}
               >
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileText size={14} className={isSelected ? 'text-blue-500' : colors.textMuted} />
-                    <span className={`font-medium text-sm ${colors.text} truncate`}>
+                <div className="flex items-start justify-between gap-3 mb-2.5">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                      isSelected ? 'bg-blue-500/20' : 'bg-gray-500/10'
+                    }`}>
+                      <FileText 
+                        size={18} 
+                        className={`flex-shrink-0 ${isSelected ? 'text-blue-500' : colors.textMuted}`} 
+                      />
+                    </div>
+                    <span className={`font-bold text-sm ${isSelected ? 'text-blue-500' : colors.text} truncate`}>
                       {file.fileName.replace('.md', '')}
                     </span>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(file.fileName) }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-500/10 flex-shrink-0 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 hover:scale-110"
                     title="删除"
                   >
-                    <Trash2 size={14} className="text-red-500" />
+                    <Trash2 size={16} className="text-red-500" />
                   </button>
                 </div>
-                <div className={`flex items-center gap-2 text-xs ${colors.textMuted}`}>
-                  <span>{formatSize(file.size)}</span>
+                <div className={`flex items-center gap-2.5 text-xs ${colors.textMuted} ml-11`}>
+                  <span className={`px-2 py-1 rounded-md ${colors.cardSecondary} font-medium`}>
+                    {formatSize(file.size)}
+                  </span>
                   {parsed.filePattern && (
                     <>
-                      <span>·</span>
-                      <code className={`px-1.5 py-0.5 rounded ${colors.codeBlock} font-mono text-xs`}>
+                      <span className="opacity-50">•</span>
+                      <code className={`px-2.5 py-1 rounded-md bg-blue-500/10 border border-blue-500/30 font-mono text-xs text-blue-400`}>
                         {parsed.filePattern}
                       </code>
                     </>
@@ -304,20 +321,20 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
             {renderFileGroup(
               '始终包含',
               groupedFiles.always,
-              <div className="w-2 h-2 rounded-full bg-green-500" />,
-              'green'
+              <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-500/50" />,
+              'from-green-500 to-emerald-600'
             )}
             {renderFileGroup(
               '文件匹配',
               groupedFiles.fileMatch,
-              <div className="w-2 h-2 rounded-full bg-blue-500" />,
-              'blue'
+              <div className="w-3 h-3 rounded-full bg-blue-500 shadow-lg shadow-blue-500/50" />,
+              'from-blue-500 to-indigo-600'
             )}
             {renderFileGroup(
               '手动引用',
               groupedFiles.manual,
-              <div className="w-2 h-2 rounded-full bg-orange-500" />,
-              'orange'
+              <div className="w-3 h-3 rounded-full bg-orange-500 shadow-lg shadow-orange-500/50" />,
+              'from-orange-500 to-amber-600'
             )}
           </>
         )}
@@ -327,7 +344,7 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
 }
 
 // 编辑器组件
-function Editor({ file, editState, hasChanges, saving, inclusionOptions, onContentChange, onInclusionChange, onFilePatternChange, onSave, isLightTheme, colors, t }) {
+function Editor({ file, editState, hasChanges, saving, inclusionOptions, onContentChange, onInclusionChange, onFilePatternChange, onSave, isLightTheme, theme, colors, t }) {
   return (
     <>
       <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
@@ -383,7 +400,10 @@ function Editor({ file, editState, hasChanges, saving, inclusionOptions, onConte
           value={editState.content}
           onChange={(e) => onContentChange(e.target.value)}
           placeholder={t('steering.contentPlaceholder')}
-          styles={(theme) => ({
+          classNames={{
+            input: `${colors.inputFocus}`
+          }}
+          styles={{
             root: {
               height: '100%',
               display: 'flex',
@@ -403,11 +423,17 @@ function Editor({ file, editState, hasChanges, saving, inclusionOptions, onConte
               lineHeight: '1.5',
               fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
               resize: 'none',
-              color: isLightTheme ? '#1f2937' : '#e5e7eb',
-              backgroundColor: isLightTheme ? '#ffffff' : 'rgba(30, 30, 50, 0.5)',
-              borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
+              color: isLightTheme 
+                ? (theme === 'purple' ? '#4c1d95' : '#1f2937')
+                : '#e5e7eb',
+              backgroundColor: isLightTheme 
+                ? (theme === 'purple' ? 'rgba(233, 213, 255, 0.4)' : 'rgba(243, 244, 246, 0.5)')
+                : 'rgba(30, 30, 50, 0.5)',
+              borderColor: isLightTheme 
+                ? (theme === 'purple' ? 'rgba(196, 181, 253, 0.6)' : 'rgba(209, 213, 219, 0.5)')
+                : 'rgba(255, 255, 255, 0.1)',
             }
-          })}
+          }}
         />
       </div>
     </>

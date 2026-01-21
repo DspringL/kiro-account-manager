@@ -24,7 +24,7 @@ const compareVersions = (v1, v2) => {
 
 export default function AnnouncementModal() {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [show, setShow] = useState(false)
   const [announcement, setAnnouncement] = useState(null)
   const [forceUpdate, setForceUpdate] = useState(null)

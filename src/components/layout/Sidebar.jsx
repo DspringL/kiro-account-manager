@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
 import { User, Sun, Moon, Palette } from 'lucide-react'
-import { NavLink, Menu, Tooltip, Text, Group, Stack, Box, ActionIcon, Paper, Indicator } from '@mantine/core'
+import { NavLink, Tooltip, Text, Group, Stack, Box, ActionIcon, Paper, Indicator } from '@mantine/core'
 import { themes } from '../../contexts/ThemeContext'
 import { useApp } from '../../hooks/useApp'
 import { routes } from '../../routes'
@@ -41,6 +41,14 @@ function Sidebar({ activeMenu, onMenuChange }) {
 
   const themeIcons = { light: Sun, dark: Moon, purple: Palette, green: Palette }
   const ThemeIcon = themeIcons[theme] || Sun
+  
+  // 主题循环切换
+  const themeOrder = ['light', 'dark', 'purple', 'green']
+  const handleThemeClick = () => {
+    const currentIndex = themeOrder.indexOf(theme)
+    const nextIndex = (currentIndex + 1) % themeOrder.length
+    setTheme(themeOrder[nextIndex])
+  }
 
   return (
     <Box
@@ -235,38 +243,22 @@ function Sidebar({ activeMenu, onMenuChange }) {
         style={{ flexDirection: collapsed ? 'column' : 'row' }}
       >
         {/* 主题切换 */}
-        <Menu position={collapsed ? 'right' : 'top'} shadow="md">
-          <Menu.Target>
-            <ActionIcon
-              variant="subtle"
-              radius="md"
-              size="md"
-              style={{
-                transition: 'transform 200ms ease',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                color: 'white',
-              }}
-              className="hover-scale"
-            >
-              <ThemeIcon size={16} />
-            </ActionIcon>
-          </Menu.Target>
-          <Menu.Dropdown className={`${colors.card} ${colors.cardBorder}`}>
-            {Object.entries(themes).map(([key, themeConfig]) => {
-              const TIcon = themeIcons[key] || Sun
-              return (
-                <Menu.Item
-                  key={key}
-                  leftSection={<TIcon size={16} />}
-                  onClick={() => setTheme(key)}
-                  className={theme === key ? colors.primary : ''}
-                >
-                  {t(themeConfig.nameKey)}
-                </Menu.Item>
-              )
-            })}
-          </Menu.Dropdown>
-        </Menu>
+        <Tooltip label={t(themes[theme]?.nameKey || 'theme.light')} position={collapsed ? 'right' : 'top'}>
+          <ActionIcon
+            variant="subtle"
+            radius="md"
+            size="md"
+            onClick={handleThemeClick}
+            style={{
+              transition: 'transform 200ms ease',
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              color: 'white',
+            }}
+            className="hover-scale"
+          >
+            <ThemeIcon size={16} />
+          </ActionIcon>
+        </Tooltip>
         
         {!collapsed && (
           <Text size="xs" c="white" opacity={0.7} style={{ marginLeft: 'auto' }}>

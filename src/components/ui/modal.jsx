@@ -78,7 +78,7 @@ const ModalHeader = React.forwardRef(({ className, icon: Icon, iconColor, iconBg
   return (
     <div
       ref={ref}
-      className={cn("px-6 pt-6 pb-2", className)}
+      className={cn("!px-6 !pt-6 !pb-2", className)}
       {...props}
     >
       {Icon && (
@@ -118,7 +118,7 @@ const ModalDescription = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}
-      className={cn("px-6 py-4", className)}
+      className={cn("!px-6 !py-4", className)}
       {...props}
     />
   )
@@ -132,7 +132,7 @@ const ModalFooter = React.forwardRef(({ className, ...props }, ref) => {
     <div
       ref={ref}
       className={cn(
-        "px-6 py-4 flex justify-end gap-3",
+        "!px-6 !py-4 flex justify-end gap-3",
         colors.dialogFooter,
         className
       )}

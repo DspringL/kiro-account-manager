@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { useApp } from '../../hooks/useApp'
-import { useDialog } from '../../contexts/DialogContext'
+import { useApp } from '../../../hooks/useApp'
+import { useDialog } from '../../../contexts/DialogContext'
 import { Server, Plus, Edit2, Trash2, Terminal } from 'lucide-react'
 import { TextInput } from '@mantine/core'
 import AddMCPModal from '../MCPManager/AddMCPModal'
@@ -28,7 +28,7 @@ function SearchInput({ value, onChange, placeholder, colors }) {
 
 function MCPPanel({ onCountChange }) {
   const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const { showConfirm } = useDialog()
   const [servers, setServers] = useState({})
   const [loading, setLoading] = useState(true)

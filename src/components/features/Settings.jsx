@@ -3,10 +3,18 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
 import { Lock, Copy, Sun, Moon, Palette, Check, RefreshCw, Settings as SettingsIcon, Clock, Globe, Search, Shield, Download, Upload, Shuffle, AlertTriangle, Eye, EyeOff, Repeat } from 'lucide-react'
 import { Select, Switch, TextInput, Textarea, NumberInput, Button, ActionIcon, Card } from '@mantine/core'
-import { useApp } from '../hooks/useApp'
-import { useDialog } from '../contexts/DialogContext'
-import { useAppSettings } from '../contexts/AppSettingsContext'
-import { usePrivacy } from '../contexts/PrivacyContext'
+import { useApp } from '../../hooks/useApp'
+import { useDialog } from '../../contexts/DialogContext'
+import { useAppSettings } from '../../contexts/AppSettingsContext'
+import { usePrivacy } from '../../contexts/PrivacyContext'
+
+// AI 模型配置
+const AI_MODELS = [
+    { value: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5 - 1.3x', recommended: true },
+    { value: 'claude-sonnet-4', label: 'Claude Sonnet 4 - 1.3x', recommended: false },
+    { value: 'claude-haiku-4.5', label: 'Claude Haiku 4.5 - 0.4x', recommended: false },
+    { value: 'claude-opus-4.5', label: 'Claude Opus 4.5 - 2.2x', recommended: false }
+]
 
 function Settings() {
     const { t, theme, colors, setTheme } = useApp()
@@ -14,7 +22,7 @@ function Settings() {
     const { updateSettings: updateAppSettings } = useAppSettings()
     const { privacyMode, setPrivacyMode } = usePrivacy()
     // 用于 SVG 箭头颜色（浅色主题用深色）
-    const isLightTheme = theme === 'light'
+    const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
 
     const [aiModel, setAiModel] = useState('claude-sonnet-4.5')
     const [lockModel, setLockModel] = useState(true)
@@ -570,14 +578,12 @@ function Settings() {
                             value={aiModel}
                             onChange={handleApplyModel}
                             disabled={savingModel}
-                            data={[
-                                { value: 'claude-sonnet-4.5', label: `Claude Sonnet 4.5 - 1.3x (⭐ ${t('common.recommended')})` },
-                                { value: 'claude-sonnet-4', label: 'Claude Sonnet 4 - 1.3x' },
-                                { value: 'claude-haiku-4.5', label: 'Claude Haiku 4.5 - 0.4x' },
-                                { value: 'claude-opus-4.5', label: 'Claude Opus 4.5 - 2.2x' }
-                            ]}
+                            data={AI_MODELS.map(model => ({
+                                value: model.value,
+                                label: model.recommended ? `${model.label} (⭐ ${t('common.recommended')})` : model.label
+                            }))}
                             classNames={{
-                                input: `${colors.text} ${colors.input}`,
+                                input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
                                 dropdown: `${colors.card} border ${colors.cardBorder}`,
                                 option: `${colors.text}`
                             }}
@@ -609,7 +615,7 @@ function Settings() {
                                 { value: 'Autopilot', label: t('settings.agentAutopilot') }
                             ]}
                             classNames={{
-                                input: `${colors.text} ${colors.input}`,
+                                input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
                                 dropdown: `${colors.card} border ${colors.cardBorder}`,
                                 option: `${colors.text}`
                             }}
@@ -628,7 +634,7 @@ function Settings() {
                                 { value: 'all', label: t('settings.trustedCommandsAll') }
                             ]}
                             classNames={{
-                                input: `${colors.text} ${colors.input}`,
+                                input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
                                 dropdown: `${colors.card} border ${colors.cardBorder}`,
                                 option: `${colors.text}`
                             }}
@@ -639,7 +645,7 @@ function Settings() {
                                 onChange={(e) => handleCustomTrustedCommandsChange(e.currentTarget.value)}
                                 placeholder="npm *&#10;git *&#10;cargo *"
                                 classNames={{
-                                    input: `${colors.text} ${colors.input} font-mono text-sm mt-3`
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus} font-mono text-sm mt-3`
                                 }}
                                 rows={4}
                                 autosize={false}
@@ -740,7 +746,7 @@ function Settings() {
                                 onChange={(e) => setHttpProxy(e.currentTarget.value)}
                                 placeholder="http://127.0.0.1:7897"
                                 classNames={{
-                                    input: `${colors.text} ${colors.input}`
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`
                                 }}
                                 className="flex-1"
                             />
@@ -796,7 +802,6 @@ function Settings() {
                             <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoRefresh')}</span>
                         </label>
                         <div className="relative flex-1">
-                            <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.autoRefreshInterval')}</label>
                             <Select
                                 value={String(autoRefreshInterval)}
                                 onChange={(value) => handleAutoRefreshIntervalChange(value)}
@@ -809,7 +814,7 @@ function Settings() {
                                     { value: '50', label: `50 ${t('common.minutes')} (${t('common.recommended')})` }
                                 ]}
                                 classNames={{
-                                    input: `${colors.text} ${colors.input}`,
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
                                     dropdown: `${colors.card} border ${colors.cardBorder}`,
                                     option: `${colors.text}`
                                 }}
@@ -832,7 +837,6 @@ function Settings() {
                             <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoChangeMachineId')}</span>
                         </label>
                         <div className="relative flex-1">
-                            <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.machineIdMode')}</label>
                             <Select
                                 value={machineIdMode}
                                 onChange={handleMachineIdModeChange}
@@ -842,7 +846,7 @@ function Settings() {
                                     { value: 'random', label: t('settings.machineIdRandom') }
                                 ]}
                                 classNames={{
-                                    input: `${colors.text} ${colors.input}`,
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
                                     dropdown: `${colors.card} border ${colors.cardBorder}`,
                                     option: `${colors.text}`
                                 }}
@@ -888,12 +892,11 @@ function Settings() {
                                 min={0}
                                 step={0.1}
                                 classNames={{
-                                    input: `${colors.text} ${colors.input} text-center w-20`
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus} text-center w-20`
                                 }}
                             />
                         </div>
                         <div className="relative flex-1">
-                            <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.autoSwitchInterval')}</label>
                             <Select
                                 value={String(autoSwitchInterval)}
                                 onChange={(value) => handleAutoSwitchIntervalChange(value)}
@@ -907,7 +910,7 @@ function Settings() {
                                     { value: '30', label: `30 ${t('common.minutes')}` }
                                 ]}
                                 classNames={{
-                                    input: `${colors.text} ${colors.input}`,
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
                                     dropdown: `${colors.card} border ${colors.cardBorder}`,
                                     option: `${colors.text}`
                                 }}
@@ -941,7 +944,7 @@ function Settings() {
                                 onChange={(e) => setBrowserPath(e.currentTarget.value)}
                                 placeholder={t('settings.browserPlaceholder')}
                                 classNames={{
-                                    input: `${colors.text} ${colors.input}`
+                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`
                                 }}
                                 className="flex-1"
                             />
@@ -1074,33 +1077,18 @@ function Settings() {
                     {systemMachineInfo?.requiresAdmin && (
                         <div className={`flex items-start gap-3 ${colors.warning} rounded-xl p-4 mb-4 border ${colors.warningBorder}`}>
                             <AlertTriangle size={18} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                            <div className={`text-xs ${colors.textMuted} flex-1`}>
-                                <p className="font-medium text-orange-500 mb-1">{t('settings.adminWarningTitle')}</p>
-                                <ul className="list-disc list-inside space-y-0.5 mb-3">
+                            <div className="flex-1">
+                                <p className={`font-medium text-orange-500 mb-2 text-sm`}>{t('settings.adminWarningTitle')}</p>
+                                <ul className={`list-disc list-inside space-y-1 mb-3 text-xs ${colors.textMuted}`}>
                                     <li>{t('settings.adminWarning1')}</li>
                                     <li>{t('settings.adminWarning2')}</li>
                                     <li>{t('settings.adminWarning3')}</li>
                                 </ul>
                                 {systemMachineInfo?.osType !== 'macos' && (
-                                    <button
-                                        onClick={async () => {
-                                            const confirmed = await showConfirm(
-                                                t('settings.restartAsAdmin'),
-                                                t('settings.confirmRestartAsAdmin'),
-                                                { confirmText: t('settings.restart'), cancelText: t('common.cancel') }
-                                            )
-                                            if (confirmed) {
-                                                try {
-                                                    await invoke('restart_as_admin')
-                                                } catch (e) {
-                                                    await showError(t('settings.restartFailed'), e.toString())
-                                                }
-                                            }
-                                        }}
-                                        className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded-lg transition-colors"
-                                    >
-                                        {t('settings.restartAsAdmin')}
-                                    </button>
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-500/20 border border-orange-500/30 rounded-lg mt-1">
+                                        <Shield size={14} className="text-orange-500" />
+                                        <span className="text-xs font-medium text-orange-500">{t('settings.restartAsAdmin')}</span>
+                                    </div>
                                 )}
                             </div>
                         </div>

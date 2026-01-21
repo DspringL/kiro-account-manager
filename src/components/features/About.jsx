@@ -4,15 +4,15 @@ import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { check } from '@tauri-apps/plugin-updater'
 import { Card, Stack, Group, Text, Badge, Image, Button, List, Modal } from '@mantine/core'
-import { useApp } from '../hooks/useApp'
-import { useDialog } from '../contexts/DialogContext'
-import alipayQR from '../assets/donate/alipay.jpg'
-import wechatQR from '../assets/donate/wechat.jpg'
+import { useApp } from '../../hooks/useApp'
+import { useDialog } from '../../contexts/DialogContext'
+import alipayQR from '../../assets/donate/alipay.jpg'
+import wechatQR from '../../assets/donate/wechat.jpg'
 
 function About() {
   const { t, theme, colors } = useApp()
   const { showUpdate, showInfo } = useDialog()
-  const isLightTheme = theme === 'light'
+  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [version, setVersion] = useState('')
   const [checking, setChecking] = useState(false)
   const [previewImg, setPreviewImg] = useState(null)
