@@ -23,6 +23,7 @@ const PROVIDER_OPTIONS = [
   { value: 'Google', label: 'Google' },
   { value: 'GitHub', label: 'GitHub' },
   { value: 'BuilderId', label: 'BuilderId' },
+  { value: 'KiroEnterprise', label: 'Enterprise' },
 ]
 const USAGE_RANGE_OPTIONS = [
   { value: '', label: '全部' },
@@ -36,13 +37,28 @@ const USAGE_RANGE_OPTIONS = [
 function FilterSelect({ label, value, options, onChange, onClear, colors }) {
   // value 可能是数组或字符串，统一处理
   const displayValue = Array.isArray(value) ? (value[0] || '') : (value || '')
+  const hasValue = displayValue !== ''
   
   return (
     <div>
-      <label className={`block text-xs font-semibold ${colors.text} mb-2.5 flex items-center gap-2`}>
-        <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
-        {label}
-      </label>
+      <div className="flex items-center justify-between mb-2.5">
+        <label className={`text-xs font-semibold ${colors.text} flex items-center gap-2`}>
+          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
+          {label}
+        </label>
+        {hasValue && (
+          <button
+            onClick={() => {
+              console.log(`[FilterSelect] ${label} 清空`)
+              onClear?.()
+            }}
+            className="text-[10px] text-red-500 hover:text-red-600 flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-red-500/10 transition-all font-medium"
+          >
+            <X size={10} strokeWidth={2.5} />
+            清空
+          </button>
+        )}
+      </div>
       <select
         value={displayValue}
         onChange={(e) => {
@@ -56,7 +72,7 @@ function FilterSelect({ label, value, options, onChange, onClear, colors }) {
             onChange(v)
           }
         }}
-        className={`w-full px-4 py-3 text-sm rounded-xl border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all`}
+        className={`w-full px-4 py-3 text-sm rounded-xl border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all cursor-pointer`}
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>
@@ -146,52 +162,52 @@ function FilterDropdown({
       {open && (
         <div 
           className={`
-            absolute right-0 top-full mt-3 w-[340px]
-            ${colors.card} border-2 ${colors.cardBorder} 
+            absolute right-0 top-full mt-3 w-[380px]
+            ${colors.card} border ${colors.cardBorder} 
             rounded-2xl shadow-2xl z-50 
-            backdrop-blur-sm
+            backdrop-blur-xl
             overflow-hidden
           `}
           style={{ 
             animation: 'slideDown 0.2s ease-out',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(59, 130, 246, 0.1)'
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(59, 130, 246, 0.1)'
           }}
         >
           {/* 顶部装饰渐变 */}
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-blue-500/10 via-purple-500/5 to-transparent pointer-events-none" />
           
           {/* 头部 */}
-          <div className={`relative px-5 py-4 border-b ${colors.cardBorder}`}>
+          <div className={`relative px-6 py-5 border-b ${colors.cardBorder}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                  <Filter size={16} className="text-white" strokeWidth={2.5} />
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  <Filter size={18} className="text-white" strokeWidth={2.5} />
                 </div>
                 <div>
-                  <span className={`text-sm font-semibold ${colors.text} block`}>{t('filter.title')}</span>
+                  <span className={`text-base font-bold ${colors.text} block`}>{t('filter.title')}</span>
                   {activeCount > 0 && (
-                    <span className="text-[10px] text-blue-500 font-medium">{activeCount} 个筛选条件</span>
+                    <span className="text-xs text-blue-500 font-medium">{activeCount} 个筛选条件</span>
                   )}
                 </div>
               </div>
               {activeCount > 0 && (
                 <button 
                   onClick={clearAll} 
-                  className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-all font-medium shadow-sm hover:shadow-md"
+                  className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1.5 px-3 py-2 rounded-xl hover:bg-red-500/10 transition-all font-medium shadow-sm hover:shadow-md active:scale-95"
                 >
-                  <X size={12} strokeWidth={2.5} />
-                  清空
+                  <X size={14} strokeWidth={2.5} />
+                  清空全部
                 </button>
               )}
             </div>
           </div>
 
           {/* 筛选项 */}
-          <div className="relative p-5 space-y-3.5 max-h-[420px] overflow-y-auto custom-scrollbar">
+          <div className="relative p-6 space-y-4 max-h-[480px] overflow-y-auto custom-scrollbar">
             {/* 分组 */}
             {allGroups.length > 0 && (
-              <div className={`p-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-blue-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
-                <label className={`block text-xs font-semibold ${colors.text} mb-2.5 flex items-center gap-2`}>
+              <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-blue-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
+                <label className={`block text-xs font-semibold ${colors.text} mb-3 flex items-center gap-2`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                   {t('groups.title') || '分组'}
                 </label>
@@ -211,8 +227,8 @@ function FilterDropdown({
 
             {/* 标签 */}
             {allTags.length > 0 && (
-              <div className={`p-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-purple-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
-                <label className={`block text-xs font-semibold ${colors.text} mb-2.5 flex items-center gap-2`}>
+              <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-purple-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
+                <label className={`block text-xs font-semibold ${colors.text} mb-3 flex items-center gap-2`}>
                   <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
                   {t('tags.title')}
                 </label>
@@ -231,7 +247,7 @@ function FilterDropdown({
             )}
 
             {/* 订阅类型 */}
-            <div className={`p-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-indigo-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
+            <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-indigo-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
               <FilterSelect
                 label={t('filter.subscription')}
                 value={filters.subscriptions?.length > 0 ? filters.subscriptions[0] : ''}
@@ -243,7 +259,7 @@ function FilterDropdown({
             </div>
 
             {/* 账号状态 */}
-            <div className={`p-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-emerald-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
+            <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-emerald-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
               <FilterSelect
                 label={t('filter.status')}
                 value={filters.statuses?.length > 0 ? filters.statuses[0] : ''}
@@ -255,7 +271,7 @@ function FilterDropdown({
             </div>
 
             {/* 登录方式 */}
-            <div className={`p-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-cyan-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
+            <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-cyan-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
               <FilterSelect
                 label={t('filter.provider')}
                 value={filters.providers?.length > 0 ? filters.providers[0] : ''}
@@ -267,7 +283,7 @@ function FilterDropdown({
             </div>
 
             {/* 使用率 */}
-            <div className={`p-4 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-amber-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
+            <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-amber-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
               <FilterSelect
                 label={t('filter.usageRange')}
                 value={filters.usageRange || ''}
@@ -281,22 +297,22 @@ function FilterDropdown({
 
           {/* 底部统计 */}
           {activeCount > 0 && (
-            <div className={`relative px-5 py-3.5 border-t ${colors.cardBorder} bg-gradient-to-r from-blue-500/5 to-purple-500/5`}>
+            <div className={`relative px-6 py-4 border-t ${colors.cardBorder} bg-gradient-to-r from-blue-500/5 to-purple-500/5`}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
-                    <span className="text-xs font-bold text-white">{activeCount}</span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <span className="text-sm font-bold text-white">{activeCount}</span>
                   </div>
-                  <p className="text-xs font-medium text-blue-600">
+                  <p className="text-xs font-semibold text-blue-600">
                     个筛选条件已激活
                   </p>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1.5">
                   {Array.from({ length: Math.min(activeCount, 5) }).map((_, i) => (
                     <div 
                       key={i} 
-                      className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 animate-pulse"
-                      style={{ animationDelay: `${i * 0.1}s` }}
+                      className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 animate-pulse shadow-sm"
+                      style={{ animationDelay: `${i * 0.15}s` }}
                     ></div>
                   ))}
                 </div>
@@ -307,14 +323,15 @@ function FilterDropdown({
           {/* 自定义滚动条样式 */}
           <style>{`
             .custom-scrollbar::-webkit-scrollbar {
-              width: 6px;
+              width: 8px;
             }
             .custom-scrollbar::-webkit-scrollbar-track {
               background: transparent;
+              margin: 8px 0;
             }
             .custom-scrollbar::-webkit-scrollbar-thumb {
               background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
-              border-radius: 3px;
+              border-radius: 4px;
             }
             .custom-scrollbar::-webkit-scrollbar-thumb:hover {
               background: linear-gradient(to bottom, #2563eb, #7c3aed);

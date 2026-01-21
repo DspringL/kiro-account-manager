@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Search, Download, Upload, RefreshCcw, RotateCw, Trash2, Plus, Sparkles, LayoutGrid, List, Tag, ArrowUp, ArrowDown } from 'lucide-react'
+import { Search, Download, Upload, RefreshCcw, RotateCw, Trash2, Plus, Sparkles, LayoutGrid, List, Tag, ArrowUp, ArrowDown, X } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import FilterDropdown from './FilterDropdown'
 
@@ -74,8 +74,17 @@ function AccountHeader({
                   value={searchTerm}
                   onChange={(e) => onSearchChange(e.target.value)}
                   autoFocus
-                  className={`pl-10 pr-4 py-2.5 ${colors.cardSecondary} border-0 rounded-xl text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
+                  className={`pl-10 pr-10 py-2.5 ${colors.cardSecondary} border-0 rounded-xl text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => onSearchChange('')}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg ${colors.cardHover} transition-all hover:scale-110`}
+                    title="清空"
+                  >
+                    <X size={14} className={colors.textMuted} />
+                  </button>
+                )}
               </div>
             ) : (
               <button
