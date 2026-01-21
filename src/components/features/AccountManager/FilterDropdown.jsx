@@ -56,7 +56,7 @@ function FilterSelect({ label, value, options, onChange, onClear, colors }) {
             onChange(v)
           }
         }}
-        className={`w-full px-3 py-2 text-sm rounded-lg border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all`}
+        className={`w-full px-4 py-3 text-sm rounded-xl border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all`}
       >
         {options.map(opt => (
           <option key={opt.value} value={opt.value}>

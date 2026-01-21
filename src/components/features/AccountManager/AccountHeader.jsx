@@ -89,7 +89,7 @@ function AccountHeader({
           </div>
 
           {/* 排序按钮组 */}
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             {[
               { key: 'usage', label: t('sort.usage') },
               { key: 'added', label: t('sort.added') },
@@ -113,9 +113,9 @@ function AccountHeader({
                       onSortChange(`${key}Desc`)
                     }
                   }}
-                  className={`px-3 py-2 text-sm rounded-lg flex items-center gap-1.5 ${
+                  className={`px-4 py-2.5 text-sm rounded-xl flex items-center gap-1.5 transition-all ${
                     isActive 
-                      ? 'bg-blue-500 text-white shadow-sm' 
+                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' 
                       : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`
                   }`}
                   title={label}
@@ -128,17 +128,17 @@ function AccountHeader({
           </div>
 
           {/* 视图切换 */}
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             <button
               onClick={() => onViewModeChange('card')}
-              className={`p-2.5 rounded-lg ${viewMode === 'card' ? 'bg-blue-500 text-white shadow-sm' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
+              className={`p-3 rounded-xl transition-all ${viewMode === 'card' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
               title={t('accounts.cardView')}
             >
               <LayoutGrid size={18} />
             </button>
             <button
               onClick={() => onViewModeChange('table')}
-              className={`p-2.5 rounded-lg ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-sm' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
+              className={`p-3 rounded-xl transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
               title={t('accounts.tableView')}
             >
               <List size={18} />
@@ -174,31 +174,31 @@ function AccountHeader({
           )}
 
           {/* 操作按钮组 */}
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             <button
               onClick={onAdd}
-              className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-green-500`}
+              className={`p-3 rounded-xl ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-green-500 transition-all hover:scale-105`}
               title={t('common.add')}
             >
               <Plus size={18} />
             </button>
             <button
               onClick={onImport}
-              className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-purple-500`}
+              className={`p-3 rounded-xl ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-purple-500 transition-all hover:scale-105`}
               title={t('accounts.import')}
             >
               <Upload size={18} />
             </button>
             <button
               onClick={onExport}
-              className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-orange-500`}
+              className={`p-3 rounded-xl ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-orange-500 transition-all hover:scale-105`}
               title={t('accounts.export')}
             >
               <Download size={18} />
             </button>
             <button
               onClick={onRefresh}
-              className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}
+              className={`p-3 rounded-xl ${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted} transition-all hover:scale-105`}
               title={t('accounts.refreshList')}
             >
               <RotateCw size={18} />
@@ -206,7 +206,7 @@ function AccountHeader({
             <button
               onClick={onRefreshAll}
               disabled={autoRefreshing}
-              className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-blue-500 disabled:opacity-50`}
+              className={`p-3 rounded-xl ${colors.card} border ${colors.cardBorder} ${colors.cardHover} text-blue-500 disabled:opacity-50 transition-all hover:scale-105`}
               title={t('accounts.refreshAll')}
             >
               <RefreshCcw size={18} className={autoRefreshing ? 'animate-spin' : ''} />
