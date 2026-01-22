@@ -67,15 +67,12 @@ function AccountManager() {
 
   // 加载标签定义
   const loadTagDefinitions = useCallback(() => {
-    console.log('[DEBUG] 开始加载标签...')
     getTags()
       .then(tags => {
-        console.log('[DEBUG] 标签加载成功，数量:', tags.length)
-        console.log('[DEBUG] 标签数据:', tags)
         setTagDefinitions(tags)
       })
       .catch(err => {
-        console.error('[DEBUG] 标签加载失败:', err)
+        console.error('标签加载失败:', err)
       })
   }, [])
 
@@ -85,7 +82,6 @@ function AccountManager() {
   }, [])
 
   useEffect(() => {
-    console.log('[DEBUG] 组件挂载，开始加载标签和分组')
     loadTagDefinitions()
     loadGroupDefinitions()
   }, [])
