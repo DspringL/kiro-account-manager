@@ -53,6 +53,10 @@ const ModalContent = React.forwardRef(({
         style={{ maxWidth }}
         {...props}
       >
+        {/* 隐藏的 Description，用于无障碍访问 */}
+        <DialogPrimitive.Description className="sr-only">
+          弹窗内容
+        </DialogPrimitive.Description>
         {children}
         {showClose && (
           <DialogPrimitive.Close 

@@ -53,6 +53,9 @@ const DialogContent = React.forwardRef(({
         style={{ maxWidth }}
         {...props}
       >
+        <DialogPrimitive.Description className="sr-only">
+          弹窗内容
+        </DialogPrimitive.Description>
         {children}
         {showClose && (
           <DialogPrimitive.Close 

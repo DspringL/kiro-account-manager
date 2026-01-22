@@ -411,7 +411,8 @@
   "update.installLater": "稍后安装",
   "update.restartNow": "立即重启",
 
-  "addAccount.title": "添加账号",
+  "addAccount.title": "手动添加",
+  "addAccount.subtitle": "手动添加新账号到管理器",
   "addAccount.saveLocal": "保存本地账号",
   "addAccount.saveLocalDesc": "从 Kiro IDE 读取当前登录的账号",
   "addAccount.orManual": "或手动输入",

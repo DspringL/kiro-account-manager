@@ -68,6 +68,13 @@ function Login({ onLogin }) {
         <span className="text-[#ff9900] font-bold text-xl">aws</span>
       ),
     },
+    {
+      id: 'IdentityCenter',
+      name: 'IAM Identity Center',
+      icon: (
+        <span className="text-[#ff9900] font-bold text-xl">aws</span>
+      ),
+    },
   ]
 
   return (

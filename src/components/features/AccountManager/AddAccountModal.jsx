@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { SegmentedControl, Stack, Alert, Button as MantineButton } from '@mantine/core'
-import { Download, Key, AlertCircle } from 'lucide-react'
+import { SegmentedControl, Stack, Alert } from '@mantine/core'
+// 强制重新编译 v2
+import { Key, AlertCircle } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import {
   Modal,
@@ -30,20 +31,6 @@ function AddAccountModal({ onClose, onSuccess }) {
     { value: 'us-west-2', label: 'us-west-2 (Oregon)' },
     { value: 'eu-west-1', label: 'eu-west-1 (Ireland)' },
   ]
-
-  const handleSaveLocal = async () => {
-    setAddLoading(true)
-    setAddError('')
-    try {
-      await invoke('add_local_kiro_account')
-      onSuccess()
-      onClose()
-    } catch (e) {
-      setAddError(e.toString())
-    } finally {
-      setAddLoading(false)
-    }
-  }
 
   const handleAddManual = async () => {
     if (!refreshToken) {
@@ -93,41 +80,11 @@ function AddAccountModal({ onClose, onSuccess }) {
       <ModalContent maxWidth="480px">
         <ModalHeader icon={Key} iconColor="text-blue-400" iconBg="bg-gradient-to-br from-blue-500/20 to-purple-500/10">
           <ModalTitle>{t('addAccount.title')}</ModalTitle>
-          <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('addAccount.subtitle') || '添加新账号到管理器'}</p>
+          <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('addAccount.subtitle')}</p>
         </ModalHeader>
 
         <ModalDescription>
           <Stack gap="xl" p="md">
-            {/* 保存本地账号 */}
-            <div className={`p-5 rounded-xl border-2 border-dashed ${colors.cardBorder} ${colors.cardSecondary} hover:border-teal-500/50 group`}>
-              <MantineButton
-                onClick={handleSaveLocal}
-                disabled={addLoading}
-                variant="light"
-                color="teal"
-                leftSection={<Download size={18} />}
-                fullWidth
-                size="lg"
-                classNames={{
-                  root: 'h-auto py-4 rounded-xl'
-                }}
-              >
-                <div className="text-left w-full">
-                  <div className="font-semibold text-base">{t('addAccount.saveLocal')}</div>
-                  <div className={`text-xs mt-1 opacity-70 ${colors.textMuted}`}>{t('addAccount.saveLocalDesc')}</div>
-                </div>
-              </MantineButton>
-            </div>
-
-            <div className="relative">
-              <div className={`absolute inset-0 flex items-center`}>
-                <div className={`w-full border-t ${colors.cardBorder}`}></div>
-              </div>
-              <div className="relative flex justify-center">
-                <span className={`px-4 text-sm ${colors.textMuted} ${colors.card}`}>{t('addAccount.orManual')}</span>
-              </div>
-            </div>
-
             {/* 账号类型选择 */}
             <SegmentedControl
               value={accountType}
@@ -141,15 +98,19 @@ function AddAccountModal({ onClose, onSuccess }) {
 
             {/* Social Provider 选择 */}
             {accountType === 'social' && (
-              <SegmentedControl
-                value={socialProvider}
-                onChange={setSocialProvider}
-                data={[
-                  { value: 'Google', label: 'Google' },
-                  { value: 'Github', label: 'Github' }
-                ]}
-                fullWidth
-              />
+              <div>
+                <label className={`block text-sm font-medium ${colors.text} mb-2`}>
+                  登录方式
+                </label>
+                <select
+                  value={socialProvider}
+                  onChange={(e) => setSocialProvider(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2`}
+                >
+                  <option value="Google">Google</option>
+                  <option value="Github">Github</option>
+                </select>
+              </div>
             )}
 
             {/* Refresh Token */}
