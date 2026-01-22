@@ -133,78 +133,67 @@ function About() {
           styles={{ root: { backgroundColor: 'transparent' } }}
         >
           <Text size="sm" fw={500} className={colors.text} ta="center" mb="md">{t('about.links')}</Text>
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              component="a"
-              href="https://vercel-api-lemon-five.vercel.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={<ExternalLink size={18} />}
-              variant="filled"
-              color="cyan"
-              fullWidth
-              radius="md"
-            >
-              {t('about.website')}
-            </Button>
-            <Button
-              component="a"
-              href="https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc"
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={<BookOpen size={18} />}
-              variant="filled"
-              color="violet"
-              fullWidth
-              radius="md"
-            >
-              {t('about.tutorial')}
-            </Button>
-            <Button
-              component="a"
-              href="https://github.com/hj01857655/kiro-account-manager"
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={<Github size={18} />}
-              variant="filled"
-              color="dark"
-              fullWidth
-              radius="md"
-            >
-              GitHub
-            </Button>
-            <Button
-              component="a"
-              href="https://qm.qq.com/q/T9L311vb2s"
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                  <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-1.77 1.182 0 .686 4.078.43 6.29.43 2.213 0 6.29.256 6.29-.43 0-.687-1.77-1.182-1.77-1.182 2.085-1.77 1.905-3.967 1.905-3.967.845 1.588 1.634 2.072 1.746 2.072.111 0 .283-.36.283-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.29 3.364 14.268 2 12.003 2z"/>
-                </svg>
-              }
-              variant="filled"
-              color="blue"
-              fullWidth
-              radius="md"
-            >
-              {t('about.qqGroup')}
-            </Button>
-            <Button
-              component="a"
-              href="https://pay.ldxp.cn/shop/hj01857655"
-              target="_blank"
-              rel="noopener noreferrer"
-              leftSection={<ShoppingCart size={18} />}
-              variant="filled"
-              color="orange"
-              fullWidth
-              radius="md"
-              style={{ gridColumn: 'span 2' }}
-            >
-              {t('about.shop')}
-            </Button>
-          </div>
+          <Stack gap="sm">
+            {/* 第一行：官网、GitHub */}
+            <Group gap="sm" grow>
+              <Button
+                component="a"
+                href="https://vercel-api-lemon-five.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                leftSection={<ExternalLink size={18} />}
+                variant="filled"
+                color="cyan"
+                radius="md"
+              >
+                {t('about.website')}
+              </Button>
+              <Button
+                component="a"
+                href="https://github.com/hj01857655/kiro-account-manager"
+                target="_blank"
+                rel="noopener noreferrer"
+                leftSection={<Github size={18} />}
+                variant="filled"
+                color="dark"
+                radius="md"
+              >
+                Kiro Account Manager
+              </Button>
+            </Group>
+
+            {/* 第二行：QQ群、Kiro Gateway */}
+            <Group gap="sm" grow>
+              <Button
+                component="a"
+                href="https://qm.qq.com/q/T9L311vb2s"
+                target="_blank"
+                rel="noopener noreferrer"
+                leftSection={
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+                    <path d="M12.003 2c-2.265 0-6.29 1.364-6.29 7.325v1.195S3.55 14.96 3.55 17.474c0 .665.17 1.025.281 1.025.114 0 .902-.484 1.748-2.072 0 0-.18 2.197 1.904 3.967 0 0-1.77.495-1.77 1.182 0 .686 4.078.43 6.29.43 2.213 0 6.29.256 6.29-.43 0-.687-1.77-1.182-1.77-1.182 2.085-1.77 1.905-3.967 1.905-3.967.845 1.588 1.634 2.072 1.746 2.072.111 0 .283-.36.283-1.025 0-2.514-2.166-6.954-2.166-6.954V9.325C18.29 3.364 14.268 2 12.003 2z"/>
+                  </svg>
+                }
+                variant="filled"
+                color="cyan"
+                radius="md"
+              >
+                {t('about.qqGroup')}
+              </Button>
+              <Button
+                component="a"
+                href="https://github.com/hj01857655/kiro-gateway"
+                target="_blank"
+                rel="noopener noreferrer"
+                leftSection={<Github size={18} />}
+                variant="filled"
+                color="dark"
+                radius="md"
+              >
+                {t('about.shop')}
+              </Button>
+            </Group>
+          </Stack>
         </Card>
 
         {/* 赞赏 */}

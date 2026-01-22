@@ -5,7 +5,7 @@ import { SegmentedControl, Stack, Alert } from '@mantine/core'
 import { Key, AlertCircle } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import {
-  Modal,
+  ModalRoot,
   ModalContent,
   ModalHeader,
   ModalTitle,
@@ -76,7 +76,7 @@ function AddAccountModal({ onClose, onSuccess }) {
   }
 
   return (
-    <Modal open={true} onOpenChange={(open) => !open && onClose()}>
+    <ModalRoot open={true} onOpenChange={(open) => !open && onClose()}>
       <ModalContent maxWidth="480px">
         <ModalHeader icon={Key} iconColor="text-blue-400" iconBg="bg-gradient-to-br from-blue-500/20 to-purple-500/10">
           <ModalTitle>{t('addAccount.title')}</ModalTitle>
@@ -208,7 +208,7 @@ function AddAccountModal({ onClose, onSuccess }) {
           </Button>
         </ModalFooter>
       </ModalContent>
-    </Modal>
+    </ModalRoot>
   )
 }
 

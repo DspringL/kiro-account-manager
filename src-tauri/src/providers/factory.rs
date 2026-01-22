@@ -44,7 +44,7 @@ pub fn get_provider_config(provider: &str) -> Option<ProviderConfig> {
             provider_id: "Enterprise".to_string(),
             auth_method: AuthMethod::Idc,
             region: "us-east-1".to_string(),
-            start_url: Some("https://amzn.awsapps.com/start".to_string()),
+            start_url: Some("https://view.awsapps.com/start".to_string()),  // 默认使用 BuilderId URL，用户可以自定义
         }),
         _ => None,
     }

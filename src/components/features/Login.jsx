@@ -3,11 +3,36 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Loader, ArrowRight } from 'lucide-react'
 import { useApp } from '../../hooks/useApp'
+import { Button } from '../ui/button'
 
 function Login({ onLogin }) {
-  const { t } = useApp()
+  const { t, colors } = useApp()
   const [loadingProvider, setLoadingProvider] = useState(null)
   const [error, setError] = useState('')
+  const [showEnterpriseModal, setShowEnterpriseModal] = useState(false)
+  const [enterpriseStartUrl, setEnterpriseStartUrl] = useState('')
+  const [enterpriseRegion, setEnterpriseRegion] = useState('us-east-1')
+  const [showWaitingModal, setShowWaitingModal] = useState(false)
+  const [waitingProviderName, setWaitingProviderName] = useState('')
+
+  const awsRegions = [
+    { value: 'us-east-1', label: 'US East (N. Virginia)' },
+    { value: 'us-east-2', label: 'US East (Ohio)' },
+    { value: 'us-west-1', label: 'US West (N. California)' },
+    { value: 'us-west-2', label: 'US West (Oregon)' },
+    { value: 'ap-south-1', label: 'Asia Pacific (Mumbai)' },
+    { value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' },
+    { value: 'ap-northeast-2', label: 'Asia Pacific (Seoul)' },
+    { value: 'ap-southeast-1', label: 'Asia Pacific (Singapore)' },
+    { value: 'ap-southeast-2', label: 'Asia Pacific (Sydney)' },
+    { value: 'ca-central-1', label: 'Canada (Central)' },
+    { value: 'eu-central-1', label: 'Europe (Frankfurt)' },
+    { value: 'eu-west-1', label: 'Europe (Ireland)' },
+    { value: 'eu-west-2', label: 'Europe (London)' },
+    { value: 'eu-west-3', label: 'Europe (Paris)' },
+    { value: 'eu-north-1', label: 'Europe (Stockholm)' },
+    { value: 'sa-east-1', label: 'South America (São Paulo)' },
+  ]
 
   useEffect(() => {
     let unlistenSuccess
@@ -16,6 +41,7 @@ function Login({ onLogin }) {
       unlistenSuccess = await listen('login-success', (event) => {
         console.log('Login success event:', event.payload)
         setLoadingProvider(null)
+        setShowWaitingModal(false)
         onLogin?.(event.payload)
       })
     }
@@ -28,10 +54,55 @@ function Login({ onLogin }) {
   }, [onLogin])
 
   const handleLogin = async (provider) => {
+    // Enterprise 需要用户输入 start_url
+    if (provider === 'Enterprise') {
+      setShowEnterpriseModal(true)
+      return
+    }
+
+    // 显示等待授权弹窗
+    const providerNames = {
+      'Google': 'Google',
+      'Github': 'GitHub',
+      'BuilderId': 'Builder ID'
+    }
+    setWaitingProviderName(providerNames[provider] || provider)
+    setShowWaitingModal(true)
     setLoadingProvider(provider)
     setError('')
+    
     try {
       await invoke('kiro_login', { provider })
+    } catch (e) {
+      console.error('Login error:', e)
+      setError(typeof e === 'string' ? e : e.message || t('login.failed'))
+      setLoadingProvider(null)
+      setShowWaitingModal(false)
+    }
+  }
+
+  const handleCancelLogin = () => {
+    setShowWaitingModal(false)
+    setLoadingProvider(null)
+    setError('')
+  }
+
+  const handleEnterpriseLogin = async () => {
+    if (!enterpriseStartUrl.trim()) {
+      setError('请输入 Start URL')
+      return
+    }
+
+    setShowEnterpriseModal(false)
+    setLoadingProvider('Enterprise')
+    setError('')
+    
+    try {
+      await invoke('kiro_login', { 
+        provider: 'Enterprise',
+        startUrl: enterpriseStartUrl.trim(),
+        region: enterpriseRegion
+      })
     } catch (e) {
       console.error('Login error:', e)
       setError(typeof e === 'string' ? e : e.message || t('login.failed'))
@@ -69,7 +140,7 @@ function Login({ onLogin }) {
       ),
     },
     {
-      id: 'IdentityCenter',
+      id: 'Enterprise',
       name: 'IAM Identity Center',
       icon: (
         <span className="text-[#ff9900] font-bold text-xl">aws</span>
@@ -171,6 +242,115 @@ function Login({ onLogin }) {
           .
         </div>
       </div>
+
+      {/* Enterprise Start URL 输入弹窗 */}
+      {showEnterpriseModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div 
+            className={`${colors.card} rounded-2xl w-full max-w-[480px] shadow-2xl border ${colors.cardBorder}`}
+            style={{ animation: 'dialogSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
+          >
+            {/* Header */}
+            <div className="px-6 pt-6 pb-2">
+              <h2 className={`text-xl font-semibold ${colors.text}`}>IAM Identity Center</h2>
+              <p className={`text-sm ${colors.textMuted} mt-2`}>请输入您企业的 AWS IAM Identity Center Start URL</p>
+            </div>
+            
+            {/* Content */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className={`block text-sm font-medium ${colors.text} mb-2`}>Start URL</label>
+                <input
+                  type="text"
+                  value={enterpriseStartUrl}
+                  onChange={(e) => setEnterpriseStartUrl(e.target.value)}
+                  placeholder="https://d-1234567890.awsapps.com/start"
+                  className={`w-full px-4 py-3 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2 transition-all`}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEnterpriseLogin()
+                    if (e.key === 'Escape') setShowEnterpriseModal(false)
+                  }}
+                />
+                <p className={`text-xs ${colors.textMuted} mt-1.5`}>
+                  示例: https://d-90661d346f.awsapps.com/start
+                </p>
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium ${colors.text} mb-2`}>AWS Region</label>
+                <select
+                  value={enterpriseRegion}
+                  onChange={(e) => setEnterpriseRegion(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2 transition-all`}
+                >
+                  {awsRegions.map(region => (
+                    <option key={region.value} value={region.value}>
+                      {region.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className={`px-6 py-4 ${colors.dialogFooter} flex justify-end gap-3`}>
+              <Button
+                variant="secondary"
+                onClick={() => setShowEnterpriseModal(false)}
+              >
+                取消
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleEnterpriseLogin}
+              >
+                继续
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 等待授权弹窗 */}
+      {showWaitingModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div 
+            className={`${colors.card} rounded-2xl w-full max-w-[400px] shadow-2xl border ${colors.cardBorder}`}
+            style={{ animation: 'dialogSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}
+          >
+            {/* Header */}
+            <div className="px-6 pt-6 pb-2">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/10 flex items-center justify-center">
+                  <Loader size={24} className="text-blue-400 animate-spin" />
+                </div>
+                <h2 className={`text-lg font-semibold ${colors.text}`}>等待授权</h2>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="px-6 py-4">
+              <p className={`text-sm ${colors.text} leading-relaxed`}>
+                正在等待您在浏览器中完成 {waitingProviderName} 授权...
+              </p>
+              <p className={`text-xs ${colors.textMuted} mt-2`}>
+                如果浏览器未自动打开，请手动打开授权页面
+              </p>
+            </div>
+            
+            {/* Footer */}
+            <div className={`px-6 py-4 ${colors.dialogFooter} flex justify-end`}>
+              <Button
+                variant="secondary"
+                onClick={handleCancelLogin}
+              >
+                取消
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

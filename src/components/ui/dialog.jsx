@@ -3,8 +3,9 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 import { cn } from "../../lib/utils"
 import { useApp } from "../../hooks/useApp"
+import { Button } from './button'
 
-const Dialog = DialogPrimitive.Root
+const DialogRoot = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
 const DialogPortal = DialogPrimitive.Portal
 const DialogClose = DialogPrimitive.Close
@@ -40,7 +41,7 @@ const DialogContent = React.forwardRef(({
         className={cn(
           "fixed left-[50%] top-[50%] z-50",
           "translate-x-[-50%] translate-y-[-50%]",
-          "w-full shadow-2xl rounded-2xl border",
+          "w-full shadow-2xl rounded-2xl border p-4",
           colors.card,
           colors.cardBorder,
           "duration-200",
@@ -118,10 +119,12 @@ const DialogTitle = React.forwardRef(({ className, ...props }, ref) => {
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => {
+  const { colors } = useApp()
+  
   return (
     <div
       ref={ref}
-      className={cn("px-6 py-4", className)}
+      className={cn("px-6 py-4", colors.text, className)}
       {...props}
     />
   )
@@ -145,8 +148,68 @@ const DialogFooter = React.forwardRef(({ className, ...props }, ref) => {
 })
 DialogFooter.displayName = "DialogFooter"
 
+/**
+ * Dialog - 完整的对话框组件
+ */
+export function Dialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+  maxWidth = '400px',
+  icon: Icon,
+  iconColor,
+  iconBg,
+  confirmText = '确定',
+  cancelText = '取消',
+  onConfirm,
+  confirmVariant = 'primary',
+  loading = false,
+  showCancel = true,
+  showClose = true,
+}) {
+  return (
+    <DialogRoot open={open} onOpenChange={onOpenChange}>
+      <DialogContent maxWidth={maxWidth} showClose={showClose}>
+        <DialogHeader icon={Icon} iconColor={iconColor} iconBg={iconBg}>
+          <DialogTitle>{title}</DialogTitle>
+          {description && (
+            <p className="text-sm text-gray-500 mt-2">{description}</p>
+          )}
+        </DialogHeader>
+        
+        {children && (
+          <DialogDescription>{children}</DialogDescription>
+        )}
+        
+        <DialogFooter>
+          {showCancel && (
+            <Button
+              variant="secondary"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
+              {cancelText}
+            </Button>
+          )}
+          {onConfirm && (
+            <Button
+              variant={confirmVariant}
+              onClick={onConfirm}
+              loading={loading}
+            >
+              {confirmText}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
+  )
+}
+
 export {
-  Dialog,
+  DialogRoot,
   DialogPortal,
   DialogOverlay,
   DialogClose,

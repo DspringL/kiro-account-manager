@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import {
-  Modal,
+  ModalRoot,
   ModalContent,
   ModalHeader,
   ModalTitle,
@@ -71,7 +71,7 @@ function ConfirmModal({
   const { icon: Icon, iconColor, iconBg, btnVariant } = config[type]
 
   return (
-    <Modal open={true} onOpenChange={(open) => !open && onCancel()}>
+    <ModalRoot open={true} onOpenChange={(open) => !open && onCancel()}>
       <ModalContent maxWidth="400px">
         <ModalHeader icon={Icon} iconColor={iconColor} iconBg={iconBg}>
           <ModalTitle>{title}</ModalTitle>
@@ -135,7 +135,7 @@ function ConfirmModal({
           </Button>
         </ModalFooter>
       </ModalContent>
-    </Modal>
+    </ModalRoot>
   )
 }
 

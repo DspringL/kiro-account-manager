@@ -155,7 +155,7 @@ A: 根据内容类型选择合适的 `max-w-[xxxpx]`
     
     {/* Footer */}
     <div className={`px-6 py-4 ${colors.dialogFooter} flex justify-end gap-3`}>
-      <button className="px-6 py-2.5 text-sm font-medium rounded-xl text-white bg-gradient-to-r from-red-500 to-red-600 shadow-lg shadow-red-500/30">
+      <button className="px-6 py-2.5 text-sm font-medium rounded-xl text-white bg-gradient-to-r from-red-500 to-red-600 shadow-lg shadow-red-500/30 transition-all active:scale-[0.98]">
         确定
       </button>
     </div>

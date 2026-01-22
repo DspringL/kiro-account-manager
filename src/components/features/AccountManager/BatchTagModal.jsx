@@ -6,13 +6,13 @@ import { useDialog } from '../../../contexts/DialogContext'
 import { getTags, setAccountTags } from '../../../api/groupTag'
 import { invoke } from '@tauri-apps/api/core'
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  ModalDescription,
-  ModalFooter,
-} from '../../ui/modal'
+  DialogRoot,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../../ui/dialog'
 import { Button } from '../../ui/button'
 
 const PRESET_COLORS = [
@@ -115,7 +115,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
     : availableTags
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+    <DialogRoot open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent maxWidth="480px">
         <DialogHeader icon={Tag} iconColor="text-purple-400" iconBg="bg-gradient-to-br from-purple-500/20 to-pink-500/10">
           <DialogTitle>{t('tags.batchSet')}</DialogTitle>
@@ -223,7 +223,7 @@ function BatchTagModal({ accountIds, accounts = [], onClose, onSuccess }) {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </DialogRoot>
   )
 }
 

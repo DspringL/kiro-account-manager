@@ -8,7 +8,7 @@ import { setAccountTags, setAccountGroup, getGroups, addGroup } from '../../../a
 import { TagSelector } from './GroupTagManager'
 import { TokenJsonView } from './TokenJsonView'
 import {
-  Dialog,
+  DialogRoot,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -144,7 +144,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
   }
 
   return (
-    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+    <DialogRoot open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent maxWidth="480px">
         <DialogHeader icon={Folder} iconColor="text-emerald-400" iconBg="bg-gradient-to-br from-emerald-500/20 to-teal-500/10">
           <DialogTitle>{t('editAccount.title')}</DialogTitle>
@@ -283,7 +283,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </DialogRoot>
   )
 }
 
