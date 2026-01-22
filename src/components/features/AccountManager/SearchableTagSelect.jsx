@@ -63,9 +63,9 @@ function SearchableTagSelect({
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {/* 输入框（可搜索） */}
-      <div className={`w-full flex items-center border rounded-lg text-sm ${colors.input} ${open ? 'ring-2 ring-blue-500/30 border-blue-500' : colors.cardBorder}`}>
+      <div className={`w-full flex items-center border rounded-xl text-sm ${colors.input} ${colors.inputFocus} ${open ? 'ring-2 ring-blue-500/30 border-blue-500' : ''} transition-all cursor-pointer`}>
         {selectedTag && (
-          <span className="ml-3 w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedTag.color }} />
+          <span className="ml-4 w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedTag.color }} />
         )}
         <input
           ref={inputRef}
@@ -74,32 +74,37 @@ function SearchableTagSelect({
           onChange={(e) => { setSearch(e.target.value); if (!open) setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder={placeholder}
-          className={`flex-1 px-3 py-2 bg-transparent text-sm ${colors.text} focus:outline-none`}
+          className={`flex-1 px-4 py-3 bg-transparent text-sm ${colors.text} focus:outline-none cursor-pointer`}
         />
         {value && (
-          <button type="button" onClick={(e) => { e.stopPropagation(); onChange(null); setSearch('') }} className="p-1 mr-1 hover:bg-red-500/20 rounded">
-            <X size={14} className="text-red-500" />
+          <button 
+            type="button" 
+            onClick={(e) => { e.stopPropagation(); onChange(null); setSearch('') }} 
+            className={`p-1.5 mr-1 rounded-lg ${colors.cardHover} hover:bg-red-500/10 transition-all hover:scale-110 active:scale-95`}
+            title="清空"
+          >
+            <X size={14} className="text-red-500" strokeWidth={2.5} />
           </button>
         )}
-        <button type="button" onClick={() => setOpen(!open)} className="pr-3">
-          <ChevronDown size={14} className={`${colors.textMuted} transition-transform ${open ? 'rotate-180' : ''}`} />
+        <button type="button" onClick={() => setOpen(!open)} className="pr-4">
+          <ChevronDown size={16} className={`${colors.textMuted} transition-transform ${open ? 'rotate-180' : ''}`} strokeWidth={2.5} />
         </button>
       </div>
 
       {/* 下拉面板 */}
       {open && (
-        <div className={`absolute left-0 right-0 top-full mt-1 ${colors.card} border ${colors.cardBorder} rounded-lg shadow-xl z-50 overflow-hidden`}>
-          <div className="max-h-48 overflow-y-auto">
+        <div className={`absolute left-0 right-0 top-full mt-2 ${colors.card} border ${colors.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}>
+          <div className="max-h-56 overflow-y-auto">
             {/* 全部选项 */}
             {showAllOption && (
               <button
                 type="button"
                 onClick={() => handleSelect(null)}
-                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                  !value ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
+                className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
+                  !value ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
-                <Tag size={14} className={colors.textMuted} />
+                <Tag size={16} className={colors.textMuted} strokeWidth={2.5} />
                 {allLabel}
               </button>
             )}
@@ -109,8 +114,8 @@ function SearchableTagSelect({
               <button
                 type="button"
                 onClick={() => handleSelect('__has__')}
-                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                  value === '__has__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
+                className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
+                  value === '__has__' ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <span className="w-3 h-3 rounded-full bg-green-500" />
@@ -123,8 +128,8 @@ function SearchableTagSelect({
               <button
                 type="button"
                 onClick={() => handleSelect('__none__')}
-                className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                  value === '__none__' ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
+                className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
+                  value === '__none__' ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <span className={`w-3 h-3 rounded-full border-2 border-dashed ${colors.cardBorder}`} />
@@ -139,8 +144,8 @@ function SearchableTagSelect({
                   key={tag.id}
                   type="button"
                   onClick={() => handleSelect(tag.id)}
-                  className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 ${
-                    value === tag.id ? 'bg-blue-500/10 text-blue-500' : `${colors.text} ${colors.cardHover}`
+                  className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
+                    value === tag.id ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
                   }`}
                 >
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />
@@ -148,7 +153,7 @@ function SearchableTagSelect({
                 </button>
               ))
             ) : search ? (
-              <div className={`px-3 py-4 text-center text-sm ${colors.textMuted}`}>
+              <div className={`px-4 py-6 text-center text-sm ${colors.textMuted}`}>
                 未找到匹配的标签
               </div>
             ) : null}

@@ -27,10 +27,10 @@ const PROVIDER_OPTIONS = [
 ]
 const USAGE_RANGE_OPTIONS = [
   { value: '', label: '全部' },
-  { value: '0-25', label: '0-25%' },
-  { value: '25-50', label: '25-50%' },
-  { value: '50-75', label: '50-75%' },
-  { value: '75-100', label: '75-100%' },
+  { value: '0-500', label: '0-500' },
+  { value: '500-1000', label: '500-1000' },
+  { value: '1000-2000', label: '1000-2000' },
+  { value: '2000-+', label: '2000+' },
 ]
 
 // 通用筛选下拉组件
@@ -41,45 +41,46 @@ function FilterSelect({ label, value, options, onChange, onClear, colors }) {
   
   return (
     <div>
-      <div className="flex items-center justify-between mb-2.5">
-        <label className={`text-xs font-semibold ${colors.text} flex items-center gap-2`}>
-          <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
-          {label}
-        </label>
+      <label className={`block text-xs font-semibold ${colors.text} mb-3 flex items-center gap-2`}>
+        <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          value={displayValue}
+          onChange={(e) => {
+            const v = e.target.value
+            console.log(`[FilterSelect] ${label} 选择:`, v)
+            if (v === '') {
+              console.log(`[FilterSelect] ${label} 清空`)
+              onClear?.()
+            } else {
+              console.log(`[FilterSelect] ${label} 设置为:`, v)
+              onChange(v)
+            }
+          }}
+          className={`w-full px-4 py-3 ${hasValue ? 'pr-10' : 'pr-4'} text-sm rounded-xl border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all cursor-pointer`}
+        >
+          {options.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
         {hasValue && (
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation()
               console.log(`[FilterSelect] ${label} 清空`)
               onClear?.()
             }}
-            className="text-[10px] text-red-500 hover:text-red-600 flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-red-500/10 transition-all font-medium"
+            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover} hover:bg-red-500/10 transition-all hover:scale-110 active:scale-95`}
+            title="清空"
           >
-            <X size={10} strokeWidth={2.5} />
-            清空
+            <X size={14} className="text-red-500" strokeWidth={2.5} />
           </button>
         )}
       </div>
-      <select
-        value={displayValue}
-        onChange={(e) => {
-          const v = e.target.value
-          console.log(`[FilterSelect] ${label} 选择:`, v)
-          if (v === '') {
-            console.log(`[FilterSelect] ${label} 清空`)
-            onClear?.()
-          } else {
-            console.log(`[FilterSelect] ${label} 设置为:`, v)
-            onChange(v)
-          }
-        }}
-        className={`w-full px-4 py-3 text-sm rounded-xl border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all cursor-pointer`}
-      >
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
     </div>
   )
 }
@@ -282,10 +283,10 @@ function FilterDropdown({
               />
             </div>
 
-            {/* 使用率 */}
+            {/* 使用量 */}
             <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder} hover:border-amber-500/30 transition-all duration-200 shadow-sm hover:shadow-md`}>
               <FilterSelect
-                label={t('filter.usageRange')}
+                label="使用量"
                 value={filters.usageRange || ''}
                 options={USAGE_RANGE_OPTIONS}
                 onChange={(v) => onFiltersChange({ ...filters, usageRange: v })}

@@ -48,31 +48,28 @@ export function applyFilters(accounts, filters) {
       if (!matchProvider) return false
     }
 
-    // 使用率范围筛选 - 字符串格式 '0-25', '25-50' 等
+    // 使用量范围筛选 - 字符串格式 '0-10', '10-30' 等
     if (filters.usageRange && typeof filters.usageRange === 'string') {
       const [minStr, maxStr] = filters.usageRange.split('-')
       const min = parseInt(minStr, 10)
-      const max = parseInt(maxStr, 10)
+      const max = maxStr === '+' ? Infinity : parseInt(maxStr, 10)
       
-      // 计算总配额使用率（与 accountStats.js 保持一致）
+      // 计算总使用量（已用绝对值）
       const breakdown = account.usageData?.usageBreakdownList?.[0]
       if (!breakdown) return false
       
       const mainUsed = breakdown.currentUsage || 0
-      const mainLimit = breakdown.usageLimit || 50
       const trialUsed = breakdown.freeTrialInfo?.currentUsage || 0
-      const trialLimit = breakdown.freeTrialInfo?.usageLimit || 0
       const bonusUsed = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.currentUsage || 0), 0)
-      const bonusLimit = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.usageLimit || 0), 0)
       
-      const totalLimit = mainLimit + trialLimit + bonusLimit
       const totalUsed = mainUsed + trialUsed + bonusUsed
-      const percent = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0
       
-      if (max === 100) {
-        if (percent < min || percent > max) return false
+      if (max === Infinity) {
+        // 50+ 的情况
+        if (totalUsed < min) return false
       } else {
-        if (percent < min || percent >= max) return false
+        // 0-10, 10-30, 30-50 的情况
+        if (totalUsed < min || totalUsed >= max) return false
       }
     }
 

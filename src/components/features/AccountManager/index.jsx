@@ -155,19 +155,14 @@ function AccountManager() {
     return expiry
   }
 
-  // 获取使用率
-  const getUsagePercent = (account) => {
+  // 获取使用量（已用绝对值）
+  const getUsageAmount = (account) => {
     const breakdown = account.usageData?.usageBreakdownList?.[0]
     if (!breakdown) return 0
     const mainUsed = breakdown.currentUsage || 0
-    const mainLimit = breakdown.usageLimit || 50
     const trialUsed = breakdown.freeTrialInfo?.currentUsage || 0
-    const trialLimit = breakdown.freeTrialInfo?.usageLimit || 0
     const bonusUsed = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.currentUsage || 0), 0)
-    const bonusLimit = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.usageLimit || 0), 0)
-    const total = mainLimit + trialLimit + bonusLimit
-    const used = mainUsed + trialUsed + bonusUsed
-    return total > 0 ? (used / total) : 0
+    return mainUsed + trialUsed + bonusUsed
   }
 
   const filteredAccounts = useMemo(() => {
@@ -207,9 +202,9 @@ function AccountManager() {
           case 'trialDesc':
             return getTrialExpiry(b) - getTrialExpiry(a)
           case 'usageAsc':
-            return getUsagePercent(a) - getUsagePercent(b)
+            return getUsageAmount(a) - getUsageAmount(b)
           case 'usageDesc':
-            return getUsagePercent(b) - getUsagePercent(a)
+            return getUsageAmount(b) - getUsageAmount(a)
           case 'addedAsc':
             return new Date(a.addedAt || 0) - new Date(b.addedAt || 0)
           case 'addedDesc':
