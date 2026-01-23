@@ -187,10 +187,10 @@ function About() {
                 rel="noopener noreferrer"
                 leftSection={<Github size={18} />}
                 variant="filled"
-                color="dark"
+                color="grape"
                 radius="md"
               >
-                {t('about.shop')}
+                Kiro Gateway
               </Button>
             </Group>
           </Stack>
