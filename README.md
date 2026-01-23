@@ -30,10 +30,10 @@
 ## ✨ 功能特性
 
 ### 🔐 账号登录
-- **Desktop OAuth** - 桌面端授权，支持 Google/GitHub/BuilderId
-- **🆕 Enterprise 支持** - AWS IAM Identity Center 企业账号登录
-  - 完整支持 SSO OIDC 流程
-  - 自动刷新 Token
+- **Desktop OAuth** - 桌面端授权登录
+  - Google / GitHub / BuilderId / 🆕 Enterprise
+  - Enterprise 支持 AWS IAM Identity Center 企业账号
+  - 完整支持 SSO OIDC 流程，自动刷新 Token
   - 企业账号专属徽章颜色
 - 默认无痕模式，保护隐私
 
