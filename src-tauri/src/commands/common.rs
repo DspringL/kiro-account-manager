@@ -4,7 +4,6 @@ use crate::account::Account;
 use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, SocialProvider, KiroPortalClient};
 
 // 常量
-pub const START_URL: &str = "https://view.awsapps.com/start";
 pub const MAX_ACCOUNT_COUNT: usize = 4000;
 
 /// Token 刷新结果
@@ -119,10 +118,13 @@ pub fn calc_expires_at(expires_in: i64) -> String {
 }
 
 
-/// 计算 client_id_hash
-pub fn calc_client_id_hash() -> String {
-    use sha2::{Digest, Sha256};
-    hex::encode(Sha256::digest(START_URL.as_bytes()))
+/// 计算 client_id_hash（与 Kiro IDE 一致，使用 SHA1）
+pub fn calc_client_id_hash(start_url: &str) -> String {
+    use sha1::{Digest, Sha1};
+    let input = serde_json::json!({ "startUrl": start_url }).to_string();
+    let mut hasher = Sha1::new();
+    hasher.update(input.as_bytes());
+    hex::encode(hasher.finalize())
 }
 
 /// 从 usage 中提取 email 和 user_id

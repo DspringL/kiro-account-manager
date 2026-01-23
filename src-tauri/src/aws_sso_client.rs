@@ -93,7 +93,7 @@ impl AWSSSOClient {
             .collect();
         
         let body = serde_json::json!({
-            "clientName": "Kiro Account Manager",
+            "clientName": "Kiro IDE",
             "clientType": "public",
             "scopes": scopes,
             "grantTypes": ["authorization_code", "refresh_token"],
@@ -116,10 +116,12 @@ impl AWSSSOClient {
         let text = resp.text().await.unwrap_or_default();
 
         if !status.is_success() {
-            // 特殊处理：用户提供的 Start URL 无效
+            // 特殊处理：用户提供的 Start URL 无效（跟 Kiro IDE 一样）
+            // 参考：extension.js 行 138415-138416
             if has_user_provided_input && status.as_u16() == 400 {
-                if text.to_lowercase().contains("invalid start url") {
-                    return Err("Start URL 无效，请检查您输入的 URL 是否正确".to_string());
+                // 检查错误描述中是否包含 "invalid start url provided"
+                if text.to_lowercase().contains("invalid start url provided") {
+                    return Err("Start URL 无效。请检查您输入的 IAM Identity Center Start URL 是否正确。\n\n示例格式：https://d-1234567890.awsapps.com/start".to_string());
                 }
             }
             return Err(format!("Client registration failed ({}): {}", status, text));

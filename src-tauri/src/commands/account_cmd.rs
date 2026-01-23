@@ -475,7 +475,9 @@ pub async fn add_account_by_idc(
         new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?
     };
     
-    let client_id_hash = calc_client_id_hash();
+    // 计算 client_id_hash（使用实际的 start_url）
+    let actual_start_url = start_url.as_deref().unwrap_or("https://view.awsapps.com/start");
+    let client_id_hash = calc_client_id_hash(actual_start_url);
     
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &provider_id, &refresh_token, &user_id);

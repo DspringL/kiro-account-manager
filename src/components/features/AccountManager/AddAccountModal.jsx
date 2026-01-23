@@ -29,9 +29,22 @@ function AddAccountModal({ onClose, onSuccess }) {
   const [machineId, setMachineId] = useState('')
 
   const awsRegions = [
-    { value: 'us-east-1', label: 'us-east-1 (N. Virginia)' },
-    { value: 'us-west-2', label: 'us-west-2 (Oregon)' },
-    { value: 'eu-west-1', label: 'eu-west-1 (Ireland)' },
+    { value: 'us-east-1', label: 'US East (N. Virginia)' },
+    { value: 'us-east-2', label: 'US East (Ohio)' },
+    { value: 'us-west-1', label: 'US West (N. California)' },
+    { value: 'us-west-2', label: 'US West (Oregon)' },
+    { value: 'ap-south-1', label: 'Asia Pacific (Mumbai)' },
+    { value: 'ap-northeast-1', label: 'Asia Pacific (Tokyo)' },
+    { value: 'ap-northeast-2', label: 'Asia Pacific (Seoul)' },
+    { value: 'ap-southeast-1', label: 'Asia Pacific (Singapore)' },
+    { value: 'ap-southeast-2', label: 'Asia Pacific (Sydney)' },
+    { value: 'ca-central-1', label: 'Canada (Central)' },
+    { value: 'eu-central-1', label: 'Europe (Frankfurt)' },
+    { value: 'eu-west-1', label: 'Europe (Ireland)' },
+    { value: 'eu-west-2', label: 'Europe (London)' },
+    { value: 'eu-west-3', label: 'Europe (Paris)' },
+    { value: 'eu-north-1', label: 'Europe (Stockholm)' },
+    { value: 'sa-east-1', label: 'South America (São Paulo)' },
   ]
 
   const handleAddManual = async () => {

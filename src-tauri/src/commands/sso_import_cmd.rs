@@ -95,12 +95,13 @@ pub async fn import_from_sso_token(
 
     // Step 1: 注册 OIDC 客户端
     println!("[SSO Import] Step 1: 注册 OIDC 客户端...");
+    // 使用与 aws_sso_client.rs 相同的 scopes 顺序
     let scopes = vec![
+        "codewhisperer:completions",
         "codewhisperer:analysis",
-        "codewhisperer:completions", 
         "codewhisperer:conversations",
+        "codewhisperer:transformations",
         "codewhisperer:taskassist",
-        "codewhisperer:transformations"
     ];
     
     let reg_body = serde_json::json!({
@@ -173,7 +174,15 @@ pub async fn import_from_sso_token(
     if !who_res.status().is_success() {
         let status = who_res.status();
         let text = who_res.text().await.unwrap_or_default();
-        return Err(format!("Token 验证失败 ({}): {}", status, text));
+        
+        // 提供更友好的错误提示
+        let error_msg = if status.as_u16() == 401 {
+            "Bearer Token 已过期或无效，请从浏览器重新获取 x-amz-sso_authn Cookie".to_string()
+        } else {
+            format!("Token 验证失败 ({}): {}", status, text)
+        };
+        
+        return Err(error_msg);
     }
     println!("[SSO Import] Bearer Token 验证通过");
 
@@ -321,7 +330,7 @@ pub async fn import_from_sso_token(
     
     // 获取不到邮箱直接报错
     let email = new_email.ok_or("获取邮箱失败，请检查账号状态")?;
-    let client_id_hash = calc_client_id_hash();
+    let client_id_hash = calc_client_id_hash(START_URL);
 
     let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
     
