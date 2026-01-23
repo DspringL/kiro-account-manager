@@ -3,12 +3,31 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 // 强制更新配置
 const FORCE_UPDATE = {
   enabled: true,
-  minVersion: '1.6.0',  // 低于此版本强制更新
-  message: '检测到重要更新，请升级到最新版本以获得更好的体验。'
+  minVersion: '1.7.0',  // 低于此版本强制更新
+  message: '检测到重要更新（v1.7.0），新增 Enterprise 账号支持、SSO Token 批量导入等功能，请升级到最新版本。'
 }
 
 // 公告列表 - 支持多个公告
 const ANNOUNCEMENTS = [
+  {
+    id: '2025-01-24-v1.7.0',
+    enabled: true,
+    title: 'v1.7.0 更新发布',
+    content: [
+      '🎉 v1.7.0 版本已发布！',
+      '✨ 新增 Enterprise 账号支持、SSO Token 批量导入、Agent 自主模式、余额不足自动换号',
+      '⚡ 批量刷新性能优化（智能并发控制 10-150）',
+      '🧹 清理 22 个未使用依赖，优化构建体积',
+      '请从官网或 GitHub 下载最新版本。'
+    ],
+    // 官网地址
+    websiteUrl: 'https://vercel-api-lemon-five.vercel.app',
+    officialUrl: 'https://github.com/hj01857655/kiro-account-manager',
+    // 使用教程
+    tutorialUrl: 'https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc',
+    qqGroup: '1020204332',
+    qqGroupUrl: 'https://qm.qq.com/q/Vh7mUrNpa8'
+  },
   {
     id: '2025-01-05-v2',
     enabled: true,
@@ -24,7 +43,7 @@ const ANNOUNCEMENTS = [
     // 使用教程
     tutorialUrl: 'https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc',
     qqGroup: '1020204332',
-    qqGroupUrl: 'https://qm.qq.com/q/JjXJiVCiAw'
+    qqGroupUrl: 'https://qm.qq.com/q/Vh7mUrNpa8'
   }
 ]
 
