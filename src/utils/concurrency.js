@@ -8,13 +8,12 @@
  * @returns {number} 并发数
  */
 export const getConcurrency = (count) => {
-  if (count <= 10) return 3
-  if (count <= 50) return 5
-  if (count <= 100) return 10
-  if (count <= 500) return 20
-  if (count <= 1000) return 30
-  if (count <= 2000) return 40
-  return 50
+  if (count <= 10) return 10
+  if (count <= 50) return 30
+  if (count <= 100) return 50
+  if (count <= 200) return 80
+  if (count <= 500) return 100
+  return 150
 }
 
 /**
