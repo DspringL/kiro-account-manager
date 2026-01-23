@@ -158,12 +158,24 @@ function About() {
                 color="dark"
                 radius="md"
               >
-                Kiro Account Manager
+                GitHub
               </Button>
             </Group>
 
-            {/* 第二行：QQ群、Kiro Gateway */}
+            {/* 第二行：使用教程、QQ群 */}
             <Group gap="sm" grow>
+              <Button
+                component="a"
+                href="https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc"
+                target="_blank"
+                rel="noopener noreferrer"
+                leftSection={<BookOpen size={18} />}
+                variant="filled"
+                color="blue"
+                radius="md"
+              >
+                {t('about.tutorial')}
+              </Button>
               <Button
                 component="a"
                 href="https://qm.qq.com/q/T9L311vb2s"
@@ -180,19 +192,22 @@ function About() {
               >
                 {t('about.qqGroup')}
               </Button>
-              <Button
-                component="a"
-                href="https://github.com/hj01857655/kiro-gateway"
-                target="_blank"
-                rel="noopener noreferrer"
-                leftSection={<Github size={18} />}
-                variant="filled"
-                color="grape"
-                radius="md"
-              >
-                Kiro Gateway
-              </Button>
             </Group>
+
+            {/* 第三行：Kiro Gateway */}
+            <Button
+              component="a"
+              href="https://github.com/hj01857655/kiro-gateway"
+              target="_blank"
+              rel="noopener noreferrer"
+              leftSection={<Github size={18} />}
+              variant="light"
+              color="grape"
+              radius="md"
+              fullWidth
+            >
+              Kiro Gateway
+            </Button>
           </Stack>
         </Card>
 
