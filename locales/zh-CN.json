@@ -81,7 +81,7 @@
   "settings.machineIdRandom": "随机更换",
   "settings.machineIdBind": "绑定更换",
   "settings.browser": "浏览器设置",
-  "settings.browserDesc": "配置 OAuth 登录时使用的浏览器，可指定无痕模式等参数",
+  "settings.browserDesc": "配置 OAuth 登录时使用的浏览器（默认无痕模式）",
   "settings.browserPath": "浏览器路径",
   "settings.browserPlaceholder": "留空使用系统默认浏览器",
   "settings.detect": "检测",
