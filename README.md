@@ -19,7 +19,8 @@
 
 <p align="center">
   🌐 <b><a href="https://vercel-api-lemon-five.vercel.app">官方网站</a></b> | 
-  � <b><a href="https://qm.qq.com/q/Vh7mUrNpa8">加入 QQ 群</a></b>
+  📥 <b><a href="#-下载">立即下载</a></b> | 
+  💬 <b><a href="https://qm.qq.com/q/Vh7mUrNpa8">加入 QQ 群</a></b>
 </p>
 
 > **📢 语言支持**：从当前版本开始，本项目**仅支持简体中文界面**，已移除英文和俄语翻译。这样可以简化维护，专注于功能开发。
