@@ -17,6 +17,7 @@ pub struct KiroLocalToken {
     // IdC 专用
     pub client_id_hash: Option<String>,
     pub region: Option<String>,
+    pub start_url: Option<String>, // Enterprise 专用
 }
 
 /// IdC 客户端注册信息 (从 {clientIdHash}.json 读取)
@@ -81,6 +82,7 @@ pub struct KiroAccountInfo {
     pub client_secret: Option<String>,
     pub client_id_hash: Option<String>,
     pub region: Option<String>,
+    pub start_url: Option<String>, // Enterprise 专用
 }
 
 /// 读取 Kiro IDE 中的所有账号
@@ -122,6 +124,7 @@ pub async fn read_kiro_accounts() -> Result<Vec<KiroAccountInfo>, String> {
                         client_secret: None,
                         client_id_hash: token.client_id_hash.clone(),
                         region: token.region.clone(),
+                        start_url: token.start_url.clone(), // Enterprise 专用
                     };
                     
                     // 如果是 IdC 账号，读取 client registration

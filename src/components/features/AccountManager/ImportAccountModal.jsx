@@ -302,7 +302,7 @@ function ImportAccountModal({ onClose, onSuccess }) {
             accessToken: account.accessToken || null,
             password: null,
             provider: account.provider,
-            startUrl: null
+            startUrl: account.startUrl || null
           })
         } else {
           result = await invoke('add_account_by_social', {
