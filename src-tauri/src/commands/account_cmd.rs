@@ -519,11 +519,23 @@ pub async fn add_account_by_idc(
         // 从 Kiro 导入时直接使用提供的 hash
         hash
     } else {
-        // JSON 导入时，使用 clientId 的 SHA1 作为 hash（不需要 startUrl）
-        use sha1::{Digest, Sha1};
-        let mut hasher = Sha1::new();
-        hasher.update(client_id.as_bytes());
-        hex::encode(hasher.finalize())
+        // JSON 导入时计算 hash
+        if provider_id == "BuilderId" {
+            // BuilderId: 使用 SHA256 直接 hash startUrl（管理器自己的方式）
+            use sha2::{Digest, Sha256};
+            let start_url = "https://view.awsapps.com/start";
+            let mut hasher = Sha256::new();
+            hasher.update(start_url.as_bytes());
+            hex::encode(hasher.finalize())
+        } else {
+            // Enterprise: 使用 SHA1 hash JSON（与 Kiro IDE 一致）
+            use sha1::{Digest, Sha1};
+            let actual_start_url = start_url.as_deref().unwrap_or("https://amzn.awsapps.com/start");
+            let input = serde_json::json!({ "startUrl": actual_start_url }).to_string();
+            let mut hasher = Sha1::new();
+            hasher.update(input.as_bytes());
+            hex::encode(hasher.finalize())
+        }
     };
     
     let mut store = state.store.lock().expect("Failed to acquire store lock");
