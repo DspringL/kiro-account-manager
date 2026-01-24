@@ -21,11 +21,23 @@ inclusion: always
 
 - ❌ **禁止** 推送任何源码到公开仓库
 - ❌ **禁止** 执行 `git push` 到公开仓库的任何分支
+- ❌ **禁止** 添加公开仓库为 git remote（避免误操作）
 - ❌ **禁止** 修改公开仓库的任何分支内容
 - ❌ **禁止** 在公开仓库创建、合并 PR
-- ✅ **只允许** 在 main 分支打 tag 触发 Actions 构建
+- ✅ **只允许** 使用 `gh api` 在公开仓库打 tag
 - ✅ **只允许** 使用 `gh release edit` 更新 Release Notes
-- ✅ **例外允许** 通过 `gh api` 更新 `README.md`、`LICENSE` 和 `.github/workflows/` 到公开仓库
+- ✅ **例外允许** 通过 `gh api` 更新 `README.md`、`LICENSE` 和 `.github/workflows/`
+
+## 安全保障
+
+**发布脚本自动检查**：
+- 检测是否配置了公开仓库为 remote
+- 如果检测到，拒绝执行并提示删除
+
+**AI 助手规则**：
+- 禁止执行任何 `git push` 到公开仓库
+- 禁止执行 `git remote add` 添加公开仓库
+- 只允许使用 `gh api` 操作公开仓库
 
 ## 日常开发流程
 
