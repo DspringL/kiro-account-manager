@@ -8,6 +8,19 @@ use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, KiroPortalCli
 use crate::kiro_portal_client::GetUserUsageAndLimitsResponse;
 use crate::commands::common::*;
 use serde::{Deserialize, Serialize};
+use sha1::{Digest, Sha1};
+
+// ===== 辅助函数 =====
+
+/// 根据 startUrl 计算 clientIdHash（与 Kiro IDE 源码一致）
+fn calculate_client_id_hash(start_url: &str) -> String {
+    let input = format!(r#"{{"startUrl":"{}"}}"#, start_url);
+    let mut hasher = Sha1::new();
+    hasher.update(input.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+// ===== 数据结构 =====
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifyAccountResponse {
@@ -583,15 +596,12 @@ async fn add_account_by_idc_internal(
         new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?
     };
     
-    // 计算或使用 client_id_hash（与 Kiro IDE 源码一致）
-    // Kiro IDE 源码：getClientIdHash(startUrl) { return crypto.createHash("sha1").update(JSON.stringify({ startUrl })).digest("hex"); }
+    // 计算 client_id_hash（与 Kiro IDE 源码一致）
     let client_id_hash = if let Some(hash) = client_id_hash {
         // 从 Kiro 导入时直接使用提供的 hash
         hash
     } else {
         // JSON 导入时计算 hash
-        use sha1::{Digest, Sha1};
-        
         let actual_start_url = if provider_id == "BuilderId" {
             "https://view.awsapps.com/start"
         } else {
@@ -599,11 +609,7 @@ async fn add_account_by_idc_internal(
             start_url.as_deref().ok_or("Enterprise 账号缺少 Start URL")?
         };
         
-        // 与 Kiro IDE 完全一致：SHA-1(JSON.stringify({ startUrl }))
-        let input = serde_json::json!({ "startUrl": actual_start_url }).to_string();
-        let mut hasher = Sha1::new();
-        hasher.update(input.as_bytes());
-        hex::encode(hasher.finalize())
+        calculate_client_id_hash(actual_start_url)
     };
     
     let mut store = state.store.lock().expect("Failed to acquire store lock");
