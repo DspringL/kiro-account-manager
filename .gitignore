@@ -24,11 +24,6 @@ src-tauri/target/
 # Logs
 *.log
 
-# Docs (internal)
-docs/
-
-docs/
-
 # Python
 __pycache__/
 *.pyc
