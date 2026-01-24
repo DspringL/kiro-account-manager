@@ -117,14 +117,6 @@ pub fn calc_expires_at(expires_in: i64) -> String {
     expires_at.format("%Y/%m/%d %H:%M:%S").to_string()
 }
 
-/// 计算 client_id_hash（使用 clientId 的 SHA1，确保每个账号独立）
-pub fn calc_client_id_hash(client_id: &str) -> String {
-    use sha1::{Digest, Sha1};
-    let mut hasher = Sha1::new();
-    hasher.update(client_id.as_bytes());
-    hex::encode(hasher.finalize())
-}
-
 /// 从 usage 中提取 email 和 user_id
 pub fn extract_user_info(usage: &Option<crate::kiro_portal_client::GetUserUsageAndLimitsResponse>) -> (Option<String>, Option<String>) {
     let email = usage.as_ref()

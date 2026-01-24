@@ -6,7 +6,7 @@ use tauri::State;
 use crate::state::AppState;
 use crate::account::Account;
 use crate::kiro_portal_client::KiroPortalClient;
-use crate::commands::common::{MAX_ACCOUNT_COUNT, calc_client_id_hash, extract_user_info};
+use crate::commands::common::{MAX_ACCOUNT_COUNT, extract_user_info};
 
 const PORTAL_BASE: &str = "https://portal.sso.us-east-1.amazonaws.com";
 const START_URL: &str = "https://view.awsapps.com/start";
@@ -330,7 +330,12 @@ pub async fn import_from_sso_token(
     
     // 获取不到邮箱直接报错
     let email = new_email.ok_or("获取邮箱失败，请检查账号状态")?;
-    let client_id_hash = calc_client_id_hash(START_URL);
+    
+    // BuilderId: 使用 SHA256 直接 hash startUrl
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(START_URL.as_bytes());
+    let client_id_hash = hex::encode(hasher.finalize());
 
     let expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
     

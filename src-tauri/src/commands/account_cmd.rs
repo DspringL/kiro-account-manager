@@ -409,19 +409,34 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<Accoun
         let client_reg = get_client_registration(&hash).await
             .ok_or(format!("未找到客户端注册信息: {}.json", hash))?;
         
-        add_account_by_idc(
-            state,
-            refresh_token,
-            client_reg.client_id,
-            client_reg.client_secret,
-            Some(region),
-            None, // 本地导入不指定 machine_id，自动生成
-            local_token.access_token.clone(), // 传入 access_token
-            None, // 本地导入无密码
-            Some(provider), // 传入 provider (BuilderId 或 Enterprise)
-            None, // 本地导入无 start_url
-            Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
-        ).await
+        // 根据 provider 调用不同的函数
+        if provider == "BuilderId" {
+            add_account_by_builderid(
+                state,
+                refresh_token,
+                client_reg.client_id,
+                client_reg.client_secret,
+                Some(region),
+                None, // 本地导入不指定 machine_id，自动生成
+                local_token.access_token.clone(), // 传入 access_token
+                None, // 本地导入无密码
+                Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
+            ).await
+        } else {
+            // Enterprise
+            add_account_by_enterprise(
+                state,
+                refresh_token,
+                client_reg.client_id,
+                client_reg.client_secret,
+                Some(region),
+                None, // 本地导入不指定 machine_id，自动生成
+                local_token.access_token.clone(), // 传入 access_token
+                None, // 本地导入无密码
+                None, // 本地导入无 start_url
+                Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
+            ).await
+        }
     } else {
         add_account_by_social(
             state,
@@ -433,9 +448,9 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<Accoun
     }
 }
 
-/// 手动添加 BuilderId/Enterprise 账号
+/// 添加 BuilderId 账号
 #[tauri::command]
-pub async fn add_account_by_idc(
+pub async fn add_account_by_builderid(
     state: State<'_, AppState>,
     refresh_token: String,
     client_id: String,
@@ -444,19 +459,73 @@ pub async fn add_account_by_idc(
     machine_id: Option<String>,
     access_token: Option<String>,
     password: Option<String>,
-    provider: Option<String>, // 支持指定 provider (BuilderId 或 Enterprise)
-    start_url: Option<String>, // Enterprise 的 Start URL（JSON 导入时需要）
     client_id_hash: Option<String>, // 从 Kiro 导入时直接提供（优先使用）
 ) -> Result<Account, String> {
-    let region = region.unwrap_or_else(|| "us-east-1".to_string());
-    
-    // provider 必须明确指定，不做智能判断
-    let provider_id = provider.ok_or("缺少 provider 参数，请指定 BuilderId 或 Enterprise")?;
-    
-    // 验证 provider
-    if provider_id != "BuilderId" && provider_id != "Enterprise" {
-        return Err(format!("不支持的 provider: {}, 只支持 BuilderId 或 Enterprise", provider_id));
-    }
+    add_account_by_idc_internal(
+        state,
+        refresh_token,
+        client_id,
+        client_secret,
+        region,
+        machine_id,
+        access_token,
+        password,
+        "BuilderId".to_string(),
+        None, // BuilderId 不需要 start_url
+        client_id_hash,
+    ).await
+}
+
+/// 添加 Enterprise 账号
+#[tauri::command]
+pub async fn add_account_by_enterprise(
+    state: State<'_, AppState>,
+    refresh_token: String,
+    client_id: String,
+    client_secret: String,
+    region: Option<String>,
+    machine_id: Option<String>,
+    access_token: Option<String>,
+    password: Option<String>,
+    start_url: Option<String>, // Enterprise 的 Start URL（必需）
+    client_id_hash: Option<String>, // 从 Kiro 导入时直接提供（优先使用）
+) -> Result<Account, String> {
+    add_account_by_idc_internal(
+        state,
+        refresh_token,
+        client_id,
+        client_secret,
+        region,
+        machine_id,
+        access_token,
+        password,
+        "Enterprise".to_string(),
+        start_url,
+        client_id_hash,
+    ).await
+}
+
+/// 内部函数：添加 IdC 账号（BuilderId 或 Enterprise）
+async fn add_account_by_idc_internal(
+    state: State<'_, AppState>,
+    refresh_token: String,
+    client_id: String,
+    client_secret: String,
+    region: Option<String>,
+    machine_id: Option<String>,
+    access_token: Option<String>,
+    password: Option<String>,
+    provider_id: String,
+    start_url: Option<String>,
+    client_id_hash: Option<String>,
+) -> Result<Account, String> {
+    // BuilderId 使用默认 region，Enterprise 必须提供 region
+    let region = if provider_id == "BuilderId" {
+        region.unwrap_or_else(|| "us-east-1".to_string())
+    } else {
+        // Enterprise 必须提供 region
+        region.ok_or("Enterprise 账号必须提供 region")?
+    };
     
     // 先尝试用传入的 access_token 获取配额
     let (final_access_token, final_refresh_token, usage_result, expires_at, id_token, sso_session_id) =
@@ -521,16 +590,16 @@ pub async fn add_account_by_idc(
     } else {
         // JSON 导入时计算 hash
         if provider_id == "BuilderId" {
-            // BuilderId: 使用 SHA256 直接 hash startUrl（管理器自己的方式）
-            use sha2::{Digest, Sha256};
+            // BuilderId: 使用 SHA-1 直接 hash startUrl（与 Kiro IDE 一致）
+            use sha1::{Digest, Sha1};
             let start_url = "https://view.awsapps.com/start";
-            let mut hasher = Sha256::new();
+            let mut hasher = Sha1::new();
             hasher.update(start_url.as_bytes());
             hex::encode(hasher.finalize())
         } else {
-            // Enterprise: 使用 SHA1 hash JSON（与 Kiro IDE 一致）
+            // Enterprise: 使用 SHA-1 hash JSON（与 Kiro IDE 一致）
             use sha1::{Digest, Sha1};
-            let actual_start_url = start_url.as_deref().unwrap_or("https://amzn.awsapps.com/start");
+            let actual_start_url = start_url.as_deref().ok_or("Enterprise 账号缺少 Start URL")?;
             let input = serde_json::json!({ "startUrl": actual_start_url }).to_string();
             let mut hasher = Sha1::new();
             hasher.update(input.as_bytes());
