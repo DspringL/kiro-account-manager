@@ -19,7 +19,7 @@ import BatchTagModal from './BatchTagModal'
 import ConfirmModal from './ConfirmModal'
 import { AccountListSkeleton, AccountTableSkeleton } from '../../shared/Skeleton'
 
-function AccountManager() {
+function AccountManager({ onNavigate }) {
   const { t, colors } = useApp()
   const { showConfirm } = useDialog()
   const [searchTerm, setSearchTerm] = useState('')
@@ -367,7 +367,7 @@ function AccountManager() {
         />
       )}
       {editingLabelAccount && (<EditAccountModal account={editingLabelAccount} onClose={() => setEditingLabelAccount(null)} onSuccess={() => { loadAccounts(); loadTagDefinitions(); loadGroupDefinitions() }} />)}
-      {showImportModal && (<ImportAccountModal onClose={() => setShowImportModal(false)} onSuccess={loadAccounts} />)}
+      {showImportModal && (<ImportAccountModal onClose={() => setShowImportModal(false)} onSuccess={loadAccounts} onNavigate={onNavigate} />)}
       {showBatchTagModal && (<BatchTagModal accountIds={selectedIds} accounts={accounts} onClose={() => setShowBatchTagModal(false)} onSuccess={() => { loadAccounts(); loadTagDefinitions(); setSelectedIds([]) }} />)}
       {autoRefreshing && (<RefreshProgressModal refreshProgress={refreshProgress} />)}
       

@@ -160,6 +160,7 @@ function App() {
     const routeProps = {
       home: { onNavigate: setActiveMenu },
       desktopOAuth: { onLogin: (user) => { handleLogin(user); setActiveMenu('accounts') } },
+      accounts: { onNavigate: setActiveMenu },
     }
     return <RouteComponent {...(routeProps[activeMenu] || {})} />
   }

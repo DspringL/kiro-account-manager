@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Tabs, Textarea, Select, Stack, Group, Alert, Progress, FileButton, Button as MantineButton } from '@mantine/core'
 import { Upload, FileJson, Key, AlertCircle, CheckCircle, Loader2, Database, RefreshCw, LogIn } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
-import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../../hooks/useApp'
 import { getConcurrency } from '../../../utils/concurrency'
 import {
@@ -57,9 +56,8 @@ function validateAccount(item, index) {
   return { valid: true, errors: [], type: isSocial ? 'social' : 'idc', inferredProvider: provider }
 }
 
-function ImportAccountModal({ onClose, onSuccess }) {
+function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
   const { t, colors } = useApp()
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('json')
   const [jsonText, setJsonText] = useState('')
   const [parseResult, setParseResult] = useState(null)
@@ -673,12 +671,12 @@ function ImportAccountModal({ onClose, onSuccess }) {
           ) : importing || ssoImporting || kiroImporting ? (
             <div></div>
           ) : activeTab === 'json' ? (
-            <div className="flex justify-between">
+            <div className="flex justify-between w-full">
               <Button 
                 variant="secondary" 
                 onClick={() => {
                   onClose()
-                  navigate('/login')
+                  onNavigate?.('desktopOAuth')
                 }}
                 className="flex items-center gap-2"
               >
@@ -700,12 +698,12 @@ function ImportAccountModal({ onClose, onSuccess }) {
               </div>
             </div>
           ) : activeTab === 'sso' ? (
-            <div className="flex justify-between">
+            <div className="flex justify-between w-full">
               <Button 
                 variant="secondary" 
                 onClick={() => {
                   onClose()
-                  navigate('/login')
+                  onNavigate?.('desktopOAuth')
                 }}
                 className="flex items-center gap-2"
               >
@@ -727,12 +725,12 @@ function ImportAccountModal({ onClose, onSuccess }) {
               </div>
             </div>
           ) : (
-            <div className="flex justify-between">
+            <div className="flex justify-between w-full">
               <Button 
                 variant="secondary" 
                 onClick={() => {
                   onClose()
-                  navigate('/login')
+                  onNavigate?.('desktopOAuth')
                 }}
                 className="flex items-center gap-2"
               >

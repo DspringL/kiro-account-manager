@@ -38,8 +38,21 @@ export default function AnnouncementModal() {
 
   const fetchAnnouncement = async () => {
     try {
-      const res = await fetch(ANNOUNCEMENT_API)
-      if (!res.ok) return
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5秒超时
+      
+      const res = await fetch(ANNOUNCEMENT_API, {
+        signal: controller.signal,
+        mode: 'cors',
+        cache: 'no-cache'
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!res.ok) {
+        console.log('[Announcement] API 返回错误:', res.status)
+        return
+      }
       
       const data = await res.json()
       
@@ -64,7 +77,12 @@ export default function AnnouncementModal() {
       setAnnouncement(unread)
       setShow(true)
     } catch (e) {
-      console.log('[Announcement] 获取公告失败:', e)
+      // 静默失败，不影响应用使用
+      if (e.name === 'AbortError') {
+        console.log('[Announcement] 请求超时')
+      } else {
+        console.log('[Announcement] 获取公告失败:', e.message || e)
+      }
     }
   }
 
