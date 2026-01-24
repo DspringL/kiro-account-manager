@@ -178,9 +178,7 @@ pub struct SwitchAccountParams {
     // Social 专用
     #[serde(default)]
     pub profile_arn: Option<String>,
-    // IdC 专用
-    #[serde(default)]
-    pub client_id_hash: Option<String>,
+    // IdC 专用（不需要 client_id_hash，后端会根据 startUrl 自动计算）
     #[serde(default)]
     pub client_id: Option<String>,
     #[serde(default)]
@@ -198,7 +196,6 @@ pub async fn switch_kiro_account(params: SwitchAccountParams) -> Result<SwitchAc
         let refresh_token = params.refresh_token;
         let provider = params.provider;
         let profile_arn = params.profile_arn;
-        let client_id_hash = params.client_id_hash;
         let client_id = params.client_id;
         let client_secret = params.client_secret;
         let region = params.region;
