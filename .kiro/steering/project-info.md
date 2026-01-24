@@ -107,7 +107,10 @@ inclusion: always
 
 - 新增/删除/更新依赖后必须运行 `npm install` 同步 package-lock.json
 - 只改版本号不需要 npm install
-- 提交代码前确保两个文件版本一致，否则 CI 构建会失败
+- 提交代码前确保 **3 个文件**版本号一致，否则 CI 构建会失败：
+  - `package.json`
+  - `src-tauri/tauri.conf.json`
+  - `src-tauri/Cargo.toml`
 
 ### 常用命令
 
