@@ -11,7 +11,6 @@ import { showSuccess, showError } from '../../../utils/toast.jsx'
 import AccountHeader from './AccountHeader'
 import AccountTable from './AccountTable'
 import AccountListView from './AccountListView'
-import AddAccountModal from './AddAccountModal'
 import ImportAccountModal from './ImportAccountModal'
 import RefreshProgressModal from './RefreshProgressModal'
 import AccountDetailModal from '../../modals/AccountDetailModal'
@@ -27,7 +26,6 @@ function AccountManager() {
   const [selectedIds, setSelectedIds] = useState([])
   const [editingAccount, setEditingAccount] = useState(null)
   const [editingLabelAccount, setEditingLabelAccount] = useState(null)
-  const [showAddModal, setShowAddModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showBatchTagModal, setShowBatchTagModal] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
@@ -277,7 +275,7 @@ function AccountManager() {
         selectedCount={selectedIds.length}
         onBatchDelete={onBatchDelete}
         onBatchTag={() => setShowBatchTagModal(true)}
-        onAdd={() => setShowAddModal(true)}
+        onAdd={() => setShowImportModal(true)}
         onImport={() => setShowImportModal(true)}
         onExport={async () => {
           if (selectedIds.length === 0) {
@@ -330,7 +328,7 @@ function AccountManager() {
           onEditLabel={setEditingLabelAccount}
           onDelete={handleDelete}
           onDeleteRemote={handleDeleteRemote}
-          onAdd={() => setShowAddModal(true)}
+          onAdd={() => setShowImportModal(true)}
           refreshingId={refreshingId}
           switchingId={switchingId}
           localToken={localToken}
@@ -369,7 +367,6 @@ function AccountManager() {
           onClose={() => { setEditingAccount(null); loadAccounts() }}
         />
       )}
-      {showAddModal && (<AddAccountModal onClose={() => setShowAddModal(false)} onSuccess={loadAccounts} />)}
       {editingLabelAccount && (<EditAccountModal account={editingLabelAccount} onClose={() => setEditingLabelAccount(null)} onSuccess={() => { loadAccounts(); loadTagDefinitions(); loadGroupDefinitions() }} />)}
       {showImportModal && (<ImportAccountModal onClose={() => setShowImportModal(false)} onSuccess={loadAccounts} />)}
       {showBatchTagModal && (<BatchTagModal accountIds={selectedIds} accounts={accounts} onClose={() => setShowBatchTagModal(false)} onSuccess={() => { loadAccounts(); loadTagDefinitions(); setSelectedIds([]) }} />)}
