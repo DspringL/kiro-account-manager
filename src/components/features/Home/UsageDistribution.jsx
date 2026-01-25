@@ -15,7 +15,7 @@ function UsageDistribution({ tokens, isLightTheme, colors, t }) {
 
     const breakdown = account.usageData?.usageBreakdownList?.[0] || account.usageData?.usageBreakdown
     const used = breakdown?.currentUsage ?? 0
-    const limit = breakdown?.usageLimit ?? 50
+    const limit = breakdown?.usageLimit ?? 0
     return limit > 0 ? (used / limit) * 100 : 0
   }
   
@@ -36,7 +36,7 @@ function UsageDistribution({ tokens, isLightTheme, colors, t }) {
 
       const breakdown = a.usageData?.usageBreakdownList?.[0] || a.usageData?.usageBreakdown
       const used = breakdown?.currentUsage ?? 0
-      const limit = breakdown?.usageLimit ?? 50
+      const limit = breakdown?.usageLimit ?? 0
       return { 
         email: a.email, 
         used, 

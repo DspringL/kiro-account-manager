@@ -2,9 +2,9 @@
 //! 实现 AWS SSO OIDC API 调用，用于 BuilderId/Enterprise 认证
 //! 使用 Authorization Code Flow（跟 Kiro Desktop 一致）
 
+use crate::http_client::build_http_client;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use log;
 
 /// 默认 scopes（跟 Kiro 一样）
@@ -63,10 +63,7 @@ pub struct TokenResponse {
 impl AWSSSOClient {
     pub fn new(region: &str) -> Self {
         let base_url = format!("https://oidc.{}.amazonaws.com", region);
-        let client = Client::builder()
-            .timeout(Duration::from_secs(30))
-            .build()
-            .expect("Failed to create HTTP client");
+        let client = build_http_client().expect("Failed to create HTTP client");
 
         Self {
             base_url,

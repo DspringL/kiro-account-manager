@@ -27,10 +27,6 @@ pub struct AuthResult {
     
     // Social (Google/Github) 专用
     pub profile_arn: Option<String>,
-    pub csrf_token: Option<String>,
-    
-    // Web OAuth 专用
-    pub session_token: Option<String>,
 }
 
 /// 刷新 Token 所需的元数据

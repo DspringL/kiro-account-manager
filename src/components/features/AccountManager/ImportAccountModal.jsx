@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Tabs, Textarea, Select, Stack, Group, Alert, Progress, FileButton, Button as MantineButton } from '@mantine/core'
-import { Upload, FileJson, Key, AlertCircle, CheckCircle, Loader2, Database, RefreshCw, LogIn } from 'lucide-react'
+import { Tabs, Textarea, Stack, Group, Alert, Progress, FileButton, Button as MantineButton } from '@mantine/core'
+import { Upload, FileJson, AlertCircle, CheckCircle, Loader2, Database, RefreshCw, LogIn } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../../hooks/useApp'
 import { getConcurrency } from '../../../utils/concurrency'
@@ -69,11 +69,6 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
   const [importing, setImporting] = useState(false)
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 })
   const [importResult, setImportResult] = useState(null)
-  const [ssoToken, setSsoToken] = useState('')
-  const [ssoRegion, setSsoRegion] = useState('us-east-1')
-  const [ssoImporting, setSsoImporting] = useState(false)
-  const [ssoProgress, setSsoProgress] = useState({ current: 0, total: 0 })
-  const [ssoResult, setSsoResult] = useState(null)
   
   // 从 Kiro 导入相关状态
   const [kiroAccounts, setKiroAccounts] = useState([])
@@ -167,15 +162,16 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
     setImporting(true)
     setImportProgress({ current: 0, total: parseResult.valid.length })
     
-    const success = []
+    const added = []
+    const updated = []
     const failed = []
     
     const importOne = async (item) => {
       try {
-        let account
+        let result
         const provider = item._inferredProvider || item.provider
         if (item._type === 'social') {
-          account = await invoke('add_account_by_social', {
+          result = await invoke('add_account_by_social', {
             refreshToken: item.refreshToken,
             provider: provider,
             machineId: item.machineId || null,
@@ -200,12 +196,14 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
             params.startUrl = item.startUrl || null
           }
           
-          account = await invoke(commandName, params)
+          result = await invoke(commandName, params)
         }
+        
+        const account = result.account
         if (account.status === 'banned') {
-          return { success: true, index: item._index + 1, email: account.email, banned: true }
+          return { success: true, index: item._index + 1, email: account.email, isNew: result.isNew, banned: true }
         }
-        return { success: true, index: item._index + 1, email: account.email }
+        return { success: true, index: item._index + 1, email: account.email, isNew: result.isNew }
       } catch (e) {
         const errorMsg = String(e)
         if (errorMsg.includes('BANNED')) {
@@ -223,76 +221,19 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
     
     results.forEach(r => {
       if (r.success) {
-        success.push({ index: r.index, email: r.email })
+        if (r.isNew) {
+          added.push({ index: r.index, email: r.email })
+        } else {
+          updated.push({ index: r.index, email: r.email })
+        }
       } else {
         failed.push({ index: r.index, error: r.error })
       }
     })
     
-    setImportResult({ success, failed })
+    setImportResult({ added, updated, failed })
     setImporting(false)
-    if (success.length > 0) onSuccess?.()
-  }
-
-  const handleSsoImport = async () => {
-    const tokens = ssoToken.split('\n').map(t => t.trim()).filter(t => t)
-    if (tokens.length === 0) return
-    
-    setSsoImporting(true)
-    setSsoProgress({ current: 0, total: tokens.length })
-    
-    const success = []
-    const failed = []
-    
-    const importOne = async (token, index) => {
-      try {
-        const result = await invoke('import_from_sso_token', {
-          bearerToken: token,
-          region: ssoRegion || null
-        })
-        if (result.success) {
-          if (result.status === 'banned') {
-            return { success: true, index: index + 1, email: result.email, banned: true }
-          }
-          return { success: true, index: index + 1, email: result.email }
-        } else {
-          if (result.error?.includes('BANNED')) {
-            return { success: false, index: index + 1, error: '账号已封禁', banned: true }
-          }
-          return { success: false, index: index + 1, error: result.error || t('common.unknown') }
-        }
-      } catch (e) {
-        const errorMsg = String(e)
-        if (errorMsg.includes('BANNED')) {
-          return { success: false, index: index + 1, error: '账号已封禁', banned: true }
-        }
-        return { success: false, index: index + 1, error: errorMsg.slice(0, 80) }
-      }
-    }
-    
-    const ssoConcurrency = getConcurrency(tokens.length)
-    const tokensWithIndex = tokens.map((token, index) => ({ token, index }))
-    
-    for (let i = 0; i < tokensWithIndex.length; i += ssoConcurrency) {
-      const batch = tokensWithIndex.slice(i, i + ssoConcurrency)
-      const batchResults = await Promise.all(
-        batch.map(({ token, index }) => importOne(token, index))
-      )
-      
-      batchResults.forEach(r => {
-        if (r.success) {
-          success.push({ index: r.index, email: r.email })
-        } else {
-          failed.push({ index: r.index, error: r.error })
-        }
-      })
-      
-      setSsoProgress({ current: Math.min(i + ssoConcurrency, tokens.length), total: tokens.length })
-    }
-    
-    setSsoResult({ success, failed })
-    setSsoImporting(false)
-    if (success.length > 0) onSuccess?.()
+    if (added.length > 0 || updated.length > 0) onSuccess?.()
   }
 
   const handleKiroImport = async () => {
@@ -301,7 +242,8 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
     setKiroImporting(true)
     setKiroProgress({ current: 0, total: kiroAccounts.length })
     
-    const success = []
+    const added = []
+    const updated = []
     const failed = []
     
     const importOne = async (account) => {
@@ -336,10 +278,11 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
           })
         }
         
-        if (result.status === 'banned') {
-          return { success: true, email: result.email, banned: true }
+        const acc = result.account
+        if (acc.status === 'banned') {
+          return { success: true, email: acc.email, isNew: result.isNew, banned: true }
         }
-        return { success: true, email: result.email }
+        return { success: true, email: acc.email, isNew: result.isNew }
       } catch (e) {
         const errorMsg = String(e)
         if (errorMsg.includes('BANNED')) {
@@ -357,29 +300,44 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
     
     results.forEach(r => {
       if (r.success) {
-        success.push({ email: r.email })
+        if (r.isNew) {
+          added.push({ email: r.email })
+        } else {
+          updated.push({ email: r.email })
+        }
       } else {
         failed.push({ error: r.error })
       }
     })
     
-    setKiroResult({ success, failed })
+    setKiroResult({ added, updated, failed })
     setKiroImporting(false)
-    if (success.length > 0) onSuccess?.()
+    if (added.length > 0 || updated.length > 0) onSuccess?.()
   }
 
   const renderResult = (result) => (
     <Stack gap="md" p="sm">
-      <Alert icon={<CheckCircle size={20} />} color="teal" variant="light">
-        <div className={`font-medium ${colors.text}`}>{t('import.successCount', { count: result.success.length })}</div>
-        {result.success.length > 0 && (
-          <div className={`text-sm mt-2 ${colors.text}`}>{result.success.map(s => s.email).join(', ')}</div>
-        )}
-      </Alert>
+      {result.added && result.added.length > 0 && (
+        <Alert icon={<CheckCircle size={20} />} color="teal" variant="light">
+          <div className={`font-medium ${colors.text}`}>✅ 新增 {result.added.length} 个账号</div>
+          {result.added.length > 0 && (
+            <div className={`text-sm mt-2 ${colors.text}`}>{result.added.map(s => s.email).join(', ')}</div>
+          )}
+        </Alert>
+      )}
       
-      {result.failed.length > 0 && (
+      {result.updated && result.updated.length > 0 && (
+        <Alert icon={<CheckCircle size={20} />} color="blue" variant="light">
+          <div className={`font-medium ${colors.text}`}>🔄 更新 {result.updated.length} 个账号</div>
+          {result.updated.length > 0 && (
+            <div className={`text-sm mt-2 ${colors.text}`}>{result.updated.map(s => s.email).join(', ')}</div>
+          )}
+        </Alert>
+      )}
+      
+      {result.failed && result.failed.length > 0 && (
         <Alert icon={<AlertCircle size={20} />} color="red" variant="light">
-          <div className={`font-medium ${colors.text}`}>{t('import.failedCount', { count: result.failed.length })}</div>
+          <div className={`font-medium ${colors.text}`}>❌ 失败 {result.failed.length} 个</div>
           <Stack gap={4} mt="xs" p={0}>
             {result.failed.map((f, i) => (
               <div key={i} className={`text-sm ${colors.text}`}>{f.error}</div>
@@ -406,13 +364,12 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
         </DialogHeader>
 
         <DialogBody noPadding>
-          {importResult || ssoResult || kiroResult ? (
+          {importResult || kiroResult ? (
             <div className="px-6 py-4">
               {importResult && renderResult(importResult)}
-              {ssoResult && renderResult(ssoResult)}
               {kiroResult && renderResult(kiroResult)}
             </div>
-          ) : importing || ssoImporting || kiroImporting ? (
+          ) : importing || kiroImporting ? (
             <div className="px-6 py-6">
               <div className={`p-5 rounded-xl ${colors.cardSecondary} border ${colors.cardBorder}`}>
                 <div className="flex items-center gap-4 mb-4">
@@ -421,17 +378,17 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
                   </div>
                   <div>
                     <div className={`font-medium ${colors.text}`}>
-                      {importing ? t('import.importing') : ssoImporting ? t('import.ssoImporting') : '正在从 Kiro 导入...'}
+                      {importing ? t('import.importing') : '正在从 Kiro 导入...'}
                     </div>
                     <div className={`text-sm ${colors.textMuted}`}>
-                      {(importing ? importProgress : ssoImporting ? ssoProgress : kiroProgress).current}/
-                      {(importing ? importProgress : ssoImporting ? ssoProgress : kiroProgress).total}
+                      {(importing ? importProgress : kiroProgress).current}/
+                      {(importing ? importProgress : kiroProgress).total}
                     </div>
                   </div>
                 </div>
                 <Progress 
-                  value={(importing ? importProgress : ssoImporting ? ssoProgress : kiroProgress).current / 
-                         (importing ? importProgress : ssoImporting ? ssoProgress : kiroProgress).total * 100} 
+                  value={(importing ? importProgress : kiroProgress).current / 
+                         (importing ? importProgress : kiroProgress).total * 100} 
                   size="lg"
                   radius="xl"
                   classNames={{
@@ -444,7 +401,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
           ) : (
             <Tabs value={activeTab} onChange={setActiveTab}>
               <Tabs.List className="px-6 pt-2 pb-3 border-b-0">
-                <div className={`grid grid-cols-3 gap-1 p-1 rounded-xl border ${colors.cardBorder} ${colors.cardSecondary}`}>
+                <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl border ${colors.cardBorder} ${colors.cardSecondary}`}>
                   <button
                     onClick={() => setActiveTab('json')}
                     className={`py-2 px-3 text-sm rounded-lg transition-all duration-200 font-medium ${
@@ -457,20 +414,6 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
                     <div className="flex items-center justify-center gap-2">
                       <FileJson size={16} />
                       <span>{t('import.jsonTab')}</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('sso')}
-                    className={`py-2 px-3 text-sm rounded-lg transition-all duration-200 font-medium ${
-                      activeTab === 'sso'
-                        ? `${colors.card} shadow-sm ring-1 ${colors.ringColor}`
-                        : colors.cardHover
-                    }`}
-                    style={{ color: activeTab === 'sso' ? undefined : 'rgb(229, 231, 235)' }}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <Key size={16} />
-                      <span>{t('import.ssoTab')}</span>
                     </div>
                   </button>
                   <button
@@ -539,56 +482,6 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
                         </Alert>
                       )}
                     </Stack>
-                  )}
-                </Stack>
-              </Tabs.Panel>
-
-              <Tabs.Panel value="sso" pt="md" className="px-6 pb-4">
-                <Stack gap="lg">
-                  <Alert color="blue" variant="light">
-                    <div className={`text-sm font-medium ${colors.text}`}>{t('import.ssoGuide')}</div>
-                    <ol className={`list-decimal list-inside space-y-1 text-xs mt-2 ${colors.text}`}>
-                      <li>{t('import.ssoStep1')}</li>
-                      <li>{t('import.ssoStep2')}</li>
-                      <li>{t('import.ssoStep3')}</li>
-                      <li>{t('import.ssoStep4')}</li>
-                    </ol>
-                  </Alert>
-
-                  <Textarea
-                    label={t('import.ssoTokenLabel')}
-                    description={t('import.ssoTokenHint')}
-                    value={ssoToken}
-                    onChange={(e) => setSsoToken(e.target.value)}
-                    rows={6}
-                    placeholder={t('import.ssoTokenPlaceholder')}
-                    classNames={{
-                      input: `${colors.text} ${colors.input} ${colors.inputFocus} font-mono`
-                    }}
-                  />
-
-                  <Select
-                    label="Region"
-                    description={t('import.regionOptional')}
-                    value={ssoRegion}
-                    onChange={setSsoRegion}
-                    data={[
-                      { value: 'us-east-1', label: 'us-east-1' },
-                      { value: 'us-west-2', label: 'us-west-2' },
-                      { value: 'eu-west-1', label: 'eu-west-1' },
-                      { value: 'ap-northeast-1', label: 'ap-northeast-1' }
-                    ]}
-                    classNames={{
-                      input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                      dropdown: `${colors.card} border ${colors.cardBorder}`,
-                      option: `${colors.text}`
-                    }}
-                  />
-
-                  {ssoToken.trim() && (
-                    <Alert icon={<CheckCircle size={16} />} color="blue" variant="light" radius="xl">
-                      {t('import.detectedTokens', { count: ssoToken.split('\n').filter(t => t.trim()).length })}
-                    </Alert>
                   )}
                 </Stack>
               </Tabs.Panel>
@@ -668,16 +561,14 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
 
         <DialogFooter>
           <div></div>
-          {importResult || ssoResult || kiroResult ? (
+          {importResult || kiroResult ? (
             <div className="flex gap-3">
               <Button 
                 variant="secondary" 
                 onClick={() => { 
                   setImportResult(null)
-                  setSsoResult(null)
                   setKiroResult(null)
                   setJsonText('')
-                  setSsoToken('')
                   setParseResult(null)
                 }}
               >
@@ -687,7 +578,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
                 {t('import.done')}
               </Button>
             </div>
-          ) : importing || ssoImporting || kiroImporting ? (
+          ) : importing || kiroImporting ? (
             <div></div>
           ) : activeTab === 'json' ? (
             <div className="flex justify-between w-full">
@@ -713,33 +604,6 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
                 >
                   <Upload size={16} />
                   {t('import.import')} {parseResult?.valid.length ? `(${parseResult.valid.length})` : ''}
-                </Button>
-              </div>
-            </div>
-          ) : activeTab === 'sso' ? (
-            <div className="flex justify-between w-full">
-              <Button 
-                variant="secondary" 
-                onClick={() => {
-                  onClose()
-                  onNavigate?.('desktopOAuth')
-                }}
-                className="flex items-center gap-2"
-              >
-                <LogIn size={16} />
-                在线登录
-              </Button>
-              <div className="flex gap-3">
-                <Button variant="secondary" onClick={onClose}>
-                  {t('common.cancel')}
-                </Button>
-                <Button 
-                  onClick={handleSsoImport}
-                  disabled={!ssoToken.trim()}
-                  className="flex items-center gap-2"
-                >
-                  <Key size={16} />
-                  {t('import.import')} {ssoToken.trim() ? `(${ssoToken.split('\n').filter(t => t.trim()).length})` : ''}
                 </Button>
               </div>
             </div>

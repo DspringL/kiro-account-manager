@@ -72,7 +72,7 @@ QuotaCard.displayName = 'QuotaCard'
 function AccountDetailModal({ account, onClose }) {
   const { t, colors } = useApp()
   const { showError } = useDialog()
-  const initQuota = account.usageData?.usageBreakdownList?.[0]?.usageLimit ?? account.quota ?? 50
+  const initQuota = account.usageData?.usageBreakdownList?.[0]?.usageLimit ?? account.quota ?? 0
   const initUsed = account.usageData?.usageBreakdownList?.[0]?.currentUsage ?? account.used ?? 0
   const [form, setForm] = useState({
     email: account.email,
@@ -103,7 +103,7 @@ function AccountDetailModal({ account, onClose }) {
       const updated = await invoke('sync_account', { id: account.id })
       // 封禁账号额度为 0
       const isBanned = updated.status === 'banned' || updated.status === '封禁' || updated.status === '已封禁'
-      const quota = isBanned ? 0 : (updated.usageData?.usageBreakdownList?.[0]?.usageLimit ?? 50)
+      const quota = isBanned ? 0 : (updated.usageData?.usageBreakdownList?.[0]?.usageLimit ?? 0)
       const used = updated.usageData?.usageBreakdownList?.[0]?.currentUsage ?? 0
       setForm(prev => ({ ...prev, quota, used, status: updated.status }))
     } catch (e) {

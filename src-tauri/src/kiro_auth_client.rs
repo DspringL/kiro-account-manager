@@ -1,7 +1,7 @@
 use crate::browser::open_browser;
+use crate::http_client::build_http_client_with_user_agent;
 use reqwest::Client;
 use serde::Deserialize;
-use std::time::Duration;
 
 /// Kiro Authentication Service Client
 /// 负责与 https://prod.us-east-1.auth.desktop.kiro.dev 通信
@@ -15,10 +15,7 @@ impl KiroAuthServiceClient {
         let endpoint = "https://prod.us-east-1.auth.desktop.kiro.dev".to_string();
         let user_agent = format!("KiroIDE-0.6.18-{}", machine_id);
 
-        let client = Client::builder()
-            .timeout(Duration::from_millis(10_000))
-            .user_agent(user_agent)
-            .build()
+        let client = build_http_client_with_user_agent(&user_agent)
             .expect("failed to build reqwest client");
 
         Self { endpoint, client }

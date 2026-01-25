@@ -15,7 +15,7 @@ const getQuota = (account) => {
   if (isBanned) return 0
 
   const breakdown = account.usageData?.usageBreakdownList?.[0] || account.usageData?.usageBreakdown
-  return breakdown?.usageLimit ?? 50
+  return breakdown?.usageLimit ?? 0
 }
 
 export default function QuotaPieChart({ accounts }) {

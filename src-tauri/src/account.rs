@@ -103,8 +103,6 @@ pub struct Account {
     // 认证信息
     pub access_token: Option<String>,
     pub refresh_token: Option<String>,
-    pub csrf_token: Option<String>,
-    pub session_token: Option<String>,
     pub expires_at: Option<String>,
     // 账号信息
     pub provider: Option<String>,
@@ -122,6 +120,7 @@ pub struct Account {
     #[serde(default)]
     pub start_url: Option<String>, // Enterprise 的 Start URL
     // Social 专用
+    #[serde(default)]
     pub profile_arn: Option<String>,
     // 原始 usage API 响应
     pub usage_data: Option<serde_json::Value>,
@@ -148,8 +147,6 @@ impl Account {
             added_at: now.format("%Y/%m/%d %H:%M:%S").to_string(),
             access_token: None,
             refresh_token: None,
-            csrf_token: None,
-            session_token: None,
             expires_at: None,
             provider: None,
             user_id: None,
@@ -181,8 +178,6 @@ impl Account {
             added_at: now.format("%Y/%m/%d %H:%M:%S").to_string(),
             access_token: None,
             refresh_token: None,
-            csrf_token: None,
-            session_token: None,
             expires_at: None,
             provider: Some("Enterprise".to_string()),
             user_id: Some(user_id),
@@ -271,6 +266,7 @@ impl AccountStore {
                 return false;
             }
         }
+        
         match serde_json::to_string_pretty(&self.accounts) {
             Ok(json) => {
                 if let Err(e) = std::fs::write(&self.file_path, json) {
@@ -315,16 +311,36 @@ impl AccountStore {
             Ok(imported) => {
                 let mut added = 0;
                 for mut account in imported {
+                    // 修复导入账号的 authMethod（如果为 null）
+                    if account.auth_method.is_none() {
+                        if account.client_id.is_some() && account.client_secret.is_some() {
+                            account.auth_method = Some("IdC".to_string());
+                        } else {
+                            account.auth_method = Some("social".to_string());
+                        }
+                    }
+                    
                     let exists = self.accounts.iter().any(|a| {
                         // 优先用 ID 去重
                         if a.id == account.id {
                             return true;
                         }
                         
+                        // 修复现有账号的 authMethod 用于比较
+                        let a_auth_method = if a.auth_method.is_none() {
+                            if a.client_id.is_some() && a.client_secret.is_some() {
+                                Some("IdC".to_string())
+                            } else {
+                                Some("social".to_string())
+                            }
+                        } else {
+                            a.auth_method.clone()
+                        };
+                        
                         // 使用 email + user_id + auth_method + provider 组合去重
                         let email_match = a.email == account.email;
                         let user_id_match = a.user_id == account.user_id;
-                        let auth_method_match = a.auth_method == account.auth_method;
+                        let auth_method_match = a_auth_method == account.auth_method;
                         let provider_match = a.provider == account.provider;
                         
                         // 如果 email、user_id、auth_method、provider 都相同，则认为是重复账号

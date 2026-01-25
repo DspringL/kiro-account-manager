@@ -19,25 +19,21 @@ const getQuota = (a) => {
   if (isBanned) return 0
 
   const breakdown = getBreakdown(a)
-  if (!breakdown) return a.quota ?? 50
+  if (!breakdown) return a.quota ?? 0
   
   const now = Date.now()
-  const main = breakdown.usageLimit ?? 50
+  const main = breakdown.usageLimit ?? 0
   
-  // 检查试用是否过期
+  // 检查试用是否激活（只看状态，不看日期）
   const trialInfo = breakdown.freeTrialInfo
-  const trialExpiry = trialInfo?.freeTrialExpiry ? trialInfo.freeTrialExpiry * 1000 : 0
-  const trialActive = trialInfo?.freeTrialStatus === 'ACTIVE' || (trialExpiry > now)
+  const trialActive = trialInfo?.freeTrialStatus === 'ACTIVE'
   const freeTrial = trialActive ? (trialInfo?.usageLimit ?? 0) : 0
   
-  // 检查每个奖励是否过期
+  // 检查每个奖励配额（所有奖励都计入，不管是否过期）
   const bonuses = Array.isArray(breakdown.bonuses) ? breakdown.bonuses : []
   let bonus = 0
   bonuses.forEach(b => {
-    const expiry = b.expiresAt ? b.expiresAt * 1000 : Infinity
-    if (expiry > now && b.status !== 'EXPIRED') {
-      bonus += b.usageLimit ?? 0
-    }
+    bonus += b.usageLimit ?? 0
   })
   
   return main + freeTrial + bonus
@@ -51,20 +47,16 @@ const getUsed = (a) => {
   const now = Date.now()
   const main = breakdown.currentUsage ?? 0
   
-  // 检查试用是否过期
+  // 检查试用是否激活（只看状态，不看日期）
   const trialInfo = breakdown.freeTrialInfo
-  const trialExpiry = trialInfo?.freeTrialExpiry ? trialInfo.freeTrialExpiry * 1000 : 0
-  const trialActive = trialInfo?.freeTrialStatus === 'ACTIVE' || (trialExpiry > now)
+  const trialActive = trialInfo?.freeTrialStatus === 'ACTIVE'
   const freeTrial = trialActive ? (trialInfo?.currentUsage ?? 0) : 0
   
-  // 检查每个奖励是否过期
+  // 检查每个奖励配额（所有奖励都计入，不管是否过期）
   const bonuses = Array.isArray(breakdown.bonuses) ? breakdown.bonuses : []
   let bonus = 0
   bonuses.forEach(b => {
-    const expiry = b.expiresAt ? b.expiresAt * 1000 : Infinity
-    if (expiry > now && b.status !== 'EXPIRED') {
-      bonus += b.currentUsage ?? 0
-    }
+    bonus += b.currentUsage ?? 0
   })
   
   return main + freeTrial + bonus

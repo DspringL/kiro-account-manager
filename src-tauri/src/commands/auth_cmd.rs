@@ -7,7 +7,6 @@ use crate::auth::User;
 use crate::auth_social;
 use crate::providers::{AuthMethod, AuthProvider, get_provider_config, create_social_provider, create_idc_provider};
 use crate::commands::common::{get_usage_by_provider, extract_user_info, find_existing_account_idx, calc_status};
-use crate::kiro_portal_client::GetUserUsageAndLimitsResponse;
 
 #[tauri::command]
 pub fn get_current_user(state: State<AppState>) -> Option<User> {
@@ -17,7 +16,6 @@ pub fn get_current_user(state: State<AppState>) -> Option<User> {
 #[tauri::command]
 pub fn logout(state: State<AppState>) {
     *state.auth.user.lock().expect("Failed to acquire lock") = None;
-    *state.auth.csrf_token.lock().expect("Failed to acquire lock") = None;
     *state.auth.access_token.lock().expect("Failed to acquire lock") = None;
 }
 
@@ -66,9 +64,7 @@ async fn login_social(
         return Err("BANNED: 账号已被封禁".to_string());
     }
     
-    let usage: Option<GetUserUsageAndLimitsResponse> = 
-        serde_json::from_value(usage_result.usage_data.clone()).ok();
-    let (new_email, user_id) = extract_user_info(&usage);
+    let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
     
     // 获取不到邮箱直接报错
     let _final_email = new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?;
@@ -98,7 +94,6 @@ async fn login_social(
         account.user_id = user_id.clone();
         account.expires_at = Some(auth_result.expires_at.clone());
         account.profile_arn = auth_result.profile_arn;
-        account.csrf_token = auth_result.csrf_token;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned);
         store.accounts.insert(0, account.clone());
@@ -134,9 +129,7 @@ async fn login_idc(
         return Err("BANNED: 账号已被封禁".to_string());
     }
     
-    let usage: Option<GetUserUsageAndLimitsResponse> = 
-        serde_json::from_value(usage_result.usage_data.clone()).ok();
-    let (new_email, user_id) = extract_user_info(&usage);
+    let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
     
     // Enterprise 账号允许没有 email,使用 userId 作为标识
     let final_email = if provider_id == "Enterprise" {
@@ -240,9 +233,7 @@ pub async fn handle_kiro_social_callback(
         return Err("BANNED: 账号已被封禁".to_string());
     }
     
-    let usage: Option<GetUserUsageAndLimitsResponse> = 
-        serde_json::from_value(usage_result.usage_data.clone()).ok();
-    let (new_email, user_id) = extract_user_info(&usage);
+    let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
     
     // 获取不到邮箱直接报错
     let final_email = new_email.clone().ok_or("获取邮箱失败，请检查账号状态")?;

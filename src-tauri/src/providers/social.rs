@@ -24,8 +24,6 @@ struct SocialTokenResponse {
     id_token: Option<String>,
     #[serde(rename = "tokenType")]
     token_type: Option<String>,
-    #[serde(rename = "csrfToken")]
-    csrf_token: Option<String>,
 }
 
 /// Social 刷新 Token 响应
@@ -39,8 +37,6 @@ struct SocialRefreshResponse {
     profile_arn: Option<String>,
     #[serde(rename = "expiresIn")]
     expires_in: i64,
-    #[serde(rename = "csrfToken")]
-    csrf_token: Option<String>,
 }
 
 pub struct SocialProvider {
@@ -105,8 +101,6 @@ impl AuthProvider for SocialProvider {
             client_id_hash: None,
             sso_session_id: None,
             profile_arn: token_response.profile_arn,
-            csrf_token: token_response.csrf_token,
-            session_token: None,
         })
     }
 
@@ -133,8 +127,6 @@ impl AuthProvider for SocialProvider {
             client_id_hash: None,
             sso_session_id: None,
             profile_arn: metadata.profile_arn.or(token_response.profile_arn),
-            csrf_token: token_response.csrf_token,
-            session_token: None,
         })
     }
 

@@ -1,39 +1,12 @@
 // Token 凭证 JSON 视图组件
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Copy, Check, ChevronDown, ChevronUp, Key, Clock } from 'lucide-react'
+import { Copy, Check, ChevronDown, Key, Clock } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 
-// 构建凭证 JSON 对象
+// 构建凭证 JSON 对象（直接使用整个账号对象）
 function buildCredentialsJson(account) {
-  const json = {
-    email: account.email,
-    provider: account.provider,
-    authMethod: account.authMethod || (account.provider === 'BuilderId' ? 'IdC' : 'social'),
-    accessToken: account.accessToken || '',
-    refreshToken: account.refreshToken || '',
-  }
-  
-  if (account.expiresAt) json.expiresAt = account.expiresAt
-  
-  // BuilderId 专用字段
-  if (account.provider === 'BuilderId') {
-    if (account.clientId) json.clientId = account.clientId
-    if (account.clientSecret) json.clientSecret = account.clientSecret
-    if (account.clientIdHash) json.clientIdHash = account.clientIdHash
-    if (account.region) json.region = account.region
-    if (account.ssoSessionId) json.ssoSessionId = account.ssoSessionId
-  }
-  
-  // Social 专用字段
-  if (account.provider === 'Google' || account.provider === 'Github') {
-    if (account.profileArn) json.profileArn = account.profileArn
-    if (account.csrfToken) json.csrfToken = account.csrfToken
-    if (account.sessionToken) json.sessionToken = account.sessionToken
-  }
-  
-  if (account.machineId) json.machineId = account.machineId
-  
-  return json
+  // 直接返回整个账号对象，让后端的序列化逻辑处理
+  return account
 }
 
 // 可折叠的字符串值
@@ -65,9 +38,9 @@ function CollapsibleValue({ value, colors, threshold = 50 }) {
   )
 }
 
-// JSON 渲染（带折叠）
+// JSON 渲染（带折叠，支持嵌套对象和数组）
 function JsonRenderer({ json, colors, indent = 0 }) {
-  const entries = Object.entries(json)
+  const entries = Object.entries(json).filter(([_, value]) => value !== undefined)
   const pad = '  '.repeat(indent)
   const padInner = '  '.repeat(indent + 1)
   
@@ -81,12 +54,16 @@ function JsonRenderer({ json, colors, indent = 0 }) {
           <span className={colors.textMuted}>: </span>
           {typeof value === 'string' ? (
             <CollapsibleValue value={value} colors={colors} />
-          ) : value === null ? (
+          ) : value === null || value === undefined ? (
             <span className="text-orange-500 font-medium">null</span>
           ) : typeof value === 'boolean' ? (
             <span className="text-purple-500 font-medium">{String(value)}</span>
           ) : typeof value === 'number' ? (
             <span className="text-amber-500 font-medium">{value}</span>
+          ) : Array.isArray(value) ? (
+            <span className="text-emerald-500">[{value.length > 0 ? '...' : ''}]</span>
+          ) : typeof value === 'object' ? (
+            <span className="text-emerald-500">{'{...}'}</span>
           ) : (
             <span className="text-emerald-500">{JSON.stringify(value)}</span>
           )}

@@ -7,6 +7,7 @@ mod aws_sso_client;
 mod browser;
 mod commands;
 mod deep_link_handler;
+mod http_client;
 
 mod kiro;
 mod kiro_auth_client;
@@ -45,7 +46,6 @@ use commands::machine_guid::*;
 use commands::mcp_cmd::*;
 
 use commands::proxy_cmd::*;
-use commands::sso_import_cmd::*;
 use commands::update_cmd::*;
 use commands::steering_cmd::*;
 use kiro::{
@@ -238,8 +238,6 @@ fn main() {
 
             // 代理检测命令
             detect_system_proxy,
-            // SSO Token 导入命令
-            import_from_sso_token,
             // 更新检查命令
             check_update,
             // Steering 管理命令

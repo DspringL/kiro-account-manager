@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
+use crate::http_client::build_http_client;
 
 // ============================================================
 // User 和 AuthState
@@ -18,7 +19,6 @@ pub struct User {
 
 pub struct AuthState {
     pub user: Mutex<Option<User>>,
-    pub csrf_token: Mutex<Option<String>>,
     pub access_token: Mutex<Option<String>>,
     pub refresh_token: Mutex<Option<String>>,
 }
@@ -27,7 +27,6 @@ impl AuthState {
     pub fn new() -> Self {
         Self {
             user: Mutex::new(None),
-            csrf_token: Mutex::new(None),
             access_token: Mutex::new(None),
             refresh_token: Mutex::new(None),
         }
@@ -51,7 +50,6 @@ pub struct DesktopRefreshResponse {
     pub refresh_token: String,
     pub expires_in: i64,
     pub profile_arn: String,
-    pub csrf_token: Option<String>,
 }
 
 // ============================================================
@@ -60,9 +58,7 @@ pub struct DesktopRefreshResponse {
 
 /// 使用桌面端 API 刷新 Token（只需要 RefreshToken）
 pub async fn refresh_token_desktop(refresh_token: &str) -> Result<DesktopRefreshResponse, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
+    let client = build_http_client()
         .map_err(|e| format!("Failed to create client: {}", e))?;
     
     let body = serde_json::json!({
@@ -116,9 +112,7 @@ pub async fn refresh_token_desktop(refresh_token: &str) -> Result<DesktopRefresh
 pub async fn delete_account_desktop(access_token: &str, machine_id: &str) -> Result<(), String> {
     let user_agent = format!("KiroIDE-0.6.18-{}", machine_id);
     
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
+    let client = crate::http_client::build_http_client_with_user_agent(&user_agent)
         .map_err(|e| format!("Failed to create client: {}", e))?;
     
     // Kiro Desktop 使用 DELETE /account 端点

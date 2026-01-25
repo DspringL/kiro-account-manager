@@ -5,7 +5,6 @@ use crate::state::AppState;
 use crate::account::Account;
 use crate::auth::{User, refresh_token_desktop};
 use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, KiroPortalClient};
-use crate::kiro_portal_client::GetUserUsageAndLimitsResponse;
 use crate::commands::common::*;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
@@ -24,26 +23,29 @@ fn calculate_client_id_hash(start_url: &str) -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VerifyAccountResponse {
-    #[serde(rename = "usageLimit")]
-    pub usage_limit: Option<i32>,
-    #[serde(rename = "currentUsage")]
-    pub current_usage: Option<i32>,
-    #[serde(rename = "subscriptionType")]
-    pub subscription_type: Option<String>,
+    #[serde(rename = "usageData")]
+    pub usage_data: serde_json::Value,  // 直接返回原始数据，前端解析
     #[serde(rename = "accessToken")]
     pub access_token: String,
     #[serde(rename = "refreshToken")]
     pub refresh_token: String,
 }
 
+/// 添加账号的返回结果（包含是否新增）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddAccountResult {
+    pub account: Account,
+    #[serde(rename = "isNew")]
+    pub is_new: bool,  // true = 新增，false = 更新
+}
+
 /// verify_account 命令参数
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(dead_code)]  // access_token 和 csrf_token 保留用于未来扩展
 pub struct VerifyAccountParams {
+    #[allow(dead_code)]
     pub access_token: String,
     pub refresh_token: String,
-    pub csrf_token: Option<String>,
     pub provider: String,
     pub client_id: Option<String>,
     pub client_secret: Option<String>,
@@ -108,11 +110,18 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
         }
     }
     
-    // 获取配额失败时直接返回错误
-    let usage = usage_result?;
+    // 获取配额失败时容错处理：只更新 token，不更新 usageData
+    let usage = match usage_result {
+        Ok(u) => Some(u),
+        Err(e) => {
+            // 打印错误日志，但不中断同步
+            log::warn!("[sync_account] 获取配额失败 (账号: {}, provider: {}): {}", id, provider_str, e);
+            None
+        }
+    };
 
     let mut store = state.store.lock().expect("Failed to acquire store lock");
-    if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
+    let result = if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
         // 如果刷新了 token，更新 token 相关字段
         if let Some(ref result) = refresh_result {
             a.access_token = Some(result.access_token.clone());
@@ -122,27 +131,35 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
             if let Some(ref session_id) = result.sso_session_id { a.sso_session_id = Some(session_id.clone()); }
             a.expires_at = Some(calc_expires_at(result.expires_in));
         }
-        // 更新 usage 数据
-        a.usage_data = Some(usage.usage_data.clone());
-        a.status = calc_status(usage.is_banned);
         
-        // 从 usage_data 中提取并更新 email 和 user_id
-        if let Some(user_info) = usage.usage_data.get("userInfo") {
-            if let Some(email) = user_info.get("email").and_then(|v| v.as_str()) {
-                if !email.is_empty() {
-                    a.email = Some(email.to_string());
+        // 只有成功获取配额时才更新 usage_data
+        if let Some(ref usage_data) = usage {
+            a.usage_data = Some(usage_data.usage_data.clone());
+            a.status = calc_status(usage_data.is_banned);
+            
+            // 从 usage_data 中提取并更新 email 和 user_id
+            if let Some(user_info) = usage_data.usage_data.get("userInfo") {
+                if let Some(email) = user_info.get("email").and_then(|v| v.as_str()) {
+                    if !email.is_empty() {
+                        a.email = Some(email.to_string());
+                    }
                 }
-            }
-            if let Some(user_id) = user_info.get("userId").and_then(|v| v.as_str()) {
-                a.user_id = Some(user_id.to_string());
+                if let Some(user_id) = user_info.get("userId").and_then(|v| v.as_str()) {
+                    a.user_id = Some(user_id.to_string());
+                }
             }
         }
         
-        let result = a.clone();
-        store.save_to_file();
-        return Ok(result);
-    }
-    Err("Account not found after update".to_string())
+        // 克隆结果
+        Some(a.clone())
+    } else {
+        None
+    };
+    
+    // 保存文件
+    store.save_to_file();
+    
+    result.ok_or_else(|| "Account not found after update".to_string())
 }
 
 /// 只刷新 token，不获取 usage（启动时快速刷新用）
@@ -187,7 +204,6 @@ pub async fn verify_account(
     let VerifyAccountParams {
         access_token: _,
         refresh_token,
-        csrf_token: _,
         provider,
         client_id,
         client_secret,
@@ -221,10 +237,9 @@ pub async fn verify_account(
         (auth.access_token, auth.refresh_token)
     };
     
-    // 获取 usage（统一逻辑）
+    // 获取 usage_data
     let client = KiroPortalClient::new();
-    let usage = client.get_user_usage_and_limits(&new_access_token, &provider).await?;
-    let (quota, used, subscription_type) = extract_quota(&usage);
+    let usage_data = client.get_user_usage_and_limits(&new_access_token, &provider).await?;
     
     // 更新数据库
     {
@@ -237,9 +252,7 @@ pub async fn verify_account(
     }
     
     Ok(VerifyAccountResponse {
-        usage_limit: quota,
-        current_usage: used,
-        subscription_type,
+        usage_data,  // 直接返回，前端解析
         access_token: new_access_token,
         refresh_token: new_refresh_token,
     })
@@ -252,7 +265,7 @@ pub async fn add_account_by_social(
     provider: Option<String>,
     machine_id: Option<String>,
     access_token: Option<String>,
-) -> Result<Account, String> {
+) -> Result<AddAccountResult, String> {
     let idp = provider.clone().unwrap_or_else(|| "Google".to_string());
     
     // 先尝试用传入的 access_token 获取配额
@@ -279,10 +292,7 @@ pub async fn add_account_by_social(
         return Err("BANNED: 账号已被封禁".to_string());
     }
     
-    let usage: Option<GetUserUsageAndLimitsResponse> = 
-        serde_json::from_value(usage_result.usage_data.clone()).ok();
-    
-    let (new_email, user_id) = extract_user_info(&usage);
+    let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
     
     // 获取不到邮箱直接报错
     let final_email = new_email.ok_or("获取邮箱失败，请检查账号状态")?;
@@ -296,6 +306,8 @@ pub async fn add_account_by_social(
     
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     let existing_idx = find_existing_account_idx(&store.accounts, &Some(final_email.clone()), &idp, &refresh_token, &user_id);
+    
+    let is_new = existing_idx.is_none();
     
     let account = if let Some(idx) = existing_idx {
         let existing = &mut store.accounts[idx];
@@ -333,7 +345,7 @@ pub async fn add_account_by_social(
     *state.auth.user.lock().expect("Failed to acquire auth user lock") = Some(user);
     *state.auth.access_token.lock().expect("Failed to acquire auth access_token lock") = Some(final_access_token);
     
-    Ok(account)
+    Ok(AddAccountResult { account, is_new })
 }
 
 #[tauri::command]
@@ -345,8 +357,9 @@ pub fn import_accounts(state: State<AppState>, json: String) -> Result<usize, St
 pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> String {
     let store = state.store.lock().expect("Failed to acquire store lock");
     
-    // 修复 provider 为 null 的账号
-    let fix_provider = |mut account: Account| -> Account {
+    // 修复账号数据
+    let fix_account = |mut account: Account| -> Account {
+        // 1. 修复 provider 为 null
         if account.provider.is_none() && account.auth_method.as_deref() == Some("IdC") {
             // IdC 账号但 provider 为 null，根据 start_url 或 client_secret 判断
             if let Some(ref start_url) = account.start_url {
@@ -379,6 +392,16 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
                 account.provider = Some("Google".to_string());
             }
         }
+        
+        // 2. 修复 authMethod 为 null
+        if account.auth_method.is_none() {
+            if account.client_id.is_some() && account.client_secret.is_some() {
+                account.auth_method = Some("IdC".to_string());
+            } else {
+                account.auth_method = Some("social".to_string());
+            }
+        }
+        
         account
     };
     
@@ -388,7 +411,7 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
             let selected: Vec<Account> = store.accounts.iter()
                 .filter(|a| id_list.contains(&a.id))
                 .cloned()
-                .map(fix_provider)
+                .map(fix_account)
                 .collect();
             serde_json::to_string_pretty(&selected).unwrap_or_else(|_| "[]".to_string())
         }
@@ -396,7 +419,7 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
             // 导出全部
             let fixed: Vec<Account> = store.accounts.iter()
                 .cloned()
-                .map(fix_provider)
+                .map(fix_account)
                 .collect();
             serde_json::to_string_pretty(&fixed).unwrap_or_else(|_| "[]".to_string())
         }
@@ -405,7 +428,7 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
 
 /// 添加本地 Kiro IDE 账号
 #[tauri::command]
-pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<Account, String> {
+pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<AddAccountResult, String> {
     use crate::kiro::{get_kiro_local_token, get_client_registration};
     
     let local_token = get_kiro_local_token().await
@@ -477,7 +500,7 @@ pub async fn add_account_by_builderid(
     access_token: Option<String>,
     password: Option<String>,
     client_id_hash: Option<String>, // 从 Kiro 导入时直接提供（优先使用）
-) -> Result<Account, String> {
+) -> Result<AddAccountResult, String> {
     add_account_by_idc_internal(
         state,
         refresh_token,
@@ -506,7 +529,7 @@ pub async fn add_account_by_enterprise(
     password: Option<String>,
     start_url: Option<String>, // Enterprise 的 Start URL（必需）
     client_id_hash: Option<String>, // 从 Kiro 导入时直接提供（优先使用）
-) -> Result<Account, String> {
+) -> Result<AddAccountResult, String> {
     add_account_by_idc_internal(
         state,
         refresh_token,
@@ -535,7 +558,7 @@ async fn add_account_by_idc_internal(
     provider_id: String,
     start_url: Option<String>,
     client_id_hash: Option<String>,
-) -> Result<Account, String> {
+) -> Result<AddAccountResult, String> {
     let is_enterprise = provider_id == "Enterprise";
     
     // BuilderId 使用默认 region，Enterprise 必须提供 region
@@ -589,10 +612,7 @@ async fn add_account_by_idc_internal(
         return Err("BANNED: 账号已被封禁".to_string());
     }
     
-    let usage: Option<GetUserUsageAndLimitsResponse> = 
-        serde_json::from_value(usage_result.usage_data.clone()).ok();
-    
-    let (new_email, user_id) = extract_user_info(&usage);
+    let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
     
     // ========== Enterprise 和 BuilderId 分开处理 ==========
     
@@ -611,6 +631,8 @@ async fn add_account_by_idc_internal(
         let mut store = state.store.lock().expect("Failed to acquire store lock");
         let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &provider_id, &refresh_token, &Some(user_id.clone()));
         
+        let is_new = existing_idx.is_none();
+        
         let account = if let Some(idx) = existing_idx {
             // 更新已存在的账号
             let existing = &mut store.accounts[idx];
@@ -618,6 +640,8 @@ async fn add_account_by_idc_internal(
             existing.refresh_token = Some(final_refresh_token);
             existing.email = new_email;  // 更新 email（可能是 None）
             existing.user_id = Some(user_id);
+            existing.provider = Some(provider_id.clone());  // 确保 provider 正确
+            existing.auth_method = Some("IdC".to_string());  // 确保 authMethod 正确
             if !expires_at.is_empty() {
                 existing.expires_at = Some(expires_at);
             }
@@ -660,7 +684,7 @@ async fn add_account_by_idc_internal(
         };
         
         store.save_to_file();
-        Ok(account)
+        Ok(AddAccountResult { account, is_new })
         
     } else {
         // BuilderId 账号：必须有 email
@@ -676,11 +700,15 @@ async fn add_account_by_idc_internal(
         let mut store = state.store.lock().expect("Failed to acquire store lock");
         let existing_idx = find_existing_account_idx(&store.accounts, &Some(email.clone()), &provider_id, &refresh_token, &user_id);
         
+        let is_new = existing_idx.is_none();
+        
         let account = if let Some(idx) = existing_idx {
             // 更新已存在的账号
             let existing = &mut store.accounts[idx];
             existing.access_token = Some(final_access_token);
             existing.refresh_token = Some(final_refresh_token);
+            existing.provider = Some(provider_id.clone());  // 确保 provider 正确
+            existing.auth_method = Some("IdC".to_string());  // 确保 authMethod 正确
             existing.user_id = user_id;
             if !expires_at.is_empty() {
                 existing.expires_at = Some(expires_at);
@@ -724,7 +752,7 @@ async fn add_account_by_idc_internal(
         };
         
         store.save_to_file();
-        Ok(account)
+        Ok(AddAccountResult { account, is_new })
     }
 }
 
@@ -853,7 +881,7 @@ pub fn get_accounts_by_tag(state: State<AppState>, tag_id: String) -> Vec<Accoun
 pub async fn get_account_usage(
     access_token: String,
     provider: Option<String>,
-) -> Result<GetUserUsageAndLimitsResponse, String> {
+) -> Result<serde_json::Value, String> {
     let provider_str = provider.as_deref().unwrap_or("Google");
     let client = KiroPortalClient::new();
     client.get_user_usage_and_limits(&access_token, provider_str).await

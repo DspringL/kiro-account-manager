@@ -3,9 +3,6 @@
 use crate::account::Account;
 use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, SocialProvider, KiroPortalClient};
 
-// 常量
-pub const MAX_ACCOUNT_COUNT: usize = 4000;
-
 /// Token 刷新结果
 pub struct RefreshResult {
     pub access_token: String,
@@ -20,7 +17,7 @@ pub struct RefreshResult {
 pub struct UsageResult {
     pub usage_data: serde_json::Value,
     pub is_banned: bool,
-    pub is_auth_error: bool,  // 401/认证错误，需要刷新 token
+    pub is_auth_error: bool,
 }
 
 /// 根据 provider 刷新 token
@@ -86,12 +83,12 @@ pub async fn get_usage_by_provider(
 }
 
 /// 解析 usage 结果，提取封禁状态和认证错误
-fn parse_usage_result<T: serde::Serialize>(
-    result: Result<T, String>,
+fn parse_usage_result(
+    result: Result<serde_json::Value, String>,
 ) -> Result<UsageResult, String> {
     match result {
-        Ok(usage) => Ok(UsageResult {
-            usage_data: serde_json::to_value(&usage).unwrap_or(serde_json::Value::Null),
+        Ok(usage_data) => Ok(UsageResult {
+            usage_data,  // 直接使用 JSON Value
             is_banned: false,
             is_auth_error: false,
         }),
@@ -117,14 +114,26 @@ pub fn calc_expires_at(expires_in: i64) -> String {
     expires_at.format("%Y/%m/%d %H:%M:%S").to_string()
 }
 
-/// 从 usage 中提取 email 和 user_id
-pub fn extract_user_info(usage: &Option<crate::kiro_portal_client::GetUserUsageAndLimitsResponse>) -> (Option<String>, Option<String>) {
-    let email = usage.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.email.clone());
-    let user_id = usage.as_ref()
-        .and_then(|u| u.user_info.as_ref())
-        .and_then(|u| u.user_id.clone());
+/// 根据 usage_result 计算账号状态
+pub fn calc_status(is_banned: bool) -> String {
+    if is_banned { "banned".to_string() } else { "active".to_string() }
+}
+
+/// 从 usage_data 中简单提取 email 和 user_id（不依赖结构体）
+pub fn extract_user_info(usage_data: &serde_json::Value) -> (Option<String>, Option<String>) {
+    let user_info = usage_data.get("userInfo");
+    
+    let email = user_info
+        .and_then(|u| u.get("email"))
+        .and_then(|e| e.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    
+    let user_id = user_info
+        .and_then(|u| u.get("userId"))
+        .and_then(|id| id.as_str())
+        .map(|s| s.to_string());
+    
     (email, user_id)
 }
 
@@ -155,19 +164,4 @@ pub fn find_existing_account_idx(
         // 4 个字段都相同才认为是重复
         email_match && user_id_match && auth_method_match && provider_match
     })
-}
-
-/// 根据 usage_result 计算账号状态
-pub fn calc_status(is_banned: bool) -> String {
-    if is_banned { "banned".to_string() } else { "active".to_string() }
-}
-
-/// 从 usage 响应中提取配额信息
-pub fn extract_quota(usage: &crate::kiro_portal_client::GetUserUsageAndLimitsResponse) -> (Option<i32>, Option<i32>, Option<String>) {
-    let (q, u) = usage.usage_breakdown_list.as_ref()
-        .and_then(|list| list.first())
-        .map(|b| (b.usage_limit, b.current_usage))
-        .unwrap_or((None, None));
-    let sub_type = usage.subscription_info.as_ref().and_then(|s| s.subscription_type.clone());
-    (q, u, sub_type)
 }
