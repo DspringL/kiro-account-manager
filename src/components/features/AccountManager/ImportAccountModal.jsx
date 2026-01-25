@@ -177,7 +177,9 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
             accessToken: item.accessToken || null
           })
         } else {
-          account = await invoke('add_account_by_idc', {
+          // IdC 账号：根据 provider 调用对应的命令
+          const commandName = provider === 'Enterprise' ? 'add_account_by_enterprise' : 'add_account_by_builderid'
+          account = await invoke(commandName, {
             refreshToken: item.refreshToken,
             clientId: item.clientId,
             clientSecret: item.clientSecret,
@@ -185,7 +187,6 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
             machineId: item.machineId || null,
             accessToken: item.accessToken || null,
             password: item.password || null,
-            provider: provider,
             startUrl: item.startUrl || null,
             clientIdHash: null  // JSON 导入时不提供，由后端根据 startUrl 计算
           })
@@ -296,7 +297,9 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
       try {
         let result
         if (account.authMethod === 'IdC') {
-          result = await invoke('add_account_by_idc', {
+          // IdC 账号：根据 provider 调用对应的命令
+          const commandName = account.provider === 'Enterprise' ? 'add_account_by_enterprise' : 'add_account_by_builderid'
+          result = await invoke(commandName, {
             refreshToken: account.refreshToken,
             clientId: account.clientId,
             clientSecret: account.clientSecret,
@@ -304,7 +307,6 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
             machineId: null,
             accessToken: account.accessToken || null,
             password: null,
-            provider: account.provider,
             startUrl: null,  // 从 Kiro 导入不需要 startUrl
             clientIdHash: account.clientIdHash || null  // 使用 Kiro 提供的 clientIdHash
           })
