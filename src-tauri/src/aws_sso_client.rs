@@ -5,7 +5,6 @@
 use crate::http_client::build_http_client;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use log;
 
 /// 默认 scopes（跟 Kiro 一样）
 pub const GRANT_SCOPES: &[&str] = &[

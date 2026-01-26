@@ -73,7 +73,10 @@ export function AccountProvider({ children }) {
   // 刷新单个账号
   const refreshAccount = useCallback(async (id) => {
     try {
-      await invoke('sync_account', { id })
+      const result = await invoke('sync_account', { id })
+      if (result.warning) {
+        console.warn(`[账号同步警告] ${result.warning}`)
+      }
     } catch (e) {
       // 错误会在 loadData 后反映到账号状态
     }

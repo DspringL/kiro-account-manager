@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Users, Zap, Shield, TrendingUp, Sparkles, Server } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../hooks/useApp'
@@ -34,7 +34,7 @@ function Home({ onNavigate }) {
   const [refreshingAccount, setRefreshingAccount] = useState(false)
   const [mcpToolCount, setMcpToolCount] = useState(0)
 
-  const handleRefresh = () => refresh()
+  const handleRefresh = useCallback(() => refresh(), [refresh])
 
   // 加载 MCP 工具数量
   useEffect(() => {
@@ -43,33 +43,32 @@ function Home({ onNavigate }) {
         const stats = await invoke('get_mcp_tool_stats')
         setMcpToolCount(stats.estimatedTools)
       } catch (e) {
-        console.error('Failed to load MCP tool stats:', e)
+        // 静默处理
       }
     }
     loadMcpToolCount()
   }, [])
 
-  // 刷新当前账号的 token 和 usage
-  const handleRefreshCurrentAccount = async () => {
+  // 刷新当前账号的 token 和 usage（使用 useCallback 缓存）
+  const handleRefreshCurrentAccount = useCallback(async () => {
     if (!currentAccount || refreshingAccount) return
     setRefreshingAccount(true)
     try {
       await refreshAccount(currentAccount.id)
     } catch (e) {
-      console.error('Refresh account failed:', e)
       showError(t('common.refreshFailed'), String(e))
     } finally {
       setRefreshingAccount(false)
     }
-  }
+  }, [currentAccount, refreshingAccount, refreshAccount, showError, t])
 
-  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
+  const isLightTheme = useMemo(() => 
+    theme === 'light' || theme === 'purple' || theme === 'green',
+    [theme]
+  )
 
-  if (loading) {
-    return <LoadingSkeleton colors={colors} />
-  }
-
-  const statCards = [
+  // 缓存 statCards，避免每次 render 都重新创建
+  const statCards = useMemo(() => [
     { icon: Users, iconBg: colors.badgeInfo, iconColor: 'text-blue-500', value: stats.total, label: t('home.totalAccounts'), delay: 'delay-100' },
     { icon: Shield, iconBg: colors.badgeSuccess, iconColor: 'text-green-500', value: `${stats.active}/${stats.banned}`, label: t('home.activeVsBanned'), delay: 'delay-200' },
     { icon: Zap, iconBg: colors.badgePurple, iconColor: 'text-purple-500', value: stats.proPlus + stats.pro, label: t('home.proAccounts'), delay: 'delay-300' },
@@ -84,7 +83,11 @@ function Home({ onNavigate }) {
       onClick: () => onNavigate?.('kiroConfig'),
       warning: mcpToolCount > 50
     },
-  ]
+  ], [colors, stats, mcpToolCount, t, onNavigate])
+
+  if (loading) {
+    return <LoadingSkeleton colors={colors} />
+  }
 
   return (
     <div className={`h-full overflow-auto ${colors.main} flex justify-center`}>

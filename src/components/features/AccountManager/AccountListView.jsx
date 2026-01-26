@@ -170,14 +170,15 @@ const ListRow = memo(function ListRow({
 
 
 function AccountListView({
-  accounts, totalCount, selectedIds, onSelectAll, onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onCopy, onAdd, refreshingId, switchingId, localToken, tagDefinitions = [], groupDefinitions = [], copiedId, sortBy, onSortChange,
+  accounts, totalCount, selectedIds, selectedIdsSet, onSelectAll, onSelectOne, onSwitch, onRefresh, onEdit, onEditLabel, onDelete, onDeleteRemote, onCopy, onAdd, refreshingId, switchingId, localToken, tagDefinitions = [], groupDefinitions = [], copiedId, sortBy, onSortChange,
 }) {
   const { t, theme, colors } = useApp()
   const { maskEmail } = usePrivacy()
   const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const scrollRef = useRef(null)
 
-  const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
+  // 优化：如果父组件传递了 selectedIdsSet，直接使用；否则创建
+  const _selectedIdsSet = selectedIdsSet || useMemo(() => new Set(selectedIds), [selectedIds])
   const localRefreshToken = localToken?.refreshToken
 
   const rowVirtualizer = useVirtualizer({
@@ -268,7 +269,7 @@ function AccountListView({
               <div key={acc.id} style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vRow.start}px)` }}>
                 <ListRow
                   account={acc}
-                  isSelected={selectedIdsSet.has(acc.id)}
+                  isSelected={_selectedIdsSet.has(acc.id)}
                   isCurrent={localRefreshToken && acc.refreshToken === localRefreshToken}
                   refreshingId={refreshingId}
                   switchingId={switchingId}

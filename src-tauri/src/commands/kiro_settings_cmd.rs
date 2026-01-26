@@ -214,13 +214,13 @@ fn get_kiro_settings_inner() -> Result<KiroSettings, String> {
                 .join("\n")),
         agent_autonomy: json.get("kiroAgent.agentAutonomy").and_then(|v| v.as_str()).map(|s| s.to_string()),
         enable_tab_autocomplete: tab_autocomplete,
-        usage_summary: usage_summary,
-        code_references: code_references,
+        usage_summary,
+        code_references,
         enable_debug_logs: debug_logs,
         notify_action_required: notify_action,
-        notify_failure: notify_failure,
-        notify_success: notify_success,
-        notify_billing: notify_billing,
+        notify_failure,
+        notify_success,
+        notify_billing,
     })
 }
 

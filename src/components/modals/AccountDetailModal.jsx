@@ -100,7 +100,14 @@ function AccountDetailModal({ account, onClose }) {
   const handleRefresh = async () => {
     setRefreshing(true)
     try {
-      const updated = await invoke('sync_account', { id: account.id })
+      const result = await invoke('sync_account', { id: account.id })
+      const updated = result.account
+      
+      // 如果有警告，显示提示
+      if (result.warning) {
+        await showError('同步警告', result.warning)
+      }
+      
       // 封禁账号额度为 0
       const isBanned = updated.status === 'banned' || updated.status === '封禁' || updated.status === '已封禁'
       const quota = isBanned ? 0 : (updated.usageData?.usageBreakdownList?.[0]?.usageLimit ?? 0)

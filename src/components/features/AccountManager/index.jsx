@@ -25,6 +25,9 @@ function AccountManager({ onNavigate }) {
   const { showConfirm } = useDialog()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedIds, setSelectedIds] = useState([])
+  
+  // 优化：将 selectedIds 转为 Set，提升查找性能（O(1) vs O(n)）
+  const selectedIdsSet = useMemo(() => new Set(selectedIds), [selectedIds])
   const [editingAccount, setEditingAccount] = useState(null)
   const [editingLabelAccount, setEditingLabelAccount] = useState(null)
   const [showImportModal, setShowImportModal] = useState(false)
@@ -143,29 +146,38 @@ function AccountManager({ onNavigate }) {
     }
   }, [allTags, selectedTag])
 
-  // 获取试用到期时间戳
-  const getTrialExpiry = (account) => {
+  // 获取试用到期时间戳（使用 useCallback 缓存）
+  const getTrialExpiry = useCallback((account) => {
     const expiry = account.usageData?.usageBreakdownList?.[0]?.freeTrialInfo?.freeTrialExpiry
     if (!expiry) return Infinity // 没有试用的排最后
     return expiry
-  }
+  }, [])
 
-  // 获取使用量（已用绝对值）
-  const getUsageAmount = (account) => {
+  // 获取使用量（已用绝对值）（使用 useCallback 缓存）
+  const getUsageAmount = useCallback((account) => {
     const breakdown = account.usageData?.usageBreakdownList?.[0]
     if (!breakdown) return 0
     const mainUsed = breakdown.currentUsage || 0
     const trialUsed = breakdown.freeTrialInfo?.currentUsage || 0
     const bonusUsed = (breakdown.bonuses || []).reduce((sum, b) => sum + (b.currentUsage || 0), 0)
     return mainUsed + trialUsed + bonusUsed
-  }
+  }, [])
+
+  // 优化：将 tagDefinitions 转为 Map，提升查找性能
+  const tagDefinitionsMap = useMemo(() => {
+    return new Map(tagDefinitions.map(t => [t.id, t]))
+  }, [tagDefinitions])
 
   const filteredAccounts = useMemo(() => {
     let result = accounts.filter(a => {
       const term = searchTerm.toLowerCase()
       // 搜索过滤：邮箱/用户ID、备注、标签名称（从 tagLinks 中提取）
       const displayName = getAccountDisplayName(a).toLowerCase()
-      const tagNames = (a.tagLinks || []).map(link => tagDefinitions.find(t => t.id === link.tagId)?.name || '').join(' ').toLowerCase()
+      // 优化：使用 Map 查找标签名称，避免多次 find
+      const tagNames = (a.tagLinks || [])
+        .map(link => tagDefinitionsMap.get(link.tagId)?.name || '')
+        .join(' ')
+        .toLowerCase()
       const matchSearch = displayName.includes(term) ||
         a.label.toLowerCase().includes(term) ||
         tagNames.includes(term)
@@ -211,7 +223,7 @@ function AccountManager({ onNavigate }) {
       })
     }
     return result
-  }, [accounts, searchTerm, selectedGroup, selectedTag, selectedStatus, tagDefinitions, advancedFilters, sortBy])
+  }, [accounts, searchTerm, selectedGroup, selectedTag, selectedStatus, tagDefinitionsMap, advancedFilters, sortBy, getTrialExpiry, getUsageAmount])
 
   const handleSearchChange = useCallback((term) => { setSearchTerm(term) }, [])
   const handleGroupFilter = useCallback((group) => { setSelectedGroup(group) }, [])
@@ -319,6 +331,7 @@ function AccountManager({ onNavigate }) {
           accounts={filteredAccounts}
           totalCount={accounts.length}
           selectedIds={selectedIds}
+          selectedIdsSet={selectedIdsSet}
           onSelectAll={handleSelectAll}
           onSelectOne={handleSelectOne}
           copiedId={copiedId}
@@ -341,6 +354,7 @@ function AccountManager({ onNavigate }) {
           accounts={filteredAccounts}
           totalCount={accounts.length}
           selectedIds={selectedIds}
+          selectedIdsSet={selectedIdsSet}
           onSelectAll={handleSelectAll}
           onSelectOne={handleSelectOne}
           onSwitch={handleSwitchAccount}

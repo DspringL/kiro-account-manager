@@ -9,6 +9,51 @@ use crate::commands::common::*;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 
+#[derive(Serialize)]
+pub struct SyncAccountResult {
+    pub account: Account,
+    pub warning: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddIdcAccountParams {
+    pub refresh_token: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub region: Option<String>,
+    pub machine_id: Option<String>,
+    pub access_token: Option<String>,
+    pub password: Option<String>,
+    pub client_id_hash: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddEnterpriseAccountParams {
+    pub refresh_token: String,
+    pub client_id: String,
+    pub client_secret: String,
+    pub region: Option<String>,
+    pub machine_id: Option<String>,
+    pub access_token: Option<String>,
+    pub password: Option<String>,
+    pub start_url: Option<String>,
+    pub client_id_hash: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAccountParams {
+    pub id: String,
+    pub label: Option<String>,
+    pub access_token: Option<String>,
+    pub refresh_token: Option<String>,
+    pub client_id: Option<String>,
+    pub client_secret: Option<String>,
+    pub machine_id: Option<String>,
+}
+
 // ===== 辅助函数 =====
 
 /// 根据 startUrl 计算 clientIdHash（与 Kiro IDE 源码一致）
@@ -71,7 +116,7 @@ pub fn delete_accounts(state: State<AppState>, ids: Vec<String>) -> usize {
 }
 
 #[tauri::command]
-pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Account, String> {
+pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<SyncAccountResult, String> {
     let account = {
         let store = state.store.lock().expect("Failed to acquire store lock");
         store.accounts.iter().find(|a| a.id == id).cloned()
@@ -111,34 +156,36 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
     }
     
     // 获取配额失败时容错处理：只更新 token，不更新 usageData
-    let usage = match usage_result {
-        Ok(u) => Some(u),
+    let (usage, warning) = match usage_result {
+        Ok(u) => (Some(u), None),
         Err(e) => {
             // 打印错误日志，但不中断同步
             log::warn!("[sync_account] 获取配额失败 (账号: {}, provider: {}): {}", id, provider_str, e);
-            None
+            (None, Some(format!("获取配额失败: {}", e)))
         }
     };
 
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     let result = if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
         // 如果刷新了 token，更新 token 相关字段
-        if let Some(ref result) = refresh_result {
-            a.access_token = Some(result.access_token.clone());
-            if let Some(ref rt) = result.refresh_token { a.refresh_token = Some(rt.clone()); }
-            if let Some(ref arn) = result.profile_arn { a.profile_arn = Some(arn.clone()); }
-            if let Some(ref id_token) = result.id_token { a.id_token = Some(id_token.clone()); }
-            if let Some(ref session_id) = result.sso_session_id { a.sso_session_id = Some(session_id.clone()); }
+        if let Some(result) = refresh_result {
+            // 直接移动所有权，避免 clone
+            a.access_token = Some(result.access_token);
+            a.refresh_token = result.refresh_token;
+            a.profile_arn = result.profile_arn;
+            a.id_token = result.id_token;
+            a.sso_session_id = result.sso_session_id;
             a.expires_at = Some(calc_expires_at(result.expires_in));
         }
         
         // 只有成功获取配额时才更新 usage_data
-        if let Some(ref usage_data) = usage {
-            a.usage_data = Some(usage_data.usage_data.clone());
+        if let Some(usage_data) = usage {
+            // 直接移动所有权，避免 clone
+            a.usage_data = Some(usage_data.usage_data);
             a.status = calc_status(usage_data.is_banned);
             
             // 从 usage_data 中提取并更新 email 和 user_id
-            if let Some(user_info) = usage_data.usage_data.get("userInfo") {
+            if let Some(user_info) = a.usage_data.as_ref().and_then(|d| d.get("userInfo")) {
                 if let Some(email) = user_info.get("email").and_then(|v| v.as_str()) {
                     if !email.is_empty() {
                         a.email = Some(email.to_string());
@@ -150,7 +197,7 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
             }
         }
         
-        // 克隆结果
+        // 克隆结果（这个必须 clone，因为要返回给前端）
         Some(a.clone())
     } else {
         None
@@ -159,7 +206,10 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Acco
     // 保存文件
     store.save_to_file();
     
-    result.ok_or_else(|| "Account not found after update".to_string())
+    match result {
+        Some(account) => Ok(SyncAccountResult { account, warning }),
+        None => Err("Account not found after update".to_string()),
+    }
 }
 
 /// 只刷新 token，不获取 usage（启动时快速刷新用）
@@ -186,8 +236,9 @@ pub async fn refresh_account_token(state: State<'_, AppState>, id: String) -> Re
 
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
+        // 直接移动所有权，避免 clone
         a.access_token = Some(refresh_result.access_token);
-        if let Some(rt) = refresh_result.refresh_token { a.refresh_token = Some(rt.clone()); }
+        a.refresh_token = refresh_result.refresh_token;
         a.expires_at = Some(calc_expires_at(refresh_result.expires_in));
         let result = a.clone();
         store.save_to_file();
@@ -219,7 +270,7 @@ pub async fn verify_account(
         } else {
             let store = state.store.lock().expect("Failed to acquire store lock");
             store.accounts.iter().find(|a| a.refresh_token.as_ref() == Some(&refresh_token))
-                .map(|a| (a.client_id.clone(), a.client_secret.clone(), a.region.clone()))
+                .map(|a| (a.client_id.clone(), a.client_secret.clone(), a.region.clone()))  // ✅ 这里必须 clone，因为要释放锁
                 .unwrap_or((None, None, None))
         };
         
@@ -245,8 +296,9 @@ pub async fn verify_account(
     {
         let mut store = state.store.lock().expect("Failed to acquire store lock");
         if let Some(account) = store.accounts.iter_mut().find(|a| a.refresh_token.as_ref() == Some(&refresh_token)) {
-            account.access_token = Some(new_access_token.clone());
-            account.refresh_token = Some(new_refresh_token.clone());
+            // 直接移动所有权，避免 clone
+            account.access_token = Some(new_access_token.clone());  // ✅ 这里必须 clone，因为后面还要用
+            account.refresh_token = Some(new_refresh_token.clone());  // ✅ 这里必须 clone，因为后面还要用
             store.save_to_file();
         }
     }
@@ -266,7 +318,7 @@ pub async fn add_account_by_social(
     machine_id: Option<String>,
     access_token: Option<String>,
 ) -> Result<AddAccountResult, String> {
-    let idp = provider.clone().unwrap_or_else(|| "Google".to_string());
+    let idp = provider.as_deref().unwrap_or("Google").to_string();  // ✅ 避免不必要的 clone
     
     // 先尝试用传入的 access_token 获取配额
     let (final_access_token, final_refresh_token, usage_result) = if let Some(at) = access_token {
@@ -277,7 +329,7 @@ pub async fn add_account_by_social(
                 let new_usage = get_usage_by_provider(&idp, &refresh_result.access_token).await?;
                 (refresh_result.access_token, refresh_result.refresh_token, new_usage)
             }
-            Ok(result) => (at, refresh_token.clone(), result),
+            Ok(result) => (at, refresh_token.clone(), result),  // ✅ 这里必须 clone，因为 refresh_token 被借用了
             Err(e) => return Err(e),
         }
     } else {
@@ -305,29 +357,30 @@ pub async fn add_account_by_social(
     });
     
     let mut store = state.store.lock().expect("Failed to acquire store lock");
-    let existing_idx = find_existing_account_idx(&store.accounts, &Some(final_email.clone()), &idp, &refresh_token, &user_id);
+    let existing_idx = find_existing_account_idx(&store.accounts, &Some(final_email.clone()), &idp, &final_refresh_token, &user_id);  // ✅ 使用引用
     
     let is_new = existing_idx.is_none();
     
     let account = if let Some(idx) = existing_idx {
         let existing = &mut store.accounts[idx];
-        existing.access_token = Some(final_access_token.clone());
-        existing.refresh_token = Some(final_refresh_token.clone());
+        // 直接移动所有权，避免 clone
+        existing.access_token = Some(final_access_token.clone());  // ✅ 后面还要用，必须 clone
+        existing.refresh_token = Some(final_refresh_token.clone());  // ✅ 后面还要用，必须 clone
         existing.user_id = user_id;
         existing.usage_data = Some(usage_result.usage_data);
         existing.status = calc_status(usage_result.is_banned);
-        existing.clone()
+        existing.clone()  // ✅ 必须 clone，因为要返回给前端
     } else {
         let mut account = Account::new(final_email.clone(), format!("Kiro {} 账号", idp));
-        account.access_token = Some(final_access_token.clone());
-        account.refresh_token = Some(final_refresh_token.clone());
+        account.access_token = Some(final_access_token.clone());  // ✅ 后面还要用，必须 clone
+        account.refresh_token = Some(final_refresh_token.clone());  // ✅ 后面还要用，必须 clone
         account.provider = Some(idp.clone());
         account.auth_method = Some("social".to_string());
         account.user_id = user_id;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned);
         // 使用传入的 machine_id，没有则自动生成
-        account.machine_id = Some(machine_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string().to_lowercase()));
+        account.machine_id = machine_id.or_else(|| Some(uuid::Uuid::new_v4().to_string().to_lowercase()));  // ✅ 避免 clone
         store.accounts.insert(0, account.clone());
         account
     };
@@ -337,7 +390,7 @@ pub async fn add_account_by_social(
     
     let user = User {
         id: uuid::Uuid::new_v4().to_string(),
-        email: account.email.clone(),
+        email: account.email.clone(),  // ✅ 必须 clone，因为 account 被移动了
         name: account.email.as_ref().and_then(|e| e.split('@').next()).unwrap_or("User").to_string(),
         avatar: None,
         provider: idp,
@@ -449,28 +502,32 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<AddAcc
         if provider == "BuilderId" {
             add_account_by_builderid(
                 state,
-                refresh_token,
-                client_reg.client_id,
-                client_reg.client_secret,
-                Some(region),
-                None, // 本地导入不指定 machine_id，自动生成
-                local_token.access_token.clone(), // 传入 access_token
-                None, // 本地导入无密码
-                Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
+                AddIdcAccountParams {
+                    refresh_token,
+                    client_id: client_reg.client_id,
+                    client_secret: client_reg.client_secret,
+                    region: Some(region),
+                    machine_id: None, // 本地导入不指定 machine_id，自动生成
+                    access_token: local_token.access_token.clone(), // 传入 access_token
+                    password: None, // 本地导入无密码
+                    client_id_hash: Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
+                },
             ).await
         } else {
             // Enterprise
             add_account_by_enterprise(
                 state,
-                refresh_token,
-                client_reg.client_id,
-                client_reg.client_secret,
-                Some(region),
-                None, // 本地导入不指定 machine_id，自动生成
-                local_token.access_token.clone(), // 传入 access_token
-                None, // 本地导入无密码
-                None, // 本地导入无 start_url
-                Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
+                AddEnterpriseAccountParams {
+                    refresh_token,
+                    client_id: client_reg.client_id,
+                    client_secret: client_reg.client_secret,
+                    region: Some(region),
+                    machine_id: None, // 本地导入不指定 machine_id，自动生成
+                    access_token: local_token.access_token.clone(), // 传入 access_token
+                    password: None, // 本地导入无密码
+                    start_url: None, // 本地导入无 start_url
+                    client_id_hash: Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
+                },
             ).await
         }
     } else {
@@ -488,27 +545,20 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<AddAcc
 #[tauri::command]
 pub async fn add_account_by_builderid(
     state: State<'_, AppState>,
-    refresh_token: String,
-    client_id: String,
-    client_secret: String,
-    region: Option<String>,
-    machine_id: Option<String>,
-    access_token: Option<String>,
-    password: Option<String>,
-    client_id_hash: Option<String>, // 从 Kiro 导入时直接提供（优先使用）
+    params: AddIdcAccountParams,
 ) -> Result<AddAccountResult, String> {
     add_account_by_idc_internal(
         state,
-        refresh_token,
-        client_id,
-        client_secret,
-        region,
-        machine_id,
-        access_token,
-        password,
-        "BuilderId".to_string(),
+        params.refresh_token,
+        params.client_id,
+        params.client_secret,
+        params.region,
+        params.machine_id,
+        params.access_token,
+        params.password,
+        "BuilderId",  // ✅ 使用字符串字面量
         None, // BuilderId 不需要 start_url
-        client_id_hash,
+        params.client_id_hash,
     ).await
 }
 
@@ -516,28 +566,20 @@ pub async fn add_account_by_builderid(
 #[tauri::command]
 pub async fn add_account_by_enterprise(
     state: State<'_, AppState>,
-    refresh_token: String,
-    client_id: String,
-    client_secret: String,
-    region: Option<String>,
-    machine_id: Option<String>,
-    access_token: Option<String>,
-    password: Option<String>,
-    start_url: Option<String>, // Enterprise 的 Start URL（必需）
-    client_id_hash: Option<String>, // 从 Kiro 导入时直接提供（优先使用）
+    params: AddEnterpriseAccountParams,
 ) -> Result<AddAccountResult, String> {
     add_account_by_idc_internal(
         state,
-        refresh_token,
-        client_id,
-        client_secret,
-        region,
-        machine_id,
-        access_token,
-        password,
-        "Enterprise".to_string(),
-        start_url,
-        client_id_hash,
+        params.refresh_token,
+        params.client_id,
+        params.client_secret,
+        params.region,
+        params.machine_id,
+        params.access_token,
+        params.password,
+        "Enterprise",  // ✅ 使用字符串字面量
+        params.start_url,
+        params.client_id_hash,
     ).await
 }
 
@@ -551,7 +593,7 @@ async fn add_account_by_idc_internal(
     machine_id: Option<String>,
     access_token: Option<String>,
     password: Option<String>,
-    provider_id: String,
+    provider_id: &str,  // ✅ 改为 &str
     start_url: Option<String>,
     client_id_hash: Option<String>,
 ) -> Result<AddAccountResult, String> {
@@ -625,7 +667,7 @@ async fn add_account_by_idc_internal(
         };
         
         let mut store = state.store.lock().expect("Failed to acquire store lock");
-        let existing_idx = find_existing_account_idx(&store.accounts, &new_email, &provider_id, &refresh_token, &Some(user_id.clone()));
+        let existing_idx = find_existing_account_idx(&store.accounts, &new_email, provider_id, &refresh_token, &Some(user_id.clone()));
         
         let is_new = existing_idx.is_none();
         
@@ -636,7 +678,7 @@ async fn add_account_by_idc_internal(
             existing.refresh_token = Some(final_refresh_token);
             existing.email = new_email;  // 更新 email（可能是 None）
             existing.user_id = Some(user_id);
-            existing.provider = Some(provider_id.clone());  // 确保 provider 正确
+            existing.provider = Some(provider_id.to_string());  // ✅ 这里需要 to_string
             existing.auth_method = Some("IdC".to_string());  // 确保 authMethod 正确
             if !expires_at.is_empty() {
                 existing.expires_at = Some(expires_at);
@@ -657,7 +699,7 @@ async fn add_account_by_idc_internal(
             existing.clone()
         } else {
             // 创建新的 Enterprise 账号
-            let mut account = Account::new_enterprise(user_id.clone(), format!("Kiro Enterprise 账号"));
+            let mut account = Account::new_enterprise(user_id.clone(), "Kiro Enterprise 账号".to_string());
             account.access_token = Some(final_access_token);
             account.refresh_token = Some(final_refresh_token);
             account.email = new_email;  // 可能是 None
@@ -694,7 +736,7 @@ async fn add_account_by_idc_internal(
         };
         
         let mut store = state.store.lock().expect("Failed to acquire store lock");
-        let existing_idx = find_existing_account_idx(&store.accounts, &Some(email.clone()), &provider_id, &refresh_token, &user_id);
+        let existing_idx = find_existing_account_idx(&store.accounts, &Some(email.clone()), provider_id, &refresh_token, &user_id);
         
         let is_new = existing_idx.is_none();
         
@@ -703,7 +745,7 @@ async fn add_account_by_idc_internal(
             let existing = &mut store.accounts[idx];
             existing.access_token = Some(final_access_token);
             existing.refresh_token = Some(final_refresh_token);
-            existing.provider = Some(provider_id.clone());  // 确保 provider 正确
+            existing.provider = Some(provider_id.to_string());  // ✅ 这里需要 to_string
             existing.auth_method = Some("IdC".to_string());  // 确保 authMethod 正确
             existing.user_id = user_id;
             if !expires_at.is_empty() {
@@ -724,10 +766,10 @@ async fn add_account_by_idc_internal(
             existing.clone()
         } else {
             // 创建新的 BuilderId 账号
-            let mut account = Account::new(email, format!("Kiro BuilderId 账号"));
+            let mut account = Account::new(email, "Kiro BuilderId 账号".to_string());
             account.access_token = Some(final_access_token);
             account.refresh_token = Some(final_refresh_token);
-            account.provider = Some(provider_id.clone());
+            account.provider = Some(provider_id.to_string());  // ✅ 这里需要 to_string
             account.auth_method = Some("IdC".to_string());
             account.user_id = user_id;
             if !expires_at.is_empty() {
@@ -756,40 +798,32 @@ async fn add_account_by_idc_internal(
 #[tauri::command]
 pub fn update_account(
     state: State<AppState>,
-    id: String,
-    label: Option<String>,
-    access_token: Option<String>,
-    refresh_token: Option<String>,
-    // BuilderId SSO 字段
-    client_id: Option<String>,
-    client_secret: Option<String>,
-    // 机器码
-    machine_id: Option<String>,
+    params: UpdateAccountParams,
 ) -> Result<Account, String> {
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     
     // 先找到索引，避免借用冲突
-    let idx = store.accounts.iter().position(|a| a.id == id);
+    let idx = store.accounts.iter().position(|a| a.id == params.id);
     
     if let Some(idx) = idx {
-        if let Some(l) = label {
+        if let Some(l) = params.label {
             store.accounts[idx].label = l;
         }
-        if let Some(at) = access_token {
+        if let Some(at) = params.access_token {
             store.accounts[idx].access_token = Some(at);
         }
-        if let Some(rt) = refresh_token {
+        if let Some(rt) = params.refresh_token {
             store.accounts[idx].refresh_token = Some(rt);
         }
         // BuilderId SSO 字段
-        if let Some(cid) = client_id {
+        if let Some(cid) = params.client_id {
             store.accounts[idx].client_id = Some(cid);
         }
-        if let Some(csec) = client_secret {
+        if let Some(csec) = params.client_secret {
             store.accounts[idx].client_secret = Some(csec);
         }
         // 机器码
-        if let Some(mid) = machine_id {
+        if let Some(mid) = params.machine_id {
             store.accounts[idx].machine_id = Some(mid);
         }
         let result = store.accounts[idx].clone();
