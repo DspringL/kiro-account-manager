@@ -97,4 +97,4 @@ export function getUsagePercent(used, quota) {
   return quota === 0 ? 0 : Math.min(100, (used / quota) * 100)
 }
 
-export { getQuota, getUsed, getSubType, getSubPlan, formatUsage, getAccountDisplayName }
+export { getQuota, getUsed, getSubType, getSubPlan, formatUsage }
