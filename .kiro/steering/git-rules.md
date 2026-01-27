@@ -127,8 +127,20 @@ gh run list -R hj01857655/kiro-account-manager --status cancelled --limit 10 --j
 
 ## Release Notes 规则
 
+**自动生成机制**：
+- ✅ GitHub Actions 会自动生成两个 tag 之间的 commit 日志
+- ✅ 使用 `Generate Release Notes` 步骤提取 commit 信息
+- ✅ 格式：`git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" --no-merges`
+- ✅ 自动添加下载链接
+
+**手动编辑规则**（如需修改）：
 - ❌ **禁止** 在 Release Notes 中提及 `scripts/` 目录下的任何内容（注册脚本、工具脚本等）
 - ❌ **禁止** 提及私有仓库名称 `kiro-account-manager_dev`
 - ❌ **禁止** 提及 `vercel-api/` 目录的内容
 - ✅ 只写用户可见的功能、优化、修复
 - ✅ 使用简洁的用户语言，不要技术术语
+
+**编辑 Release Notes**：
+```bash
+gh release edit vX.X.X -R hj01857655/kiro-account-manager --notes "新的 Release Notes 内容"
+```
