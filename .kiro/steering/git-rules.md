@@ -117,43 +117,95 @@ gh api repos/hj01857655/kiro-account-manager/contents/src-tauri/Cargo.lock --jq 
 
 ## 发布失败处理
 
-如果发布过程中出错，必须清理所有已创建的资源后才能重新开始：
+⚠️ **强制规则**：发布失败后，**必须先执行完整清理流程**，再重新开始！
 
-### 1. 删除私有仓库的 tag
+### 完整清理流程（按顺序执行）
+
+#### 1. 删除公开仓库的 tag
+```bash
+gh api -X DELETE repos/hj01857655/kiro-account-manager/git/refs/tags/vX.X.X
+```
+
+#### 2. 删除公开仓库的 Release（如已创建）
+```bash
+gh release delete vX.X.X -R hj01857655/kiro-account-manager --yes
+```
+
+#### 3. 删除公开仓库失败的 Actions 记录
+```bash
+# 批量删除失败的 Actions
+gh run list -R hj01857655/kiro-account-manager --status failure --limit 10 --json databaseId --jq '.[].databaseId' | ForEach-Object { gh run delete $_ -R hj01857655/kiro-account-manager }
+```
+
+#### 4. 删除私有仓库的 tag
 ```bash
 git tag -d vX.X.X
 git push origin --delete vX.X.X
 ```
 
-### 2. 删除公开仓库的 tag
+#### 5. 修复问题后，重新打 tag
 ```bash
-gh api -X DELETE repos/hj01857655/kiro-account-manager/git/refs/tags/vX.X.X
+# 提交修复代码
+git add .
+git commit -m "fix: 修复问题描述"
+git push origin dev
+
+# 重新打 tag
+git tag vX.X.X
+git push origin vX.X.X
 ```
 
-### 3. 删除公开仓库的 Release（如已创建）
+#### 6. 在公开仓库重新打 tag 触发构建
 ```bash
-gh release delete vX.X.X -R hj01857655/kiro-account-manager --yes
+# 获取公开仓库最新 commit SHA
+gh api repos/hj01857655/kiro-account-manager/commits/main --jq '.sha'
+
+# 打 tag
+gh api -X POST repos/hj01857655/kiro-account-manager/git/refs -f ref="refs/tags/vX.X.X" -f sha="<commit-sha>"
 ```
 
-### 4. 删除公开仓库失败和取消的 Actions 记录
+### ⚠️ 常见错误
+
+**错误 1**：不清理就重新打 tag
 ```bash
-# 查找失败的 Actions
-gh run list -R hj01857655/kiro-account-manager --status failure --limit 10 --json databaseId --jq '.[].databaseId'
+# ❌ 错误：tag 已存在
+gh api -X POST repos/.../git/refs -f ref="refs/tags/v1.7.7" -f sha="..."
+# 报错：Reference already exists
+```
 
-# 查找取消的 Actions
-gh run list -R hj01857655/kiro-account-manager --status cancelled --limit 10 --json databaseId --jq '.[].databaseId'
+**错误 2**：忘记删除失败的 Actions
+- 导致 Actions 列表混乱
+- 无法判断哪次构建是最新的
 
-# 删除指定的 Actions 记录
-gh run delete <run-id> -R hj01857655/kiro-account-manager
+**错误 3**：只删除公开仓库 tag，不删除私有仓库 tag
+- 导致私有仓库和公开仓库 tag 指向不同的 commit
+- workflow checkout 私有仓库时会拉取旧代码
 
-# 批量删除失败的 Actions
+### ✅ 正确流程示例
+
+```bash
+# 1. 清理公开仓库
+gh api -X DELETE repos/hj01857655/kiro-account-manager/git/refs/tags/v1.7.7
+gh release delete v1.7.7 -R hj01857655/kiro-account-manager --yes
 gh run list -R hj01857655/kiro-account-manager --status failure --limit 10 --json databaseId --jq '.[].databaseId' | ForEach-Object { gh run delete $_ -R hj01857655/kiro-account-manager }
 
-# 批量删除取消的 Actions
-gh run list -R hj01857655/kiro-account-manager --status cancelled --limit 10 --json databaseId --jq '.[].databaseId' | ForEach-Object { gh run delete $_ -R hj01857655/kiro-account-manager }
-```
+# 2. 清理私有仓库
+git tag -d v1.7.7
+git push origin --delete v1.7.7
 
-### 5. 确认清理完成后再重新执行发布流程
+# 3. 修复问题
+git add src-tauri/Cargo.toml
+git commit -m "fix: 禁用 strip 避免 Tauri 更新器问题"
+git push origin dev
+
+# 4. 重新打 tag
+git tag v1.7.7
+git push origin v1.7.7
+
+# 5. 触发构建
+gh api repos/hj01857655/kiro-account-manager/commits/main --jq '.sha'
+gh api -X POST repos/hj01857655/kiro-account-manager/git/refs -f ref="refs/tags/v1.7.7" -f sha="<commit-sha>"
+```
 
 ## Release Notes 规则
 
