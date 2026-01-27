@@ -24,14 +24,18 @@ inclusion: always
 - ❌ **禁止** 添加公开仓库为 git remote（避免误操作）
 - ❌ **禁止** 修改公开仓库的任何分支内容
 - ❌ **禁止** 在公开仓库创建、合并 PR
-- ✅ **只允许** 使用 MCP GitHub 工具操作公开仓库：
-  - `mcp_github_create_or_update_file` - 更新 `README.md`、`LICENSE`、`.github/workflows/`
+- ✅ **只允许** 使用以下工具操作公开仓库：
+  - `mcp_github_create_or_update_file` - 更新小文件（`README.md`、`LICENSE`、`.github/workflows/`）
+  - `gh api` - 更新大文件（`Cargo.lock`）、打 tag、编辑 Release
   - `mcp_github_list_commits` - 获取最新 commit SHA（打 tag 需要）
-  - 不再使用 `gh api` 打 tag（改用 MCP 工具间接实现）
+
+- ✅ **只允许** 使用以下工具操作公开仓库：
+  - `mcp_github_create_or_update_file` - 更新小文件（`README.md`、`LICENSE`、`.github/workflows/`）
+  - `gh api` - 更新大文件（`Cargo.lock`）、打 tag、编辑 Release
 
 ## 更新公开仓库文件的方法
 
-**使用 MCP GitHub 工具**（推荐）：
+### 小文件（< 1MB）- 使用 MCP GitHub 工具
 
 ```javascript
 // 更新 README.md
@@ -57,11 +61,34 @@ mcp_github_create_or_update_file({
 })
 ```
 
+### 大文件（Cargo.lock）- 使用 gh api
+
+**原因**：Cargo.lock 文件太大（通常几千行），不能直接用 MCP 工具上传，需要用 `gh api` 上传。
+
+```powershell
+# 1. 读取文件并转换为 Base64
+$content = Get-Content "src-tauri/Cargo.lock" -Raw
+$base64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($content))
+
+# 2. 创建 JSON 文件
+@{
+  message = "chore: 更新 Cargo.lock"
+  content = $base64
+  sha = "旧文件的 SHA"
+} | ConvertTo-Json | Out-File -FilePath "update_cargo_lock.json" -Encoding UTF8
+
+# 3. 上传文件
+gh api -X PUT repos/hj01857655/kiro-account-manager/contents/src-tauri/Cargo.lock --input update_cargo_lock.json --jq '.commit.sha'
+
+# 4. 清理临时文件
+Remove-Item "update_cargo_lock.json" -Force
+```
+
 **获取文件 SHA**（更新现有文件时需要）：
 
 ```bash
 gh api repos/hj01857655/kiro-account-manager/contents/README.md --jq '.sha'
-gh api repos/hj01857655/kiro-account-manager/contents/.github/workflows/release.yml --jq '.sha'
+gh api repos/hj01857655/kiro-account-manager/contents/src-tauri/Cargo.lock --jq '.sha'
 ```
 
 ## 安全保障
@@ -73,8 +100,10 @@ gh api repos/hj01857655/kiro-account-manager/contents/.github/workflows/release.
 **AI 助手规则**：
 - 禁止执行任何 `git push` 到公开仓库
 - 禁止执行 `git remote add` 添加公开仓库
-- 只允许使用 `gh api` 打 tag 和编辑 Release
-- 只允许使用 `mcp_github_create_or_update_file` 更新 README 和 workflow
+- 小文件用 `mcp_github_create_or_update_file` 更新
+- 大文件（Cargo.lock）用 `gh api` 上传
+- 打 tag 用 `gh api`
+- 编辑 Release 用 `gh release edit`
 
 ## 日常开发流程
 
