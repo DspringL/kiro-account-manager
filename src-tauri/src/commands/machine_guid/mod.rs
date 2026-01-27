@@ -70,6 +70,7 @@ pub fn generate_machine_guid() -> String { generate_random_machine_id() }
 
 /// 以管理员权限重启应用（仅 Windows）
 #[tauri::command]
+#[allow(unused_variables)]
 pub async fn restart_as_admin(app: tauri::AppHandle) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
