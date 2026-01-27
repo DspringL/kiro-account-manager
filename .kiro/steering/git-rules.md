@@ -24,9 +24,10 @@ inclusion: always
 - ❌ **禁止** 添加公开仓库为 git remote（避免误操作）
 - ❌ **禁止** 修改公开仓库的任何分支内容
 - ❌ **禁止** 在公开仓库创建、合并 PR
-- ✅ **只允许** 使用 `gh api` 在公开仓库打 tag
-- ✅ **只允许** 使用 `gh release edit` 更新 Release Notes
-- ✅ **例外允许** 使用 `mcp_github_create_or_update_file` 更新 `README.md`、`LICENSE` 和 `.github/workflows/`
+- ✅ **只允许** 使用 MCP GitHub 工具操作公开仓库：
+  - `mcp_github_create_or_update_file` - 更新 `README.md`、`LICENSE`、`.github/workflows/`
+  - `mcp_github_list_commits` - 获取最新 commit SHA（打 tag 需要）
+  - 不再使用 `gh api` 打 tag（改用 MCP 工具间接实现）
 
 ## 更新公开仓库文件的方法
 
