@@ -214,24 +214,22 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
           // IdC 账号：根据 provider 调用对应的命令
           const commandName = provider === 'Enterprise' ? 'add_account_by_enterprise' : 'add_account_by_builderid'
           const params = {
-            params: {  // ✅ 包装在 params 对象中
-              refreshToken: item.refreshToken,
-              clientId: item.clientId,
-              clientSecret: item.clientSecret,
-              region: item.region || null,
-              machineId: item.machineId || null,
-              accessToken: item.accessToken || null,
-              password: item.password || null,
-              clientIdHash: null  // JSON 导入时不提供，由后端根据 startUrl 计算
-            }
+            refreshToken: item.refreshToken,
+            clientId: item.clientId,
+            clientSecret: item.clientSecret,
+            region: item.region || null,
+            machineId: item.machineId || null,
+            accessToken: item.accessToken || null,
+            password: item.password || null,
+            clientIdHash: null  // JSON 导入时不提供，由后端根据 startUrl 计算
           }
 
           // Enterprise 需要 startUrl 参数，BuilderId 不需要
           if (provider === 'Enterprise') {
-            params.params.startUrl = item.startUrl || null
+            params.startUrl = item.startUrl || null
           }
 
-          result = await invoke(commandName, params)
+          result = await invoke(commandName, { params })
         }
 
         const account = result.account
@@ -303,7 +301,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
             params.startUrl = null  // 从 Kiro 导入时不需要 startUrl（使用 clientIdHash）
           }
 
-          result = await invoke(commandName, params)
+          result = await invoke(commandName, { params })
         } else {
           result = await invoke('add_account_by_social', {
             refreshToken: account.refreshToken,
