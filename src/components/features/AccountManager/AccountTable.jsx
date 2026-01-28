@@ -137,6 +137,7 @@ function AccountTable({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 240,
     overscan: 1, // 减少预渲染行数
+    scrollMargin: 0, // 防止触底反弹
   })
 
   // 将 selectedIds 转为 Set 提高查找性能
@@ -182,6 +183,7 @@ function AccountTable({
         <div 
           ref={scrollRef} 
           className="flex-1 overflow-auto"
+          style={{ overscrollBehavior: 'contain' }}
         >
           <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
             <div

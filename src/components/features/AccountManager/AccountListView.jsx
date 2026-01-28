@@ -186,6 +186,7 @@ function AccountListView({
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 56,
     overscan: 5,
+    scrollMargin: 0, // 防止触底反弹
   })
 
   // 表头排序点击处理
@@ -261,7 +262,7 @@ function AccountListView({
         <div className="flex-1">标签</div>
       </div>
 
-      <div ref={scrollRef} className={`flex-1 overflow-auto border border-t-0 ${colors.cardBorder} rounded-b-xl ${colors.card}`}>
+      <div ref={scrollRef} className={`flex-1 overflow-auto border border-t-0 ${colors.cardBorder} rounded-b-xl ${colors.card}`} style={{ overscrollBehavior: 'contain' }}>
         <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
           {rowVirtualizer.getVirtualItems().map((vRow) => {
             const acc = accounts[vRow.index]
