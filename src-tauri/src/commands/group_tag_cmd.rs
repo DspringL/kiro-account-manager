@@ -1,6 +1,6 @@
 // 分组与标签管理命令
 
-#![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递 State
+#![allow(clippy::needless_pass_by_value)] // Tauri 命令的 String 参数需要按值传递（框架序列化要求）
 
 use tauri::State;
 use crate::state::AppState;
@@ -21,22 +21,22 @@ pub fn add_group(state: State<AppState>, name: String, color: Option<String>) ->
 }
 
 #[tauri::command]
-pub fn update_group(state: State<AppState>, id: String, name: Option<String>, color: Option<String>) -> Result<AccountGroup, String> {
-    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").update_group(&id, name, color)
+pub fn update_group(state: State<AppState>, id: &str, name: Option<String>, color: Option<String>) -> Result<AccountGroup, String> {
+    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").update_group(id, name, color)
 }
 
 #[tauri::command]
-pub fn delete_group(state: State<AppState>, id: String) -> bool {
+pub fn delete_group(state: State<AppState>, id: &str) -> bool {
     // 删除分组时，清除所有账号的 group_id
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     for account in &mut store.accounts {
-        if account.group_id.as_deref() == Some(&id) {
+        if account.group_id.as_deref() == Some(id) {
             account.group_id = None;
         }
     }
     store.save_to_file();
     drop(store);
-    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").delete_group(&id)
+    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").delete_group(id)
 }
 
 #[tauri::command]
@@ -59,12 +59,12 @@ pub fn add_tag(state: State<AppState>, name: String, color: String) -> Result<Ac
 }
 
 #[tauri::command]
-pub fn update_tag(state: State<AppState>, id: String, name: Option<String>, color: Option<String>) -> Result<AccountTag, String> {
-    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").update_tag(&id, name, color)
+pub fn update_tag(state: State<AppState>, id: &str, name: Option<String>, color: Option<String>) -> Result<AccountTag, String> {
+    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").update_tag(id, name, color)
 }
 
 #[tauri::command]
-pub fn delete_tag(state: State<AppState>, id: String) -> bool {
+pub fn delete_tag(state: State<AppState>, id: &str) -> bool {
     // 删除标签时，从所有账号中移除该标签
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     for account in &mut store.accounts {
@@ -72,7 +72,7 @@ pub fn delete_tag(state: State<AppState>, id: String) -> bool {
     }
     store.save_to_file();
     drop(store);
-    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").delete_tag(&id)
+    state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock").delete_tag(id)
 }
 
 // ============================================================
@@ -80,7 +80,7 @@ pub fn delete_tag(state: State<AppState>, id: String) -> bool {
 // ============================================================
 
 #[tauri::command]
-pub fn set_account_group(state: State<AppState>, account_id: String, group_id: Option<String>) -> Result<(), String> {
+pub fn set_account_group(state: State<AppState>, account_id: &str, group_id: Option<String>) -> Result<(), String> {
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         account.group_id = group_id;
@@ -92,7 +92,7 @@ pub fn set_account_group(state: State<AppState>, account_id: String, group_id: O
 }
 
 #[tauri::command]
-pub fn add_tag_to_account(state: State<AppState>, account_id: String, tag_id: String) -> Result<(), String> {
+pub fn add_tag_to_account(state: State<AppState>, account_id: &str, tag_id: &str) -> Result<(), String> {
     // 先获取标签名
     let tag_name = {
         let gt_store = state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock");
@@ -103,7 +103,7 @@ pub fn add_tag_to_account(state: State<AppState>, account_id: String, tag_id: St
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         // 检查是否已存在
         if !account.tag_links.iter().any(|l| l.tag_id == tag_id) {
-            account.tag_links.push(AccountTagLink::new(tag_id, tag_name));
+            account.tag_links.push(AccountTagLink::new(tag_id.to_string(), tag_name));
             store.save_to_file();
         }
         Ok(())
@@ -113,7 +113,7 @@ pub fn add_tag_to_account(state: State<AppState>, account_id: String, tag_id: St
 }
 
 #[tauri::command]
-pub fn remove_tag_from_account(state: State<AppState>, account_id: String, tag_id: String) -> Result<(), String> {
+pub fn remove_tag_from_account(state: State<AppState>, account_id: &str, tag_id: &str) -> Result<(), String> {
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         account.tag_links.retain(|l| l.tag_id != tag_id);
@@ -125,7 +125,7 @@ pub fn remove_tag_from_account(state: State<AppState>, account_id: String, tag_i
 }
 
 #[tauri::command]
-pub fn set_account_tags(state: State<AppState>, account_id: String, tag_ids: Vec<String>) -> Result<(), String> {
+pub fn set_account_tags(state: State<AppState>, account_id: &str, tag_ids: Vec<String>) -> Result<(), String> {
     // 先获取所有标签名
     let tag_names: std::collections::HashMap<String, String> = {
         let gt_store = state.group_tag_store.lock().expect("Failed to acquire group_tag_store lock");
@@ -153,7 +153,7 @@ pub fn set_account_tags(state: State<AppState>, account_id: String, tag_ids: Vec
 }
 
 #[tauri::command]
-pub fn remove_account_tags(state: State<AppState>, account_id: String, tag_ids: Vec<String>) -> Result<(), String> {
+pub fn remove_account_tags(state: State<AppState>, account_id: &str, tag_ids: Vec<String>) -> Result<(), String> {
     let mut store = state.store.lock().expect("Failed to acquire store lock");
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         account.tag_links.retain(|l| !tag_ids.contains(&l.tag_id));
