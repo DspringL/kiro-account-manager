@@ -43,3 +43,4 @@ scripts/register/*.png
 scripts/register/*.har
 scripts/register/debug/
 enterprise-import.json
+src-tauri/clippy_warnings.txt

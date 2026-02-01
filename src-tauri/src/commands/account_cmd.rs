@@ -112,8 +112,8 @@ pub fn get_accounts(state: State<AppState>) -> Vec<Account> {
 }
 
 #[tauri::command]
-pub fn delete_account(state: State<AppState>, id: String) -> bool {
-    state.store.lock().expect("Failed to acquire store lock").delete(&id)
+pub fn delete_account(state: State<AppState>, id: &str) -> bool {
+    state.store.lock().expect("Failed to acquire store lock").delete(id)
 }
 
 #[tauri::command]
@@ -407,8 +407,8 @@ pub async fn add_account_by_social(
 }
 
 #[tauri::command]
-pub fn import_accounts(state: State<AppState>, json: String) -> Result<usize, String> {
-    state.store.lock().expect("Failed to acquire store lock").import_from_json(&json)
+pub fn import_accounts(state: State<AppState>, json: &str) -> Result<usize, String> {
+    state.store.lock().expect("Failed to acquire store lock").import_from_json(json)
 }
 
 #[tauri::command]

@@ -9,6 +9,126 @@ use super::{AuthResult, AuthProvider, RefreshMetadata};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use uuid::Uuid;
+
+/// 回调发送器类型别名
+type CallbackSender = Arc<std::sync::Mutex<Option<oneshot::Sender<Result<(String, String), String>>>>>;
+
+/// 启动本地 HTTP 服务器并返回端口和重定向 URI
+fn start_local_server() -> Result<(Arc<tiny_http::Server>, u16, String), String> {
+    let server = tiny_http::Server::http("127.0.0.1:0")
+        .map_err(|e| format!("无法启动本地服务器: {e}"))?;
+    let port = server.server_addr().to_ip().map_or(0, |a| a.port());
+    let redirect_uri = format!("http://127.0.0.1:{port}/oauth/callback");
+    
+    #[cfg(debug_assertions)]
+    println!("[IdC] Local server started on port {port}");
+    
+    Ok((Arc::new(server), port, redirect_uri))
+}
+
+/// 构建授权 URL
+fn build_authorize_url(
+    sso_client: &AWSSSOClient,
+    client_id: &str,
+    redirect_uri: &str,
+    state: &str,
+    code_challenge: &str,
+) -> String {
+    let scopes = IdcProvider::get_scopes();
+    format!(
+        "{}?response_type=code&client_id={}&redirect_uri={}&scopes={}&state={}&code_challenge={}&code_challenge_method=S256",
+        sso_client.get_authorize_url(),
+        client_id,
+        urlencoding::encode(redirect_uri),
+        urlencoding::encode(&scopes),
+        state,
+        code_challenge
+    )
+}
+
+/// 处理 OAuth 回调请求
+fn handle_oauth_callback(
+    request: tiny_http::Request,
+    expected_state: &str,
+) -> Result<String, String> {
+    let url = request.url().to_string();
+    
+    // 解析 URL 参数
+    let query = url.split('?').nth(1).unwrap_or("");
+    let params: std::collections::HashMap<_, _> = query
+        .split('&')
+        .filter_map(|p| {
+            let mut parts = p.splitn(2, '=');
+            Some((parts.next()?, parts.next()?))
+        })
+        .collect();
+
+    // 返回成功页面
+    let response = tiny_http::Response::from_string(
+        "<html><body><h1>授权成功</h1><p>您可以关闭此窗口</p></body></html>"
+    ).with_header(
+        tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
+            .expect("Failed to create header")
+    );
+    let _ = request.respond(response);
+
+    // 验证 state
+    if let Some(returned_state) = params.get("state") {
+        if *returned_state != expected_state {
+            return Err("State 不匹配".to_string());
+        }
+    }
+
+    // 检查错误
+    if let Some(error) = params.get("error") {
+        let desc = params.get("error_description").unwrap_or(&"未知错误");
+        return Err(format!("{error}: {desc}"));
+    }
+
+    // 获取 code
+    params.get("code")
+        .map(|c| (*c).to_string())
+        .ok_or_else(|| "未收到授权码".to_string())
+}
+
+/// 在后台线程等待 OAuth 回调
+fn spawn_callback_listener(
+    server: Arc<tiny_http::Server>,
+    state: String,
+    tx: CallbackSender,
+) {
+    std::thread::spawn(move || {
+        // 设置 10 分钟超时
+        let timeout = std::time::Duration::from_secs(600);
+        let start = std::time::Instant::now();
+        
+        loop {
+            if start.elapsed() > timeout {
+                if let Some(tx) = tx.lock().expect("Failed to acquire callback lock").take() {
+                    let _ = tx.send(Err("授权超时".to_string()));
+                }
+                break;
+            }
+
+            // 非阻塞接收请求
+            if let Ok(Some(request)) = server.try_recv() {
+                let url = request.url().to_string();
+                
+                if url.starts_with("/oauth/callback") {
+                    let result = handle_oauth_callback(request, &state);
+                    
+                    if let Some(tx) = tx.lock().expect("Failed to acquire callback lock").take() {
+                        let _ = tx.send(result.map(|code| (code, state.clone())));
+                    }
+                    break;
+                }
+            }
+            
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    });
+}
 
 const BUILDER_ID_START_URL: &str = "https://view.awsapps.com/start";
 const INTERNAL_SSO_START_URL: &str = "https://amzn.awsapps.com/start";
@@ -75,18 +195,10 @@ impl AuthProvider for IdcProvider {
         let tx = Arc::new(std::sync::Mutex::new(Some(tx)));
         
         // 生成 state
-        let state = uuid::Uuid::new_v4().to_string();
-        let state_clone = state.clone();
-        let tx_clone = tx.clone();
-
+        let state = Uuid::new_v4().to_string();
+        
         // 启动本地服务器
-        let server = tiny_http::Server::http("127.0.0.1:0")
-            .map_err(|e| format!("无法启动本地服务器: {e}"))?;
-        let port = server.server_addr().to_ip().map_or(0, |a| a.port());
-        let redirect_uri = format!("http://127.0.0.1:{port}/oauth/callback");
-
-        #[cfg(debug_assertions)]
-        println!("[IdC] Local server started on port {port}");
+        let (server, _port, redirect_uri) = start_local_server()?;
 
         // Step 3: 注册客户端（Authorization Code Flow）
         #[cfg(debug_assertions)]
@@ -101,16 +213,7 @@ impl AuthProvider for IdcProvider {
         let code_challenge = generate_code_challenge_social(&code_verifier);
 
         // Step 5: 构建授权 URL（跟 Kiro 一样）
-        let scopes = Self::get_scopes();
-        let authorize_url = format!(
-            "{}?response_type=code&client_id={}&redirect_uri={}&scopes={}&state={}&code_challenge={}&code_challenge_method=S256",
-            sso_client.get_authorize_url(),
-            client_reg.client_id,
-            urlencoding::encode(&redirect_uri),
-            urlencoding::encode(&scopes),
-            state,
-            code_challenge
-        );
+        let authorize_url = build_authorize_url(&sso_client, &client_reg.client_id, &redirect_uri, &state, &code_challenge);
 
         #[cfg(debug_assertions)]
         println!("[IdC] Opening browser for authorization...");
@@ -119,79 +222,7 @@ impl AuthProvider for IdcProvider {
         open_browser(&authorize_url)?;
 
         // Step 7: 在后台线程等待回调
-        let server = Arc::new(server);
-        let server_clone = server.clone();
-        
-        std::thread::spawn(move || {
-            // 设置 10 分钟超时
-            let timeout = std::time::Duration::from_secs(600);
-            let start = std::time::Instant::now();
-            
-            loop {
-                if start.elapsed() > timeout {
-                    if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
-                        let _ = tx.send(Err("授权超时".to_string()));
-                    }
-                    break;
-                }
-
-                // 非阻塞接收请求
-                if let Ok(Some(request)) = server_clone.try_recv() {
-                    let url = request.url().to_string();
-                    
-                    if url.starts_with("/oauth/callback") {
-                        // 解析 URL 参数
-                        let query = url.split('?').nth(1).unwrap_or("");
-                        let params: std::collections::HashMap<_, _> = query
-                            .split('&')
-                            .filter_map(|p| {
-                                let mut parts = p.splitn(2, '=');
-                                Some((parts.next()?, parts.next()?))
-                            })
-                            .collect();
-
-                        // 返回成功页面
-                        let response = tiny_http::Response::from_string(
-                            "<html><body><h1>授权成功</h1><p>您可以关闭此窗口</p></body></html>"
-                        ).with_header(
-                            tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).expect("Failed to create header")
-                        );
-                        let _ = request.respond(response);
-
-                        // 验证 state
-                        if let Some(returned_state) = params.get("state") {
-                            if *returned_state != state_clone {
-                                if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
-                                    let _ = tx.send(Err("State 不匹配".to_string()));
-                                }
-                                break;
-                            }
-                        }
-
-                        // 检查错误
-                        if let Some(error) = params.get("error") {
-                            if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
-                                let desc = params.get("error_description").unwrap_or(&"未知错误");
-                                let _ = tx.send(Err(format!("{error}: {desc}")));
-                            }
-                            break;
-                        }
-
-                        // 获取 code
-                        if let Some(code) = params.get("code") {
-                            if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
-                                let _ = tx.send(Ok(((*code).to_string(), state_clone.clone())));
-                            }
-                        } else if let Some(tx) = tx_clone.lock().expect("Failed to acquire callback lock").take() {
-                            let _ = tx.send(Err("未收到授权码".to_string()));
-                        }
-                        break;
-                    }
-                }
-                
-                std::thread::sleep(std::time::Duration::from_millis(100));
-            }
-        });
+        spawn_callback_listener(server, state, tx);
 
         // Step 8: 等待回调
         #[cfg(debug_assertions)]

@@ -190,7 +190,14 @@ function App() {
           
           <UpdateChecker />
           <AnnouncementModal />
-          <Toaster />
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              style: {
+                marginTop: '80px',
+              },
+            }}
+          />
         </div>
       </AccountProvider>
     </PrivacyProvider>

@@ -1,12 +1,11 @@
-import { memo, useState, useCallback, useMemo } from 'react'
-import { RefreshCw, Eye, Trash2, Copy, Check, Clock, Repeat, Edit2, UserX, Key, BarChart3 } from 'lucide-react'
+import { memo, useCallback, useMemo } from 'react'
+import { Eye, Copy, Check, Clock, Repeat, Key, BarChart3 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Checkbox } from '@mantine/core'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { getUsagePercent, getProgressBarColor } from './hooks/useAccountStats'
 import { getQuota, getUsed, getSubType, getSubPlan, formatUsage, getAccountDisplayName } from '../../../utils/accountStats'
-import ContextMenu from './ContextMenu'
 
 const AccountCard = memo(function AccountCard({
   account,
@@ -18,21 +17,17 @@ const AccountCard = memo(function AccountCard({
   onRefresh,
   onRefreshToken,
   onEdit,
-  onEditLabel,
-  onDelete,
-  onDeleteRemote,
   refreshingId,
   refreshingTokenId,
   switchingId,
   isCurrentAccount,
   tagDefinitions = [],
   groupDefinitions = [],
+  onContextMenuOpen,
 }) {
   const { t } = useTranslation()
   const { theme, colors } = useTheme()
   const { maskEmail } = usePrivacy()
-  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
-  const [contextMenu, setContextMenu] = useState(null)
   
   // 从 Set 中计算是否选中
   const isSelected = selectedIdsSet?.has(account.id) ?? false
@@ -58,13 +53,8 @@ const AccountCard = memo(function AccountCard({
   // 右键菜单处理
   const handleContextMenu = useCallback((e) => {
     e.preventDefault()
-    setContextMenu({ x: e.clientX, y: e.clientY })
-  }, [])
-
-  // 复制账号 JSON（完整的 Account 数据）
-  const handleCopyJson = useCallback(() => {
-    onCopy(JSON.stringify(account, null, 2), account.id)
-  }, [account, onCopy])
+    onContextMenuOpen(e.clientX, e.clientY)
+  }, [onContextMenuOpen])
 
   // 状态光环颜色
   const glowColor = isCurrentAccount
@@ -74,22 +64,6 @@ const AccountCard = memo(function AccountCard({
       : isNormal
         ? ''
         : colors.cardGlowWarning
-
-  // 右键菜单项 - 只在菜单打开时计算
-  const getMenuItems = useCallback(() => [
-    { icon: Eye, label: t('accountCard.viewDetails'), onClick: () => onEdit(account) },
-    { icon: Edit2, label: t('accountCard.editRemark'), onClick: () => onEditLabel(account) },
-    { icon: Copy, label: t('accountCard.copyJson'), onClick: handleCopyJson },
-    { divider: true },
-    { icon: Key, label: t('accountCard.refreshToken'), onClick: () => onRefreshToken?.(account.id), disabled: refreshingTokenId === account.id },
-    { icon: BarChart3, label: t('accountCard.refreshQuota'), onClick: () => onRefresh(account.id), disabled: refreshingId === account.id },
-    { icon: Repeat, label: t('accountCard.switchAccount'), onClick: () => onSwitch(account), disabled: switchingId === account.id || isBanned },
-    { divider: true },
-    { icon: Trash2, label: t('accountCard.delete'), onClick: () => onDelete(account.id), danger: true },
-    ...(account.provider !== 'Enterprise' && !isBanned && onDeleteRemote ? [
-      { icon: UserX, label: t('accountCard.deleteRemote'), onClick: () => onDeleteRemote(account), danger: true },
-    ] : []),
-  ], [t, account, handleCopyJson, onEdit, onEditLabel, onRefresh, onRefreshToken, onSwitch, onDelete, onDeleteRemote, refreshingId, refreshingTokenId, switchingId, isBanned])
 
   return (
     <div
@@ -106,16 +80,6 @@ const AccountCard = memo(function AccountCard({
               : colors.cardNormal
     }`}
     >
-      {/* 右键菜单 - 懒加载 */}
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={() => setContextMenu(null)}
-          items={getMenuItems()}
-          isLightTheme={isLightTheme}
-        />
-      )}
       {/* 选择框 */}
       <div className="absolute top-3 left-3 z-10">
         <Checkbox

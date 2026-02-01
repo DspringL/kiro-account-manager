@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-#![allow(clippy::too_many_lines)] // main 函数包含应用初始化逻辑
 
 mod auth;
 mod auth_social;
@@ -66,18 +65,94 @@ use kiro::{
 };
 use process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
 
+/// 配置日志插件
+fn setup_log_plugin() -> tauri_plugin_log::Builder {
+    tauri_plugin_log::Builder::new()
+        .level(log::LevelFilter::Debug)
+        // 只显示我们自己的日志，过滤掉第三方库的日志
+        .filter(|metadata| {
+            let target = metadata.target();
+            target.starts_with("kiro_account_manager")
+        })
+}
+
+/// 配置单实例插件回调
+#[allow(clippy::needless_pass_by_value)] // Tauri 框架要求回调签名为 Vec<String>
+fn setup_single_instance_callback(app: &tauri::AppHandle, argv: Vec<String>, _cwd: String) {
+    // 当第二个实例尝试启动时，处理传入的参数（deep-link 回调）
+    for arg in &argv {
+        if arg.starts_with("kiro://") {
+            deep_link_handler::handle_deep_link(arg);
+        }
+    }
+    
+    // 聚焦主窗口
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// 处理 deep link 事件
+fn handle_deep_link_event(app_handle: &tauri::AppHandle, payload: &str) {
+    // payload 可能是 JSON 格式 ["kiro://..."] 或纯 URL
+    let url = if payload.starts_with('[') {
+        // JSON 数组格式，解析第一个元素
+        serde_json::from_str::<Vec<String>>(payload)
+            .ok()
+            .and_then(|v| v.into_iter().next())
+            .unwrap_or_else(|| payload.to_string())
+    } else if payload.starts_with('"') {
+        // JSON 字符串格式
+        serde_json::from_str::<String>(payload)
+            .unwrap_or_else(|_| payload.to_string())
+    } else {
+        payload.to_string()
+    };
+    
+    // 只处理 kiro:// 协议的 URL
+    if !url.starts_with("kiro://") {
+        return;
+    }
+    
+    // 处理 OAuth 回调
+    deep_link_handler::handle_deep_link(&url);
+    // 聚焦窗口
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.set_focus();
+    }
+}
+
+/// 应用 setup 回调
+fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    // 首次启动时检查命令行参数中的 deep link（Windows/Linux）
+    for arg in std::env::args() {
+        if arg.starts_with("kiro://") {
+            deep_link_handler::handle_deep_link(&arg);
+        }
+    }
+    
+    // 监听 deep link 事件 (使用 kiro:// 协议)
+    #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+    {
+        use tauri_plugin_deep_link::DeepLinkExt;
+        app.deep_link().register("kiro")
+            .map_err(|e| format!("Failed to register deep link: {e}"))?;
+    }
+    
+    // 监听 deep link URL
+    let app_handle = app.handle().clone();
+    app.listen("deep-link://new-url", move |event| {
+        handle_deep_link_event(&app_handle, event.payload());
+    });
+    
+    Ok(())
+}
+
+#[allow(clippy::too_many_lines)] // Tauri 框架要求在 main 中注册所有命令，无法拆分
 fn main() {
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_log::Builder::new()
-                .level(log::LevelFilter::Debug)
-                // 只显示我们自己的日志，过滤掉第三方库的日志
-                .filter(|metadata| {
-                    let target = metadata.target();
-                    target.starts_with("kiro_account_manager")
-                })
-                .build()
-        )
+        .plugin(setup_log_plugin().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -87,70 +162,8 @@ fn main() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_http::init())
         // 单实例插件：确保只有一个实例运行，deep-link 回调传递给已运行的实例
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            // 当第二个实例尝试启动时，处理传入的参数（deep-link 回调）
-            for arg in &argv {
-                if arg.starts_with("kiro://") {
-                    deep_link_handler::handle_deep_link(arg);
-                }
-            }
-            
-            // 聚焦主窗口
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-        }))
-        .setup(|app| {
-            // 首次启动时检查命令行参数中的 deep link（Windows/Linux）
-            for arg in std::env::args() {
-                if arg.starts_with("kiro://") {
-                    deep_link_handler::handle_deep_link(&arg);
-                }
-            }
-            
-            // 监听 deep link 事件 (使用 kiro:// 协议)
-            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
-            {
-                use tauri_plugin_deep_link::DeepLinkExt;
-                let _ = app.deep_link().register("kiro");
-            }
-            
-            // 监听 deep link URL
-            let app_handle = app.handle().clone();
-            app.listen("deep-link://new-url", move |event| {
-                let payload = event.payload();
-                
-                // payload 可能是 JSON 格式 ["kiro://..."] 或纯 URL
-                let url = if payload.starts_with('[') {
-                    // JSON 数组格式，解析第一个元素
-                    serde_json::from_str::<Vec<String>>(payload)
-                        .ok()
-                        .and_then(|v| v.into_iter().next())
-                        .unwrap_or_else(|| payload.to_string())
-                } else if payload.starts_with('"') {
-                    // JSON 字符串格式
-                    serde_json::from_str::<String>(payload)
-                        .unwrap_or_else(|_| payload.to_string())
-                } else {
-                    payload.to_string()
-                };
-                
-                // 只处理 kiro:// 协议的 URL
-                if !url.starts_with("kiro://") {
-                    return;
-                }
-                
-                // 处理 OAuth 回调
-                deep_link_handler::handle_deep_link(&url);
-                // 聚焦窗口
-                if let Some(window) = app_handle.get_webview_window("main") {
-                    let _ = window.set_focus();
-                }
-            });
-            
-            Ok(())
-        })
+        .plugin(tauri_plugin_single_instance::init(setup_single_instance_callback))
+        .setup(setup_app)
         .manage(AppState {
             store: Mutex::new(AccountStore::new()),
             group_tag_store: Mutex::new(GroupTagStore::new()),

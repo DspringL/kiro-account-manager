@@ -7,6 +7,68 @@ use crate::state::AppState;
 use tauri::State;
 use serde::Serialize;
 
+/// 展开路径中的 ~ 为用户主目录
+fn expand_home_dir(path: &str) -> Result<String, String> {
+    if path.starts_with('~') {
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .map_err(|_| "无法获取用户主目录".to_string())?;
+        Ok(path.replacen('~', &home, 1))
+    } else {
+        Ok(path.to_string())
+    }
+}
+
+/// 从 CLI 账号判断 provider
+fn determine_provider(cli_account: &crate::kiro_cli_db::KiroCliAccount) -> String {
+    if cli_account.auth_method == "social" {
+        // Social Login，通过 profile_arn 判断
+        if let Some(ref arn) = cli_account.profile_arn {
+            if arn.contains("google") {
+                return "Google".to_string();
+            } else if arn.contains("github") {
+                return "GitHub".to_string();
+            }
+        }
+        "Unknown".to_string()
+    } else {
+        // OIDC，默认 BuilderId
+        "BuilderId".to_string()
+    }
+}
+
+/// 检查账号是否已存在
+fn find_existing_account(
+    accounts: &[Account],
+    user_id: Option<&String>,
+    email: Option<&String>,
+) -> Option<usize> {
+    accounts.iter().position(|a| {
+        // 使用 user_id 或 email 去重
+        if let (Some(uid), Some(a_uid)) = (user_id, &a.user_id) {
+            return uid == a_uid;
+        }
+        if let (Some(e), Some(a_e)) = (email, &a.email) {
+            return e == a_e;
+        }
+        false
+    })
+}
+
+/// 创建账号标签
+fn create_account_label(
+    is_new: bool,
+    token_key: &str,
+    existing_account: Option<&Account>,
+) -> String {
+    if is_new {
+        format!("从 kiro-cli 导入 ({token_key})")
+    } else {
+        existing_account
+            .map_or_else(|| format!("从 kiro-cli 导入 ({token_key})"), |a| a.label.clone())
+    }
+}
+
 #[derive(Serialize)]
 pub struct KiroCliImportResult {
     pub success: bool,
@@ -42,15 +104,7 @@ pub async fn import_from_kiro_cli(
     eprintln!("[Kiro CLI Import] 开始导入，数据库路径: {db_path}");
 
     // 展开 ~ 为用户主目录
-    let expanded_path = if db_path.starts_with('~') {
-        let home = std::env::var("HOME")
-            .or_else(|_| std::env::var("USERPROFILE"))
-            .map_err(|_| "无法获取用户主目录".to_string())?;
-        db_path.replacen('~', &home, 1)
-    } else {
-        db_path.clone()
-    };
-
+    let expanded_path = expand_home_dir(&db_path)?;
     eprintln!("[Kiro CLI Import] 展开后的路径: {expanded_path}");
 
     // 1. 读取 kiro-cli 数据库
@@ -93,26 +147,8 @@ pub async fn import_from_kiro_cli(
                 .and_then(|v| v.as_str())
                 .map(std::string::ToString::to_string);
 
-            // 判断 provider
-            let provider = if cli_account.auth_method == "social" {
-                // Social Login，通过 profile_arn 判断
-                if let Some(ref arn) = cli_account.profile_arn {
-                    if arn.contains("google") {
-                        "Google"
-                    } else if arn.contains("github") {
-                        "GitHub"
-                    } else {
-                        "Unknown"
-                    }
-                } else {
-                    "Unknown"
-                }
-            } else {
-                // OIDC，默认 BuilderId
-                "BuilderId"
-            };
-
-            (email, user_id, provider.to_string(), Some(usage))
+            let provider = determine_provider(cli_account);
+            (email, user_id, provider, Some(usage))
         }
         Err(e) => {
             eprintln!("[Kiro CLI Import] 获取配额失败: {e}");
@@ -127,28 +163,12 @@ pub async fn import_from_kiro_cli(
 
     // 3. 检查账号是否已存在
     let mut store = state.store.lock().unwrap();
-    let existing_index = store.accounts.iter().position(|a| {
-        // 使用 user_id 或 email 去重
-        if let (Some(ref uid), Some(ref a_uid)) = (&user_id, &a.user_id) {
-            return uid == a_uid;
-        }
-        if let (Some(ref e), Some(ref a_e)) = (&email, &a.email) {
-            return e == a_e;
-        }
-        false
-    });
-
+    let existing_index = find_existing_account(&store.accounts, user_id.as_ref(), email.as_ref());
     let is_new = existing_index.is_none();
 
     // 4. 创建或更新 Account
-    let label = if is_new {
-        format!("从 kiro-cli 导入 ({})", cli_account.token_key)
-    } else {
-        // 保留原有的 label（安全访问）
-        existing_index
-            .and_then(|idx| store.accounts.get(idx))
-            .map_or_else(|| format!("从 kiro-cli 导入 ({})", cli_account.token_key), |a| a.label.clone())
-    };
+    let existing_account = existing_index.and_then(|idx| store.accounts.get(idx));
+    let label = create_account_label(is_new, &cli_account.token_key, existing_account);
     
     let mut account = if let Some(e) = email.clone() {
         Account::new(e, label)

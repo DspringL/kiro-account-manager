@@ -1,7 +1,5 @@
 // 进程管理相关功能
 
-#![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递参数
-
 use std::process::Command;
 
 #[cfg(target_os = "windows")]

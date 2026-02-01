@@ -49,134 +49,160 @@ function AccountHeader({
   return (
     <div className={`${colors.card} border-b ${colors.cardBorder} px-6 py-4`}>
       <div className="flex items-center justify-between">
-        {/* 左侧：标题 */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Sparkles size={20} className="text-white" />
+        {/* 左侧：标题或选中提示 */}
+        {selectedCount > 0 ? (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Sparkles size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className={`text-xl font-bold ${colors.text}`}>
+                {t('common.selected')} {selectedCount} {t('accounts.title')}
+              </h1>
+              <p className={`text-xs ${colors.textMuted}`}>批量操作模式</p>
+            </div>
           </div>
-          <div>
-            <h1 className={`text-xl font-bold ${colors.text}`}>{t('accounts.title')}</h1>
-            <p className={`text-xs ${colors.textMuted}`}>{t('accounts.subtitle')}</p>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <Sparkles size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className={`text-xl font-bold ${colors.text}`}>{t('accounts.title')}</h1>
+              <p className={`text-xs ${colors.textMuted}`}>{t('accounts.subtitle')}</p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 右侧：搜索和操作 */}
         <div className="flex items-center gap-3">
-          {/* 搜索框 - 可收缩 */}
-          <div ref={searchRef} className="relative">
-            {searchExpanded || searchTerm ? (
-              <div className="relative">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textMuted}`} size={18} />
-                <input
-                  type="text"
-                  placeholder={t('accounts.search')}
-                  value={searchTerm}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                  autoFocus
-                  className={`pl-10 pr-10 py-2.5 ${colors.cardSecondary} border-0 rounded-xl text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
-                />
-                {searchTerm && (
+          {selectedCount === 0 && (
+            <>
+              {/* 搜索框 - 可收缩 */}
+              <div ref={searchRef} className="relative">
+                {searchExpanded || searchTerm ? (
+                  <div className="relative">
+                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${colors.textMuted}`} size={18} />
+                    <input
+                      type="text"
+                      placeholder={t('accounts.search')}
+                      value={searchTerm}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      autoFocus
+                      className={`pl-10 pr-10 py-2.5 ${colors.cardSecondary} border-0 rounded-xl text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.text}`}
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => onSearchChange('')}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover} transition-all hover:scale-110`}
+                        title="清空"
+                      >
+                        <X size={16} className={colors.textMuted} />
+                      </button>
+                    )}
+                  </div>
+                ) : (
                   <button
-                    onClick={() => onSearchChange('')}
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover} transition-all hover:scale-110`}
-                    title="清空"
+                    onClick={() => setSearchExpanded(true)}
+                    className={`p-3 ${colors.card} border ${colors.cardBorder} rounded-xl ${colors.cardHover}`}
+                    title={t('accounts.search')}
                   >
-                    <X size={16} className={colors.textMuted} />
+                    <Search size={20} className={colors.textMuted} />
                   </button>
                 )}
               </div>
-            ) : (
-              <button
-                onClick={() => setSearchExpanded(true)}
-                className={`p-3 ${colors.card} border ${colors.cardBorder} rounded-xl ${colors.cardHover}`}
-                title={t('accounts.search')}
-              >
-                <Search size={20} className={colors.textMuted} />
-              </button>
-            )}
-          </div>
 
-          {/* 排序按钮组 */}
-          <div className="flex gap-1.5">
-            {[
-              { key: 'usage', label: t('sort.usage') },
-              { key: 'added', label: t('sort.added') },
-              { key: 'trial', label: t('sort.trial') },
-            ].map(({ key, label }) => {
-              const isActive = sortBy.startsWith(key)
-              const isDesc = sortBy.endsWith('Desc')
-              return (
+              {/* 排序按钮组 */}
+              <div className="flex gap-1.5">
+                {[
+                  { key: 'usage', label: t('sort.usage') },
+                  { key: 'added', label: t('sort.added') },
+                  { key: 'trial', label: t('sort.trial') },
+                ].map(({ key, label }) => {
+                  const isActive = sortBy.startsWith(key)
+                  const isDesc = sortBy.endsWith('Desc')
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        if (isActive) {
+                          // 已激活：降序 → 升序 → 取消
+                          if (isDesc) {
+                            onSortChange(`${key}Asc`)
+                          } else {
+                            onSortChange('default')
+                          }
+                        } else {
+                          // 未激活：默认降序
+                          onSortChange(`${key}Desc`)
+                        }
+                      }}
+                      className={`px-4 py-2.5 text-sm rounded-xl flex items-center gap-1.5 transition-all ${
+                        isActive 
+                          ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' 
+                          : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`
+                      }`}
+                      title={label}
+                    >
+                      {label}
+                      {isActive && (isDesc ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* 视图切换 */}
+              <div className="flex gap-1.5">
                 <button
-                  key={key}
-                  onClick={() => {
-                    if (isActive) {
-                      // 已激活：降序 → 升序 → 取消
-                      if (isDesc) {
-                        onSortChange(`${key}Asc`)
-                      } else {
-                        onSortChange('default')
-                      }
-                    } else {
-                      // 未激活：默认降序
-                      onSortChange(`${key}Desc`)
-                    }
-                  }}
-                  className={`px-4 py-2.5 text-sm rounded-xl flex items-center gap-1.5 transition-all ${
-                    isActive 
-                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' 
-                      : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`
-                  }`}
-                  title={label}
+                  onClick={() => onViewModeChange('card')}
+                  className={`p-3 rounded-xl transition-all ${viewMode === 'card' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
+                  title={t('accounts.cardView')}
                 >
-                  {label}
-                  {isActive && (isDesc ? <ArrowDown size={14} /> : <ArrowUp size={14} />)}
+                  <LayoutGrid size={18} />
                 </button>
-              )
-            })}
-          </div>
+                <button
+                  onClick={() => onViewModeChange('table')}
+                  className={`p-3 rounded-xl transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
+                  title={t('accounts.tableView')}
+                >
+                  <List size={18} />
+                </button>
+              </div>
 
-          {/* 视图切换 */}
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => onViewModeChange('card')}
-              className={`p-3 rounded-xl transition-all ${viewMode === 'card' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
-              title={t('accounts.cardView')}
-            >
-              <LayoutGrid size={18} />
-            </button>
-            <button
-              onClick={() => onViewModeChange('table')}
-              className={`p-3 rounded-xl transition-all ${viewMode === 'table' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
-              title={t('accounts.tableView')}
-            >
-              <List size={18} />
-            </button>
-          </div>
-
-          {/* 筛选面板 */}
-          <FilterDropdown
-            filters={advancedFilters}
-            onFiltersChange={onAdvancedFiltersChange}
-            allGroups={allGroups}
-            selectedGroup={selectedGroup}
-            onGroupFilter={onGroupFilter}
-            allTags={allTags}
-            selectedTag={selectedTag}
-            onTagFilter={onTagFilter}
-            selectedStatus={selectedStatus}
-            onStatusFilter={onStatusFilter}
-          />
+              {/* 筛选面板 */}
+              <FilterDropdown
+                filters={advancedFilters}
+                onFiltersChange={onAdvancedFiltersChange}
+                allGroups={allGroups}
+                selectedGroup={selectedGroup}
+                onGroupFilter={onGroupFilter}
+                allTags={allTags}
+                selectedTag={selectedTag}
+                onTagFilter={onTagFilter}
+                selectedStatus={selectedStatus}
+                onStatusFilter={onStatusFilter}
+              />
+            </>
+          )}
 
           {/* 批量操作 */}
           {selectedCount > 0 && (
             <>
-              <button onClick={onBatchTag} className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm hover:bg-purple-600 flex items-center gap-2 shadow-sm">
+              <button 
+                onClick={onBatchTag} 
+                className="px-4 py-2.5 text-sm font-medium rounded-xl text-white bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                title={t('tags.batchSet')}
+              >
                 <Tag size={16} />
-                {t('tags.batchSet')} ({selectedCount})
+                ({selectedCount})
               </button>
-              <button onClick={onBatchDelete} className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 flex items-center gap-2 shadow-sm">
+              <button 
+                onClick={onBatchDelete} 
+                className="px-4 py-2.5 text-sm font-medium rounded-xl text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                title={t('accounts.batchDelete')}
+              >
                 <Trash2 size={16} />
-                {t('accounts.batchDelete')} ({selectedCount})
+                ({selectedCount})
               </button>
             </>
           )}

@@ -1,9 +1,12 @@
 import { useRef, useMemo, useState, useEffect, useCallback, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Users, Plus } from 'lucide-react'
+import { Users, Plus, Eye, Edit2, Copy, Key, BarChart3, Repeat, Trash2, UserX } from 'lucide-react'
 import { Checkbox } from '@mantine/core'
+import { useTranslation } from 'react-i18next'
 import { useApp } from '../../../hooks/useApp'
+import { useTheme } from '../../../contexts/ThemeContext'
 import AccountCard from './AccountCard'
+import ContextMenu from './ContextMenu'
 
 // 根据容器宽度计算列数
 function getColumnCount(width) {
@@ -37,6 +40,7 @@ const VirtualRow = memo(function VirtualRow({
   groupDefinitions,
   colors,
   t,
+  onContextMenuOpen,
 }) {
   return (
     <div className="gap-6 pb-6" style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
@@ -56,15 +60,13 @@ const VirtualRow = memo(function VirtualRow({
             onRefresh={onRefresh}
             onRefreshToken={onRefreshToken}
             onEdit={onEdit}
-            onEditLabel={onEditLabel}
-            onDelete={onDelete}
-            onDeleteRemote={onDeleteRemote}
             refreshingId={refreshingId}
             refreshingTokenId={refreshingTokenId}
             switchingId={switchingId}
             isCurrentAccount={localToken?.refreshToken && item.refreshToken === localToken.refreshToken}
             tagDefinitions={tagDefinitions}
             groupDefinitions={groupDefinitions}
+            onContextMenuOpen={(x, y) => onContextMenuOpen(item.id, x, y, item)}
           />
         )
       })}
@@ -117,6 +119,41 @@ function AccountTable({
   const containerRef = useRef(null)
   const scrollRef = useRef(null)
   const [columns, setColumns] = useState(4)
+  const [contextMenuState, setContextMenuState] = useState(null) // { accountId, x, y, account }
+
+  // 打开右键菜单
+  const handleContextMenuOpen = useCallback((accountId, x, y, account) => {
+    setContextMenuState({ accountId, x, y, account })
+  }, [])
+
+  // 关闭右键菜单
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenuState(null)
+  }, [])
+
+  // 生成菜单项
+  const getMenuItems = useCallback((account) => {
+    const isBanned = account.status === 'banned' || account.status === '封禁' || account.status === '已封禁'
+    
+    const items = [
+      { icon: Eye, label: t('accountCard.viewDetails'), onClick: () => onEdit(account) },
+      { icon: Edit2, label: t('accountCard.editRemark'), onClick: () => onEditLabel(account) },
+      { icon: Copy, label: t('accountCard.copyJson'), onClick: () => onCopy(JSON.stringify(account, null, 2), account.id) },
+      { divider: true },
+      { icon: Key, label: t('accountCard.refreshToken'), onClick: () => onRefreshToken?.(account.id), disabled: refreshingTokenId === account.id },
+      { icon: BarChart3, label: t('accountCard.refreshQuota'), onClick: () => onRefresh(account.id), disabled: refreshingId === account.id },
+      { icon: Repeat, label: t('accountCard.switchAccount'), onClick: () => onSwitch(account), disabled: switchingId === account.id || isBanned },
+      { divider: true },
+      { icon: Trash2, label: t('accountCard.delete'), onClick: () => onDelete(account.id), danger: true },
+    ]
+    
+    // Enterprise 账号或已封禁账号不显示远程删除
+    if (account.provider !== 'Enterprise' && !isBanned && onDeleteRemote) {
+      items.push({ icon: UserX, label: t('accountCard.deleteRemote'), onClick: () => onDeleteRemote(account), danger: true })
+    }
+    
+    return items
+  }, [t, onEdit, onEditLabel, onCopy, onRefreshToken, onRefresh, onSwitch, onDelete, onDeleteRemote, refreshingTokenId, refreshingId, switchingId])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -142,9 +179,9 @@ function AccountTable({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 240,
-    overscan: 1, // 减少预渲染行数
-    scrollMargin: 0, // 防止触底反弹
+    estimateSize: () => 290,
+    overscan: 1,
+    measureElement: (el) => el?.getBoundingClientRect().height ?? 290,
   })
 
   // 将 selectedIds 转为 Set 提高查找性能
@@ -190,7 +227,6 @@ function AccountTable({
         <div 
           ref={scrollRef} 
           className="flex-1 overflow-auto"
-          style={{ overscrollBehavior: 'contain' }}
         >
           <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
             <div
@@ -203,7 +239,11 @@ function AccountTable({
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => (
-                <div key={virtualRow.key} data-index={virtualRow.index}>
+                <div 
+                  key={virtualRow.key} 
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                >
                   <VirtualRow
                     row={rows[virtualRow.index]}
                     columns={columns}
@@ -227,12 +267,23 @@ function AccountTable({
                     groupDefinitions={groupDefinitions}
                     colors={colors}
                     t={t}
+                    onContextMenuOpen={handleContextMenuOpen}
                   />
                 </div>
               ))}
             </div>
           </div>
         </div>
+      )}
+      
+      {/* 全局右键菜单 */}
+      {contextMenuState && (
+        <ContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          onClose={handleContextMenuClose}
+          items={getMenuItems(contextMenuState.account)}
+        />
       )}
     </div>
   )

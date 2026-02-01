@@ -1,7 +1,5 @@
 // Kiro IDE 相关功能
 
-#![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递参数
-
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 
