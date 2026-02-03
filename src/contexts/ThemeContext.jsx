@@ -125,7 +125,7 @@ export const themes = {
     card: 'bg-[#1a1a2e]',
     cardBorder: 'border-gray-800',
     cardHover: 'hover:bg-white/10',
-    cardSecondary: 'bg-white/[0.02]',
+    cardSecondary: 'bg-white/[0.05]',
     text: 'text-gray-100',
     textMuted: 'text-gray-400',
     input: 'bg-[#252540] border-gray-700',
