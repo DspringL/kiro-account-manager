@@ -59,7 +59,7 @@ pub async fn get_machine_guid_backup() -> Result<Option<MachineGuidBackup>, Stri
 
 #[tauri::command]
 pub async fn set_custom_machine_guid(new_guid: String) -> Result<String, String> {
-    run(move || platform::set_custom_machine_guid_inner(&new_guid)).await?
+    run(move || platform::set_custom_machine_guid_inner(new_guid)).await?
 }
 
 #[tauri::command]
