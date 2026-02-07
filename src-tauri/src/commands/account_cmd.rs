@@ -23,33 +23,6 @@ pub struct SyncAccountResult {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AddIdcAccountParams {
-    pub refresh_token: String,
-    pub client_id: String,
-    pub client_secret: String,
-    pub region: Option<String>,
-    pub machine_id: Option<String>,
-    pub access_token: Option<String>,
-    pub password: Option<String>,
-    pub client_id_hash: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AddEnterpriseAccountParams {
-    pub refresh_token: String,
-    pub client_id: String,
-    pub client_secret: String,
-    pub region: Option<String>,
-    pub machine_id: Option<String>,
-    pub access_token: Option<String>,
-    pub password: Option<String>,
-    pub start_url: Option<String>,
-    pub client_id_hash: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct UpdateAccountParams {
     pub id: String,
     pub label: Option<String>,
@@ -61,6 +34,30 @@ pub struct UpdateAccountParams {
 }
 
 // ===== 辅助函数 =====
+
+/// 从 clientSecret JWT 中提取 startUrl
+fn extract_start_url_from_client_secret(client_secret: &str) -> Option<String> {
+    use base64::{Engine as _, engine::general_purpose};
+    
+    // JWT 格式：header.payload.signature
+    let parts: Vec<&str> = client_secret.split('.').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    
+    // Base64 解码 payload
+    let payload = parts[1];
+    let decoded = general_purpose::URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let payload_str = String::from_utf8(decoded).ok()?;
+    
+    // 解析 JSON
+    let payload_json: serde_json::Value = serde_json::from_str(&payload_str).ok()?;
+    let serialized_str = payload_json.get("serialized")?.as_str()?;
+    let serialized: serde_json::Value = serde_json::from_str(serialized_str).ok()?;
+    
+    // 提取 initiateLoginUri
+    serialized.get("initiateLoginUri")?.as_str().map(|s| s.to_string())
+}
 
 /// 根据 startUrl 计算 clientIdHash（与 Kiro IDE 源码一致）
 fn calculate_client_id_hash(start_url: &str) -> String {
@@ -326,22 +323,26 @@ pub async fn add_account_by_social(
     let idp = provider.as_deref().unwrap_or("Google").to_string();  // ✅ 避免不必要的 clone
     
     // 先尝试用传入的 access_token 获取配额
-    let (final_access_token, final_refresh_token, usage_result) = if let Some(at) = access_token {
+    let (final_access_token, final_refresh_token, final_profile_arn, usage_result) = if let Some(at) = access_token {
         match get_usage_by_provider(&idp, &at).await {
             Ok(result) if result.is_auth_error => {
                 // 401 了，刷新 token
                 let refresh_result = refresh_token_desktop(&refresh_token).await?;
                 let new_usage = get_usage_by_provider(&idp, &refresh_result.access_token).await?;
-                (refresh_result.access_token, refresh_result.refresh_token, new_usage)
+                (refresh_result.access_token, refresh_result.refresh_token, refresh_result.profile_arn, new_usage)
             }
-            Ok(result) => (at, refresh_token.clone(), result),  // ✅ 这里必须 clone，因为 refresh_token 被借用了
+            Ok(result) => {
+                // access_token 有效，但没有 profile_arn，需要刷新一次获取
+                let refresh_result = refresh_token_desktop(&refresh_token).await?;
+                (at, refresh_token.clone(), refresh_result.profile_arn, result)
+            }
             Err(e) => return Err(e),
         }
     } else {
         // 没有 access_token，直接刷新
         let refresh_result = refresh_token_desktop(&refresh_token).await?;
         let usage_result = get_usage_by_provider(&idp, &refresh_result.access_token).await?;
-        (refresh_result.access_token, refresh_result.refresh_token, usage_result)
+        (refresh_result.access_token, refresh_result.refresh_token, refresh_result.profile_arn, usage_result)
     };
     
     // 封禁账号直接报错
@@ -371,6 +372,7 @@ pub async fn add_account_by_social(
         // 直接移动所有权，避免 clone
         existing.access_token = Some(final_access_token.clone());  // ✅ 后面还要用，必须 clone
         existing.refresh_token = Some(final_refresh_token.clone());  // ✅ 后面还要用，必须 clone
+        existing.profile_arn = Some(final_profile_arn.clone());  // ✅ 保存 profile_arn
         existing.user_id = user_id;
         existing.usage_data = Some(usage_result.usage_data);
         existing.status = calc_status(usage_result.is_banned);
@@ -379,6 +381,7 @@ pub async fn add_account_by_social(
         let mut account = Account::new(final_email.clone(), format!("Kiro {idp} 账号"));
         account.access_token = Some(final_access_token.clone());  // ✅ 后面还要用，必须 clone
         account.refresh_token = Some(final_refresh_token.clone());  // ✅ 后面还要用，必须 clone
+        account.profile_arn = Some(final_profile_arn.clone());  // ✅ 保存 profile_arn
         account.provider = Some(idp.clone());
         account.auth_method = Some("social".to_string());
         account.user_id = user_id;
@@ -503,38 +506,20 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<AddAcc
         let client_reg = get_client_registration(&hash).await
             .ok_or(format!("未找到客户端注册信息: {hash}.json"))?;
         
-        // 根据 provider 调用不同的函数
-        if provider == "BuilderId" {
-            add_account_by_builderid(
-                state,
-                AddIdcAccountParams {
-                    refresh_token,
-                    client_id: client_reg.client_id,
-                    client_secret: client_reg.client_secret,
-                    region: Some(region),
-                    machine_id: None, // 本地导入不指定 machine_id，自动生成
-                    access_token: local_token.access_token.clone(), // 传入 access_token
-                    password: None, // 本地导入无密码
-                    client_id_hash: Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
-                },
-            ).await
-        } else {
-            // Enterprise
-            add_account_by_enterprise(
-                state,
-                AddEnterpriseAccountParams {
-                    refresh_token,
-                    client_id: client_reg.client_id,
-                    client_secret: client_reg.client_secret,
-                    region: Some(region),
-                    machine_id: None, // 本地导入不指定 machine_id，自动生成
-                    access_token: local_token.access_token.clone(), // 传入 access_token
-                    password: None, // 本地导入无密码
-                    start_url: None, // 本地导入无 start_url
-                    client_id_hash: Some(hash), // 直接使用 Kiro IDE 提供的 clientIdHash
-                },
-            ).await
-        }
+        // 统一调用 add_account_by_idc（展开参数）
+        add_account_by_idc(
+            state,
+            Some(provider),  // provider: BuilderId 或 Enterprise
+            refresh_token,   // refresh_token
+            client_reg.client_id,  // client_id
+            client_reg.client_secret,  // client_secret
+            Some(region),    // region
+            None,            // machine_id: 本地导入不指定，自动生成
+            local_token.access_token.clone(),  // access_token
+            None,            // password: 本地导入无密码
+            None,            // start_url: 本地导入无 start_url
+            Some(hash),      // client_id_hash: 直接使用 Kiro IDE 提供的
+        ).await
     } else {
         add_account_by_social(
             state,
@@ -546,48 +531,42 @@ pub async fn add_local_kiro_account(state: State<'_, AppState>) -> Result<AddAcc
     }
 }
 
-/// 添加 `BuilderId` 账号
+/// 添加 IdC 账号（BuilderId 或 Enterprise）
 #[tauri::command]
-pub async fn add_account_by_builderid(
+pub async fn add_account_by_idc(
     state: State<'_, AppState>,
-    params: AddIdcAccountParams,
+    provider: Option<String>,
+    refresh_token: String,
+    client_id: String,
+    client_secret: String,
+    region: Option<String>,
+    machine_id: Option<String>,
+    access_token: Option<String>,
+    password: Option<String>,
+    start_url: Option<String>,
+    client_id_hash: Option<String>,
 ) -> Result<AddAccountResult, String> {
+    // 从参数中获取 provider，默认为 BuilderId
+    let provider_id = provider.unwrap_or_else(|| "BuilderId".to_string());
+    
+    // 验证 provider 是否合法
+    if provider_id != "BuilderId" && provider_id != "Enterprise" {
+        return Err(format!("不支持的 provider: {}", provider_id));
+    }
+    
     add_account_by_idc_internal(
         state,
         IdcAccountParams {
-            refresh_token: params.refresh_token,
-            client_id: params.client_id,
-            client_secret: params.client_secret,
-            region: params.region,
-            machine_id: params.machine_id,
-            access_token: params.access_token,
-            password: params.password,
-            provider_id: "BuilderId".to_string(),
-            start_url: None, // BuilderId 不需要 start_url
-            client_id_hash: params.client_id_hash,
-        },
-    ).await
-}
-
-/// 添加 Enterprise 账号
-#[tauri::command]
-pub async fn add_account_by_enterprise(
-    state: State<'_, AppState>,
-    params: AddEnterpriseAccountParams,
-) -> Result<AddAccountResult, String> {
-    add_account_by_idc_internal(
-        state,
-        IdcAccountParams {
-            refresh_token: params.refresh_token,
-            client_id: params.client_id,
-            client_secret: params.client_secret,
-            region: params.region,
-            machine_id: params.machine_id,
-            access_token: params.access_token,
-            password: params.password,
-            provider_id: "Enterprise".to_string(),
-            start_url: params.start_url,
-            client_id_hash: params.client_id_hash,
+            refresh_token,
+            client_id,
+            client_secret,
+            region,
+            machine_id,
+            access_token,
+            password,
+            provider_id,
+            start_url,
+            client_id_hash,
         },
     ).await
 }
@@ -613,12 +592,17 @@ async fn add_account_by_idc_internal(
 ) -> Result<AddAccountResult, String> {
     let is_enterprise = params.provider_id == "Enterprise";
     
-    // BuilderId 使用默认 region，Enterprise 必须提供 region
-    let region = if is_enterprise {
-        params.region.ok_or("Enterprise 账号必须提供 region")?
+    // 从 clientSecret JWT 中提取 startUrl（如果未提供）
+    let start_url = if params.start_url.is_some() {
+        params.start_url.clone()
+    } else if is_enterprise {
+        extract_start_url_from_client_secret(&params.client_secret)
     } else {
-        params.region.unwrap_or_else(|| "us-east-1".to_string())
+        None
     };
+    
+    // BuilderId 和 Enterprise 都使用默认 region（如果未提供）
+    let region = params.region.unwrap_or_else(|| "us-east-1".to_string());
     
     // 先尝试用传入的 access_token 获取配额
     let (final_access_token, final_refresh_token, usage_result, expires_at, id_token, sso_session_id) =
@@ -632,7 +616,7 @@ async fn add_account_by_idc_internal(
                         region: Some(region.clone()),
                         ..Default::default()
                     };
-                    let idc_provider = IdcProvider::new(&params.provider_id, &region, params.start_url.clone());
+                    let idc_provider = IdcProvider::new(&params.provider_id, &region, start_url.clone());
                     let auth_result = idc_provider.refresh_token(&params.refresh_token, metadata).await?;
                     let new_usage = get_usage_by_provider(&params.provider_id, &auth_result.access_token).await?;
                     let expires_at = calc_expires_at(auth_result.expires_in);
@@ -652,7 +636,7 @@ async fn add_account_by_idc_internal(
                 region: Some(region.clone()),
                 ..Default::default()
             };
-            let idc_provider = IdcProvider::new(&params.provider_id, &region, params.start_url.clone());
+            let idc_provider = IdcProvider::new(&params.provider_id, &region, start_url.clone());
             let auth_result = idc_provider.refresh_token(&params.refresh_token, metadata).await?;
             let usage_result = get_usage_by_provider(&params.provider_id, &auth_result.access_token).await?;
             let expires_at = calc_expires_at(auth_result.expires_in);
@@ -672,12 +656,13 @@ async fn add_account_by_idc_internal(
         // Enterprise 账号：必须有 user_id，email 可选
         let user_id = user_id.ok_or("Enterprise 账号缺少 userId")?;
         
-        // 计算 client_id_hash
+        // 计算 client_id_hash（可选）
         let client_id_hash = if let Some(hash) = params.client_id_hash.clone() {
-            hash
+            Some(hash)  // 如果提供了 clientIdHash，直接使用
+        } else if let Some(ref url) = start_url {
+            Some(calculate_client_id_hash(url))  // 如果提取到了 startUrl，计算
         } else {
-            let actual_start_url = params.start_url.as_deref().ok_or("Enterprise 账号缺少 Start URL")?;
-            calculate_client_id_hash(actual_start_url)
+            None  // 都没有提供，设置为 None（不影响刷新 token 和获取配额）
         };
         
         let mut store = state.store.lock().expect("Failed to acquire store lock");
@@ -700,8 +685,8 @@ async fn add_account_by_idc_internal(
             existing.client_id = Some(params.client_id.clone());
             existing.client_secret = Some(params.client_secret.clone());
             existing.region = Some(region.clone());
-            existing.client_id_hash = Some(client_id_hash.clone());
-            existing.start_url.clone_from(&params.start_url);
+            existing.client_id_hash = client_id_hash.clone();  // 可能是 None
+            existing.start_url = start_url.clone();
             if id_token.is_some() {
                 existing.id_token = id_token;
             }
@@ -723,8 +708,8 @@ async fn add_account_by_idc_internal(
             account.client_id = Some(params.client_id.clone());
             account.client_secret = Some(params.client_secret.clone());
             account.region = Some(region.clone());
-            account.client_id_hash = Some(client_id_hash);
-            account.start_url.clone_from(&params.start_url);
+            account.client_id_hash = client_id_hash;  // 可能是 None
+            account.start_url = start_url.clone();
             account.id_token = id_token;
             account.sso_session_id = sso_session_id;
             account.usage_data = Some(usage_result.usage_data);
@@ -742,11 +727,13 @@ async fn add_account_by_idc_internal(
         // BuilderId 账号：必须有 email
         let email = new_email.ok_or("BuilderId 账号缺少 email")?;
         
-        // 计算 client_id_hash
+        // 计算 client_id_hash（可选）
         let client_id_hash = if let Some(hash) = params.client_id_hash {
-            hash
+            Some(hash)  // 如果提供了 clientIdHash，直接使用
+        } else if params.start_url.is_some() {
+            Some(calculate_client_id_hash(params.start_url.as_ref().unwrap()))  // 如果提供了 startUrl，计算
         } else {
-            calculate_client_id_hash("https://view.awsapps.com/start")
+            Some(calculate_client_id_hash("https://view.awsapps.com/start"))  // BuilderId 使用默认 URL
         };
         
         let mut store = state.store.lock().expect("Failed to acquire store lock");
@@ -768,7 +755,7 @@ async fn add_account_by_idc_internal(
             existing.client_id = Some(params.client_id.clone());
             existing.client_secret = Some(params.client_secret.clone());
             existing.region = Some(region.clone());
-            existing.client_id_hash = Some(client_id_hash.clone());
+            existing.client_id_hash = client_id_hash.clone();  // 可能是 None
             if id_token.is_some() {
                 existing.id_token = id_token;
             }
@@ -792,7 +779,7 @@ async fn add_account_by_idc_internal(
             account.client_id = Some(params.client_id.clone());
             account.client_secret = Some(params.client_secret.clone());
             account.region = Some(region.clone());
-            account.client_id_hash = Some(client_id_hash);
+            account.client_id_hash = client_id_hash;  // 可能是 None
             account.id_token = id_token;
             account.sso_session_id = sso_session_id;
             account.usage_data = Some(usage_result.usage_data);
