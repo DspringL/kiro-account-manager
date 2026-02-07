@@ -75,7 +75,7 @@ impl KiroPortalClient {
             .body(body)
             .send()
             .await
-            .map_err(|e| format!("GetUserUsageAndLimits request failed: {e}"))?;
+            .map_err(|e| format!("请求失败（可能是并发请求过多被限流）: {}，请稍后重试", e))?;
 
         let status = response.status();
         let bytes = response.bytes().await
@@ -87,6 +87,11 @@ impl KiroPortalClient {
             } else {
                 String::from_utf8_lossy(&bytes).to_string()
             };
+            
+            // 429 → 请求过多，被限流
+            if status.as_u16() == 429 {
+                return Err("请求过多，已被限流，请稍后重试".to_string());
+            }
             
             // 401 → token 过期，需要刷新（不打印日志，这是正常流程）
             if status.as_u16() == 401 {
@@ -103,10 +108,6 @@ impl KiroPortalClient {
                     }
                 }
             }
-            
-            // 其他错误打印日志
-            log::debug!("[KiroPortal] GetUserUsageAndLimits Status: {status}");
-            log::debug!("[KiroPortal] Response:\n{error_msg}");
             
             // 403 处理
             if status.as_u16() == 403 {
