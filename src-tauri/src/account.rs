@@ -326,25 +326,17 @@ impl AccountStore {
                             return true;
                         }
                         
-                        // 修复现有账号的 authMethod 用于比较
-                        let a_auth_method = if a.auth_method.is_none() {
-                            if a.client_id.is_some() && a.client_secret.is_some() {
-                                Some("IdC".to_string())
-                            } else {
-                                Some("social".to_string())
-                            }
-                        } else {
-                            a.auth_method.clone()
-                        };
+                        // 使用 user_id 去重（最简单直接）
+                        if let (Some(a_uid), Some(acc_uid)) = (&a.user_id, &account.user_id) {
+                            return a_uid == acc_uid;
+                        }
                         
-                        // 使用 email + user_id + auth_method + provider 组合去重
-                        let email_match = a.email == account.email;
-                        let user_id_match = a.user_id == account.user_id;
-                        let auth_method_match = a_auth_method == account.auth_method;
-                        let provider_match = a.provider == account.provider;
+                        // 如果没有 user_id，用 email 兜底
+                        if let (Some(a_email), Some(acc_email)) = (&a.email, &account.email) {
+                            return a_email == acc_email;
+                        }
                         
-                        // 如果 email、user_id、auth_method、provider 都相同，则认为是重复账号
-                        email_match && user_id_match && auth_method_match && provider_match
+                        false
                     });
                     
                     if !exists {

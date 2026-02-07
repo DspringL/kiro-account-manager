@@ -225,9 +225,10 @@ pub async fn handle_kiro_social_callback(
         return Err("State mismatch".to_string());
     }
     
-    let redirect_uri = "kiro://app/callback";
+    let redirect_uri = crate::deep_link_handler::DeepLinkCallbackWaiter::get_redirect_uri()
+        .replace("/authenticate-success", "/app/callback");
     let token_response = auth_social::exchange_social_code_for_token(
-        &code, &pending.code_verifier, redirect_uri, &pending.machineid,
+        &code, &pending.code_verifier, &redirect_uri, &pending.machineid,
     ).await?;
     
     let usage_result = get_usage_by_provider(&pending.provider, &token_response.access_token).await?;

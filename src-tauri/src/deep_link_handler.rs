@@ -1,5 +1,5 @@
 // Deep Link 回调处理
-// 处理 kiro://kiro.kiroAgent/authenticate-success?code=xxx&state=xxx 格式的 OAuth 回调
+// 处理 kiro-account-manager://authenticate-success?code=xxx&state=xxx 格式的 OAuth 回调
 
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -25,9 +25,17 @@ pub struct DeepLinkCallbackWaiter {
 }
 
 impl DeepLinkCallbackWaiter {
-    /// 获取 `redirect_uri` (使用 Kiro 官方协议)
+    /// 获取 `redirect_uri` (根据环境自动选择协议)
     pub fn get_redirect_uri() -> String {
+        // 临时：开发和生产都使用 kiro:// 协议
+        // TODO: 等 Cognito 配置好新协议后再改回来
         "kiro://kiro.kiroAgent/authenticate-success".to_string()
+    }
+    
+    /// 获取当前环境的协议名称
+    pub fn get_protocol_scheme() -> &'static str {
+        // 临时：开发和生产都使用 kiro 协议
+        "kiro"
     }
 
     /// 等待回调结果
@@ -75,8 +83,9 @@ pub fn handle_deep_link(url: &str) -> bool {
         }
     };
 
-    // 检查是否是 kiro:// 协议
-    if parsed.scheme() != "kiro" {
+    // 检查协议是否匹配当前环境
+    let expected_scheme = DeepLinkCallbackWaiter::get_protocol_scheme();
+    if parsed.scheme() != expected_scheme {
         *guard = Some((expected_state, tx)); // 放回去
         return false;
     }

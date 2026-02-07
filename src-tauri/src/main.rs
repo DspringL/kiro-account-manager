@@ -32,7 +32,7 @@ use browser::detect_installed_browsers;
 use commands::account_cmd::{
     get_accounts, delete_account, delete_accounts, delete_account_remote, update_account, sync_account,
     refresh_account_token, verify_account, add_account_by_social, add_local_kiro_account,
-    add_account_by_builderid, add_account_by_enterprise, import_accounts, export_accounts,
+    add_account_by_idc, import_accounts, export_accounts,
     get_available_accounts, get_accounts_by_group, get_accounts_by_tag, get_account_usage
 };
 use commands::group_tag_cmd::{
@@ -80,8 +80,9 @@ fn setup_log_plugin() -> tauri_plugin_log::Builder {
 #[allow(clippy::needless_pass_by_value)] // Tauri 框架要求回调签名为 Vec<String>
 fn setup_single_instance_callback(app: &tauri::AppHandle, argv: Vec<String>, _cwd: String) {
     // 当第二个实例尝试启动时，处理传入的参数（deep-link 回调）
+    let protocol_prefix = format!("{}://", deep_link_handler::DeepLinkCallbackWaiter::get_protocol_scheme());
     for arg in &argv {
-        if arg.starts_with("kiro://") {
+        if arg.starts_with(&protocol_prefix) {
             deep_link_handler::handle_deep_link(arg);
         }
     }
@@ -95,7 +96,7 @@ fn setup_single_instance_callback(app: &tauri::AppHandle, argv: Vec<String>, _cw
 
 /// 处理 deep link 事件
 fn handle_deep_link_event(app_handle: &tauri::AppHandle, payload: &str) {
-    // payload 可能是 JSON 格式 ["kiro://..."] 或纯 URL
+    // payload 可能是 JSON 格式 ["kiro-account-manager://..."] 或纯 URL
     let url = if payload.starts_with('[') {
         // JSON 数组格式，解析第一个元素
         serde_json::from_str::<Vec<String>>(payload)
@@ -110,8 +111,9 @@ fn handle_deep_link_event(app_handle: &tauri::AppHandle, payload: &str) {
         payload.to_string()
     };
     
-    // 只处理 kiro:// 协议的 URL
-    if !url.starts_with("kiro://") {
+    // 只处理当前环境的协议
+    let protocol_prefix = format!("{}://", deep_link_handler::DeepLinkCallbackWaiter::get_protocol_scheme());
+    if !url.starts_with(&protocol_prefix) {
         return;
     }
     
@@ -126,17 +128,19 @@ fn handle_deep_link_event(app_handle: &tauri::AppHandle, payload: &str) {
 /// 应用 setup 回调
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // 首次启动时检查命令行参数中的 deep link（Windows/Linux）
+    let protocol_prefix = format!("{}://", deep_link_handler::DeepLinkCallbackWaiter::get_protocol_scheme());
     for arg in std::env::args() {
-        if arg.starts_with("kiro://") {
+        if arg.starts_with(&protocol_prefix) {
             deep_link_handler::handle_deep_link(&arg);
         }
     }
     
-    // 监听 deep link 事件 (使用 kiro:// 协议)
+    // 监听 deep link 事件（根据环境自动选择协议）
     #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
     {
         use tauri_plugin_deep_link::DeepLinkExt;
-        app.deep_link().register("kiro")
+        let scheme = deep_link_handler::DeepLinkCallbackWaiter::get_protocol_scheme();
+        app.deep_link().register(scheme)
             .map_err(|e| format!("Failed to register deep link: {e}"))?;
     }
     
@@ -182,8 +186,7 @@ fn main() {
             verify_account,
             add_account_by_social,
             add_local_kiro_account,
-            add_account_by_builderid,
-            add_account_by_enterprise,
+            add_account_by_idc,
             import_accounts,
             export_accounts,
             get_available_accounts,

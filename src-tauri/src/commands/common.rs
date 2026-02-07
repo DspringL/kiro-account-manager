@@ -138,30 +138,27 @@ pub fn extract_user_info(usage_data: &serde_json::Value) -> (Option<String>, Opt
 }
 
 /// 查找已存在的账号索引
-/// 使用 `email` + `user_id` + `auth_method` + `provider` 四字段组合精确去重
-/// 只有当 4 个字段都相同时才认为是重复账号
+/// 使用 `user_id` 去重（最简单直接的策略）
 pub fn find_existing_account_idx(
     accounts: &[Account],
     email: Option<&String>,
-    provider: &str,
+    _provider: &str,
     _refresh_token: &str,
     user_id: Option<&String>,
 ) -> Option<usize> {
-    // 推断 auth_method
-    let auth_method = if provider == "BuilderId" || provider == "Enterprise" {
-        "IdC"
-    } else {
-        "social"
-    };
+    // 只用 user_id 去重
+    if let Some(uid) = user_id {
+        return accounts.iter().position(|a| {
+            a.user_id.as_ref() == Some(uid)
+        });
+    }
     
-    // 使用 4 字段组合精确匹配
-    accounts.iter().position(|a| {
-        let email_match = a.email.as_ref() == email;
-        let user_id_match = a.user_id.as_ref() == user_id;
-        let auth_method_match = a.auth_method.as_deref() == Some(auth_method);
-        let provider_match = a.provider.as_deref() == Some(provider);
-        
-        // 4 个字段都相同才认为是重复
-        email_match && user_id_match && auth_method_match && provider_match
-    })
+    // 如果没有 user_id，用 email 兜底
+    if let Some(e) = email {
+        return accounts.iter().position(|a| {
+            a.email.as_ref() == Some(e)
+        });
+    }
+    
+    None
 }
