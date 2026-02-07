@@ -162,8 +162,7 @@ pub async fn sync_account(state: State<'_, AppState>, id: String) -> Result<Sync
     let (usage, warning) = match usage_result {
         Ok(u) => (Some(u), None),
         Err(e) => {
-            // 打印错误日志，但不中断同步
-            log::warn!("[sync_account] 获取配额失败 (账号: {id}, provider: {provider_str}): {e}");
+            // 获取配额失败，不打印日志，直接返回错误信息
             (None, Some(format!("获取配额失败: {e}")))
         }
     };

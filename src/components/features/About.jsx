@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Github, Heart, Coffee, ExternalLink, Sparkles, Code2, Palette, Cpu, RefreshCw, X, BookOpen, ShoppingCart } from 'lucide-react'
+import { Github, Heart, Coffee, ExternalLink, Sparkles, Code2, Palette, Cpu, RefreshCw, X, BookOpen, ShoppingCart, MessageCircle } from 'lucide-react'
 import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { check } from '@tauri-apps/plugin-updater'
@@ -11,7 +11,7 @@ import wechatQR from '../../assets/donate/wechat.jpg'
 
 function About() {
   const { t, theme, colors } = useApp()
-  const { showUpdate, showInfo } = useDialog()
+  const { showUpdate, showInfo, showSuccess } = useDialog()
   const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [version, setVersion] = useState('')
   const [checking, setChecking] = useState(false)
@@ -283,6 +283,59 @@ function About() {
             <Text size="xs" className={colors.textMuted} ta="center" mt="xs">
               {t('about.clickToEnlarge')}
             </Text>
+          </Stack>
+        </Card>
+
+        {/* 付费服务 */}
+        <Card 
+          shadow="sm" 
+          p="xl" 
+          radius="xl" 
+          className={`${colors.card} border ${colors.cardBorder}`}
+        >
+          <Stack gap="md">
+            {/* 标题 */}
+            <Group gap="xs" justify="center">
+              <ShoppingCart size={20} className="text-blue-500" />
+              <Text size="lg" fw={600} className={colors.text}>{t('about.paidServices')}</Text>
+            </Group>
+
+            {/* 描述 */}
+            <Text size="sm" className={colors.text} ta="center" style={{ lineHeight: 1.6 }}>
+              {t('about.paidServicesDesc')}
+            </Text>
+
+            {/* 服务列表 */}
+            <div className={`${colors.cardSecondary} rounded-xl p-4`}>
+              <Stack gap="xs" className={colors.text}>
+                <Text size="sm" style={{ lineHeight: 1.6 }}>
+                  💬 {t('about.service1')}
+                </Text>
+                <Text size="sm" style={{ lineHeight: 1.6 }}>
+                  🔧 {t('about.service2')}
+                </Text>
+                <Text size="sm" style={{ lineHeight: 1.6 }}>
+                  🎯 {t('about.service3')}
+                </Text>
+              </Stack>
+            </div>
+
+            {/* 联系方式 */}
+            <Group justify="center" gap="md" mt="sm">
+              <Button
+                onClick={() => invoke('open_url', { url: 'tencent://message/?uin=1292548381&Site=&Menu=yes' }).catch(() => {
+                  // 如果 QQ 协议打开失败，复制 QQ 号
+                  navigator.clipboard.writeText('1292548381')
+                  showSuccess('QQ 号已复制', '1292548381')
+                })}
+                leftSection={<MessageCircle size={16} />}
+                variant="light"
+                color="blue"
+                radius="xl"
+              >
+                {t('about.contactQQ')}
+              </Button>
+            </Group>
           </Stack>
         </Card>
 

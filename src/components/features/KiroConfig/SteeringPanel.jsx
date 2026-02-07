@@ -128,6 +128,7 @@ function SteeringPanel({ onCountChange }) {
 
   const inclusionOptions = [
     { value: 'always', label: t('steering.inclusionAlways'), desc: t('steering.inclusionAlwaysDesc') },
+    { value: 'auto', label: t('steering.inclusionAuto'), desc: t('steering.inclusionAutoDesc') },
     { value: 'fileMatch', label: t('steering.inclusionFileMatch'), desc: t('steering.inclusionFileMatchDesc') },
     { value: 'manual', label: t('steering.inclusionManual'), desc: t('steering.inclusionManualDesc') },
   ]
@@ -202,6 +203,7 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
   // 按 inclusion 分组
   const groupedFiles = {
     always: files.filter(f => parseFrontMatter(f.content).inclusion === 'always'),
+    auto: files.filter(f => parseFrontMatter(f.content).inclusion === 'auto'),
     fileMatch: files.filter(f => parseFrontMatter(f.content).inclusion === 'fileMatch'),
     manual: files.filter(f => parseFrontMatter(f.content).inclusion === 'manual'),
   }
@@ -323,6 +325,12 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
               groupedFiles.always,
               <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-500/50" />,
               'from-green-500 to-emerald-600'
+            )}
+            {renderFileGroup(
+              '自动激活',
+              groupedFiles.auto,
+              <div className="w-3 h-3 rounded-full bg-purple-500 shadow-lg shadow-purple-500/50" />,
+              'from-purple-500 to-pink-600'
             )}
             {renderFileGroup(
               '文件匹配',
