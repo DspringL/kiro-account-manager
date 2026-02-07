@@ -1,36 +1,24 @@
 import { useState, useEffect } from 'react'
-import { AlertTriangle, ExternalLink, MessageCircle, Download, Loader2 } from 'lucide-react'
+import { AlertTriangle, ExternalLink, MessageCircle } from 'lucide-react'
 import { Checkbox } from '@mantine/core'
-import { check } from '@tauri-apps/plugin-updater'
-import { relaunch } from '@tauri-apps/plugin-process'
 import { useApp } from '../../hooks/useApp'
 
-// 公告 API 地址
+// 公告 API
 const ANNOUNCEMENT_API = 'https://kiro-website-six.vercel.app/api/announcement'
-const CURRENT_VERSION = __APP_VERSION__ || '0.0.0'
 
-// 版本比较
-const compareVersions = (v1, v2) => {
-  const parts1 = v1.replace(/^v/, '').split('.').map(Number)
-  const parts2 = v2.replace(/^v/, '').split('.').map(Number)
-  for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
-    const p1 = parts1[i] || 0
-    const p2 = parts2[i] || 0
-    if (p1 < p2) return -1
-    if (p1 > p2) return 1
-  }
-  return 0
-}
+// 固定链接
+const WEBSITE_URL = 'https://kiro-website-six.vercel.app'
+const GITHUB_URL = 'https://github.com/hj01857655/kiro-account-manager'
+const TUTORIAL_URL = 'https://xcn46cm1l4ir.feishu.cn/wiki/YfaAw3qnoixFJgkzTSmcgtPfntc'
+const QQ_GROUP = '1020204332'
+const QQ_GROUP_URL = 'https://qm.qq.com/q/Vh7mUrNpa8'
 
 export default function AnnouncementModal() {
   const { t, theme, colors } = useApp()
   const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
   const [show, setShow] = useState(false)
   const [announcement, setAnnouncement] = useState(null)
-  const [forceUpdate, setForceUpdate] = useState(null)
   const [agreed, setAgreed] = useState(false)
-  const [updating, setUpdating] = useState(false)
-  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
     fetchAnnouncement()
@@ -41,9 +29,9 @@ export default function AnnouncementModal() {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000) // 5秒超时
       
+      // 从公告 API 获取公告列表
       const res = await fetch(ANNOUNCEMENT_API, {
         signal: controller.signal,
-        mode: 'cors',
         cache: 'no-cache'
       })
       
@@ -55,121 +43,48 @@ export default function AnnouncementModal() {
       
       const data = await res.json()
       
-      // 检查强制更新
-      if (data.forceUpdate?.enabled) {
-        const needUpdate = compareVersions(CURRENT_VERSION, data.forceUpdate.minVersion) < 0
-        if (needUpdate) {
-          setForceUpdate(data.forceUpdate)
-          setShow(true)
-          return
-        }
+      // 获取第一个启用的公告
+      const announcement = data.announcements?.find(a => a.enabled)
+      
+      if (!announcement) {
+        return
       }
       
-      // 处理公告（兼容新旧格式）
-      const list = data.announcements || (Array.isArray(data) ? data : [data])
-      const readIds = JSON.parse(localStorage.getItem('announcement_read_ids') || '[]')
+      // 检查是否已读过此公告
+      const readAnnouncements = JSON.parse(localStorage.getItem('readAnnouncements') || '[]')
+      if (readAnnouncements.includes(announcement.id)) {
+        return
+      }
       
-      // 找到第一个未读的启用公告
-      const unread = list.find(a => a.enabled && !readIds.includes(a.id))
-      if (!unread) return
-      
-      setAnnouncement(unread)
+      // 补充固定链接（如果公告中没有）
+      setAnnouncement({
+        ...announcement,
+        websiteUrl: announcement.websiteUrl || WEBSITE_URL,
+        officialUrl: announcement.officialUrl || GITHUB_URL,
+        tutorialUrl: announcement.tutorialUrl || TUTORIAL_URL,
+        qqGroup: announcement.qqGroup || QQ_GROUP,
+        qqGroupUrl: announcement.qqGroupUrl || QQ_GROUP_URL
+      })
       setShow(true)
     } catch (e) {
       // 静默失败，不影响应用使用
+      console.error('[Announcement] 获取失败:', e)
     }
   }
 
-  const handleClose = () => {
-    // 强制更新不允许关闭
-    if (forceUpdate) return
-    
-    if (announcement?.id) {
-      const readIds = JSON.parse(localStorage.getItem('announcement_read_ids') || '[]')
-      if (!readIds.includes(announcement.id)) {
-        readIds.push(announcement.id)
-        localStorage.setItem('announcement_read_ids', JSON.stringify(readIds))
+  const handleClose = (dontRemind = false) => {
+    if (dontRemind && announcement) {
+      // 保存已读状态
+      const readAnnouncements = JSON.parse(localStorage.getItem('readAnnouncements') || '[]')
+      if (!readAnnouncements.includes(announcement.id)) {
+        readAnnouncements.push(announcement.id)
+        localStorage.setItem('readAnnouncements', JSON.stringify(readAnnouncements))
       }
     }
     setShow(false)
   }
 
-  const handleUpdate = async () => {
-    setUpdating(true)
-    try {
-      const update = await check()
-      if (update) {
-        let downloaded = 0
-        await update.downloadAndInstall((event) => {
-          if (event.event === 'Started' && event.data.contentLength) {
-            setProgress(0)
-          } else if (event.event === 'Progress') {
-            downloaded += event.data.chunkLength
-            // 简单进度显示
-            setProgress(prev => Math.min(prev + 1, 99))
-          } else if (event.event === 'Finished') {
-            setProgress(100)
-          }
-        })
-        await relaunch()
-      }
-    } catch (e) {
-      console.error('[Update] 更新失败:', e)
-      // 失败时跳转到下载页面
-      window.open('https://github.com/hj01857655/kiro-account-manager/releases/latest', '_blank')
-    }
-    setUpdating(false)
-  }
-
-  const handleDownload = () => {
-    window.open('https://github.com/hj01857655/kiro-account-manager/releases/latest', '_blank')
-  }
-
   if (!show) return null
-
-  // 强制更新弹窗
-  if (forceUpdate) {
-    return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-        <div className={`relative w-[420px] max-w-[90vw] rounded-lg shadow-2xl border ${colors.card} ${colors.cardBorder} overflow-hidden`}>
-          <div className="bg-gradient-to-r from-red-500 to-orange-500 px-6 py-4 flex items-center gap-3">
-            <AlertTriangle size={24} className="text-white" />
-            <span className="text-white font-bold text-lg">需要更新</span>
-          </div>
-          <div className="p-6">
-            <p className={`text-base mb-4 ${colors.text}`}>{forceUpdate.message}</p>
-            <p className={`text-sm ${colors.textMuted}`}>
-              当前版本: v{CURRENT_VERSION} → 最低要求: v{forceUpdate.minVersion}
-            </p>
-            {updating && progress > 0 && (
-              <div className="mt-4">
-                <div className={`h-2 rounded-full ${colors.cardSecondary}`}>
-                  <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
-                </div>
-                <p className={`text-xs mt-1 ${colors.textMuted}`}>下载中... {progress}%</p>
-              </div>
-            )}
-          </div>
-          <div className="px-6 pb-6 space-y-2">
-            <button
-              onClick={handleUpdate}
-              disabled={updating}
-              className="w-full py-3 rounded-xl font-medium bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
-            >
-              {updating ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-              {updating ? '更新中...' : '立即更新'}
-            </button>
-            <button
-              onClick={handleDownload}
-              className={`w-full py-2 rounded-xl text-sm ${colors.textMuted} hover:underline transition-all`}
-            >
-              手动下载
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // 普通公告需要有内容才显示
   if (!announcement) return null
@@ -301,7 +216,7 @@ export default function AnnouncementModal() {
           </label>
           <div className="flex gap-3">
             <button
-              onClick={handleClose}
+              onClick={() => handleClose(true)}
               disabled={!agreed}
               className={`flex-1 py-3 rounded-xl border font-medium transition-all ${
                 agreed 
@@ -312,7 +227,7 @@ export default function AnnouncementModal() {
               {t('announcement.dontRemind')}
             </button>
             <button
-              onClick={handleClose}
+              onClick={() => handleClose(false)}
               disabled={!agreed}
               className={`flex-1 py-3 rounded-xl font-medium transition-all ${
                 agreed 
