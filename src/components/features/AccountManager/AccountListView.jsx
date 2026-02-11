@@ -253,14 +253,22 @@ function AccountListView({
         <div className="w-48">邮箱</div>
         <div className="w-20 text-center">账号类型</div>
         <div className="w-20 text-center">订阅类型</div>
-        <div className={`w-24 cursor-pointer ${accent.text} select-none`} onClick={() => handleSort('usage')}>
+        <button
+          type="button"
+          onClick={() => handleSort('usage')}
+          className={`w-24 text-left ${accent.text} select-none cursor-pointer transition-colors duration-200 focus:ring-2 ${accent.ring} rounded`}
+        >
           配额<SortIcon field="usage" />
-        </div>
+        </button>
         <div className="w-12 text-center">状态</div>
         <div className="w-14 text-center text-red-500">机器码</div>
-        <div className={`w-28 cursor-pointer ${accent.text} select-none`} onClick={() => handleSort('trial')}>
+        <button
+          type="button"
+          onClick={() => handleSort('trial')}
+          className={`w-28 text-left ${accent.text} select-none cursor-pointer transition-colors duration-200 focus:ring-2 ${accent.ring} rounded`}
+        >
           token|试用过期<SortIcon field="trial" />
-        </div>
+        </button>
         <div className="w-16">分组</div>
         <div className="flex-1">标签</div>
       </div>

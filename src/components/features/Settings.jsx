@@ -630,7 +630,7 @@ function Settings() {
                                     <button
                                         key={opt.key}
                                         onClick={() => setTheme(opt.key)}
-                                        className={`relative flex items-center gap-2 px-3 py-2 rounded-xl border-2 hover:scale-105 transition-all ${isActive
+                                        className={`relative flex items-center gap-2 px-3 py-2 rounded-xl border-2 transition-colors duration-200 cursor-pointer focus:ring-2 ${accent.ring} ${isActive
                                             ? themeAccentBorderClass
                                             : `${colors.cardBorder} ${colors.cardHover} ${colors.card}`
                                             }`}

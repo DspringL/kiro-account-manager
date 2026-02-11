@@ -8,7 +8,7 @@ function StatCard({ icon: Icon, iconBg, iconColor, value, label, delay, onClick,
   return (
     <Card
       onClick={onClick}
-      className={`card-glow animate-scale-in ${delay} ${onClick ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
+      className={`card-glow animate-scale-in ${delay} ${onClick ? `cursor-pointer ${colors.cardHover} transition-colors duration-200` : ''}`}
       shadow="sm"
       padding="md"
       radius="xl"

@@ -38,7 +38,7 @@ function WelcomeModal() {
         {/* 关闭按钮 */}
         <button
           onClick={handleClose}
-          className={`absolute right-4 top-4 w-8 h-8 rounded-full flex items-center justify-center hover:scale-110 transition-transform z-10 ${colors.cardHover}`}
+          className={`absolute right-4 top-4 w-8 h-8 rounded-full flex items-center justify-center transition-colors duration-200 z-10 cursor-pointer focus:ring-2 focus:ring-blue-500/30 ${colors.cardHover}`}
         >
           <X size={18} className={colors.text} />
         </button>
@@ -179,7 +179,7 @@ function WelcomeModal() {
               className="max-w-[360px] max-h-[360px] rounded-2xl shadow-2xl"
             />
             <button 
-              className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform ${colors.card} border ${colors.cardBorder}`}
+              className={`absolute -top-3 -right-3 w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 cursor-pointer focus:ring-2 focus:ring-blue-500/30 ${colors.card} border ${colors.cardBorder}`}
               onClick={() => setPreviewImg(null)}
             >
               <X size={18} className={colors.text} />

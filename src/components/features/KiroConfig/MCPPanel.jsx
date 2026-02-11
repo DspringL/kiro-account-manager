@@ -123,6 +123,8 @@ function MCPPanel({ onCountChange }) {
           onChange={setSearchQuery}
           placeholder={t('common.search')}
           colors={colors}
+          t={t}
+          accent={accent}
         />
         <div className="flex items-center gap-3">
           <span className={`text-sm ${colors.textMuted}`}>{filteredServers.length}/{serverList.length}</span>
