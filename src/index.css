@@ -93,7 +93,7 @@ body.dark ::-webkit-scrollbar-track {
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
@@ -112,6 +112,17 @@ body.dark ::-webkit-scrollbar-track {
   }
 }
 
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease-out forwards;
 }
@@ -121,7 +132,12 @@ body.dark ::-webkit-scrollbar-track {
 }
 
 .animate-scale-in {
-  animation: scaleIn 0.4s ease-out forwards;
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-stagger {
+  animation: staggerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
 }
 
 .animate-slide-in-left {
@@ -438,4 +454,335 @@ body:not(.dark) .bg-glow {
 
 .hover-scale:active {
   transform: scale(0.95);
+}
+
+/* ===== Mantine MultiSelect 文字颜色修复 ===== */
+/* MultiSelect 输入字段文字颜色（最高优先级）*/
+body .mantine-MultiSelect-inputField,
+body .mantine-PillsInputField-field,
+body input.mantine-MultiSelect-inputField,
+body input.mantine-PillsInputField-field {
+  color: #1f2937 !important;
+}
+
+body.dark .mantine-MultiSelect-inputField,
+body.dark .mantine-PillsInputField-field,
+body.dark input.mantine-MultiSelect-inputField,
+body.dark input.mantine-PillsInputField-field {
+  color: #f8fafc !important;
+}
+
+/* 全局输入 placeholder 统一 */
+body input::placeholder,
+body textarea::placeholder,
+body .mantine-Input-input::placeholder,
+body .mantine-Textarea-input::placeholder,
+body .mantine-Select-input::placeholder,
+body .mantine-MultiSelect-inputField::placeholder,
+body .mantine-PillsInputField-field::placeholder,
+body .mantine-NumberInput-input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder,
+body.dark .mantine-Input-input::placeholder,
+body.dark .mantine-Textarea-input::placeholder,
+body.dark .mantine-Select-input::placeholder,
+body.dark .mantine-MultiSelect-inputField::placeholder,
+body.dark .mantine-PillsInputField-field::placeholder,
+body.dark .mantine-NumberInput-input::placeholder {
+  color: #c8d4ea !important;
+  opacity: 1 !important;
+}
+
+/* MultiSelect 下拉选项文字颜色（使用 data 属性选择器）*/
+[data-combobox-option] {
+  color: #1f2937 !important;
+  transition: background-color 0.12s ease;
+}
+
+[data-combobox-option]:hover {
+  background-color: rgba(59, 130, 246, 0.10) !important;
+}
+
+[data-combobox-option][data-combobox-selected],
+[data-combobox-option][data-selected="true"] {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+}
+
+body.dark [data-combobox-option] {
+  color: #f8fafc !important;
+}
+
+body.dark [data-combobox-option]:hover {
+  background-color: rgba(99, 102, 241, 0.26) !important;
+}
+
+body.dark [data-combobox-option][data-combobox-selected],
+body.dark [data-combobox-option][data-selected="true"] {
+  background-color: rgba(99, 102, 241, 0.38) !important;
+}
+
+/* ===== Mantine Switch 状态统一（避免内联样式 data-* 选择器 warning）===== */
+.mantine-Switch-track {
+  transition: background-color 150ms ease, border-color 150ms ease !important;
+}
+
+/* 关闭态 */
+body:not(.dark) .mantine-Switch-track {
+  background-color: var(--mantine-color-gray-2) !important;
+  border-color: var(--mantine-color-gray-3) !important;
+}
+
+body.dark .mantine-Switch-track {
+  background-color: var(--mantine-color-dark-6) !important;
+  border-color: var(--mantine-color-dark-4) !important;
+}
+
+/* 关闭态 hover */
+body:not(.dark) .mantine-Switch-track:hover {
+  background-color: var(--mantine-color-gray-3) !important;
+  border-color: var(--mantine-color-gray-4) !important;
+}
+
+body.dark .mantine-Switch-track:hover {
+  background-color: var(--mantine-color-dark-5) !important;
+  border-color: var(--mantine-color-dark-3) !important;
+}
+
+/* 开启态 */
+body:not(.dark) .mantine-Switch-track[data-checked],
+body:not(.dark) .mantine-Switch-track[data-indeterminate],
+.mantine-Switch-input:checked + .mantine-Switch-track,
+.mantine-Switch-input[data-checked] + .mantine-Switch-track {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+}
+
+/* 开启态 hover */
+body:not(.dark) .mantine-Switch-track[data-checked]:hover,
+body:not(.dark) .mantine-Switch-track[data-indeterminate]:hover,
+.mantine-Switch-input:checked + .mantine-Switch-track:hover,
+.mantine-Switch-input[data-checked] + .mantine-Switch-track:hover {
+  background-color: var(--mantine-primary-color-filled-hover) !important;
+  border-color: var(--mantine-primary-color-filled-hover) !important;
+}
+
+/* 深色主题开启态（与浅色区分，提升可辨识度） */
+body.dark .mantine-Switch-track[data-checked],
+body.dark .mantine-Switch-track[data-indeterminate] {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+}
+
+body.dark .mantine-Switch-track[data-checked]:hover,
+body.dark .mantine-Switch-track[data-indeterminate]:hover {
+  background-color: var(--mantine-primary-color-filled-hover) !important;
+  border-color: var(--mantine-primary-color-filled-hover) !important;
+}
+
+/* ===== Theme adaptation hardening (4 themes) ===== */
+body[data-theme='light'] {
+  --app-placeholder-color: #94a3b8;
+  --app-combobox-hover-bg: rgba(59, 130, 246, 0.12);
+  --app-combobox-selected-bg: rgba(59, 130, 246, 0.20);
+  --app-switch-off-bg: var(--mantine-color-gray-2);
+  --app-switch-off-border: var(--mantine-color-gray-3);
+  --app-switch-off-hover-bg: var(--mantine-color-gray-3);
+  --app-switch-off-hover-border: var(--mantine-color-gray-4);
+}
+
+body[data-theme='dark'] {
+  --app-placeholder-color: #d8e3ff;
+  --app-combobox-hover-bg: rgba(99, 102, 241, 0.30);
+  --app-combobox-selected-bg: rgba(99, 102, 241, 0.42);
+  --app-switch-off-bg: var(--mantine-color-dark-6);
+  --app-switch-off-border: var(--mantine-color-dark-4);
+  --app-switch-off-hover-bg: var(--mantine-color-dark-5);
+  --app-switch-off-hover-border: var(--mantine-color-dark-3);
+}
+
+body[data-theme='purple'] {
+  --app-placeholder-color: #b9a6ff;
+  --app-combobox-hover-bg: rgba(147, 51, 234, 0.14);
+  --app-combobox-selected-bg: rgba(147, 51, 234, 0.24);
+  --app-switch-off-bg: #ede9fe;
+  --app-switch-off-border: #ddd6fe;
+  --app-switch-off-hover-bg: #ddd6fe;
+  --app-switch-off-hover-border: #c4b5fd;
+}
+
+body[data-theme='green'] {
+  --app-placeholder-color: #49d6a1;
+  --app-combobox-hover-bg: rgba(16, 185, 129, 0.14);
+  --app-combobox-selected-bg: rgba(16, 185, 129, 0.24);
+  --app-switch-off-bg: #dcfce7;
+  --app-switch-off-border: #bbf7d0;
+  --app-switch-off-hover-bg: #bbf7d0;
+  --app-switch-off-hover-border: #86efac;
+}
+
+body {
+  --app-placeholder-color: #94a3b8;
+  --app-combobox-hover-bg: rgba(59, 130, 246, 0.12);
+  --app-combobox-selected-bg: rgba(59, 130, 246, 0.20);
+  --app-switch-off-bg: var(--mantine-color-gray-2);
+  --app-switch-off-border: var(--mantine-color-gray-3);
+  --app-switch-off-hover-bg: var(--mantine-color-gray-3);
+  --app-switch-off-hover-border: var(--mantine-color-gray-4);
+}
+
+body input::placeholder,
+body textarea::placeholder,
+body .mantine-Input-input::placeholder,
+body .mantine-Textarea-input::placeholder,
+body .mantine-Select-input::placeholder,
+body .mantine-MultiSelect-inputField::placeholder,
+body .mantine-PillsInputField-field::placeholder,
+body .mantine-NumberInput-input::placeholder {
+  color: var(--app-placeholder-color) !important;
+  opacity: 1 !important;
+}
+
+[data-combobox-option],
+.mantine-Combobox-option,
+.mantine-Select-option,
+.mantine-MultiSelect-option {
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+[data-combobox-option]:hover,
+.mantine-Combobox-option:hover,
+.mantine-Select-option:hover,
+.mantine-MultiSelect-option:hover,
+[data-combobox-option][data-combobox-hovered] {
+  background-color: var(--app-combobox-hover-bg) !important;
+}
+
+[data-combobox-option][data-combobox-selected],
+[data-combobox-option][data-selected='true'],
+[data-combobox-option][aria-selected='true'],
+.mantine-Combobox-option[data-combobox-selected],
+.mantine-Combobox-option[data-selected='true'],
+.mantine-Combobox-option[aria-selected='true'] {
+  background-color: var(--app-combobox-selected-bg) !important;
+}
+
+body .mantine-Switch-input:not(:checked) + .mantine-Switch-track {
+  background-color: var(--app-switch-off-bg) !important;
+  border-color: var(--app-switch-off-border) !important;
+}
+
+body .mantine-Switch-input:not(:checked) + .mantine-Switch-track:hover {
+  background-color: var(--app-switch-off-hover-bg) !important;
+  border-color: var(--app-switch-off-hover-border) !important;
+}
+
+body .mantine-Switch-track[data-checked],
+body .mantine-Switch-track[data-indeterminate],
+body .mantine-Switch-input:checked + .mantine-Switch-track {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+}
+
+body .mantine-Switch-track[data-checked]:hover,
+body .mantine-Switch-track[data-indeterminate]:hover,
+body .mantine-Switch-input:checked + .mantine-Switch-track:hover {
+  background-color: var(--mantine-primary-color-filled-hover) !important;
+  border-color: var(--mantine-primary-color-filled-hover) !important;
+}
+
+/* 显式主题覆盖，确保压过旧规则 */
+body[data-theme='light'] input::placeholder,
+body[data-theme='light'] textarea::placeholder,
+body[data-theme='light'] .mantine-Input-input::placeholder,
+body[data-theme='light'] .mantine-Textarea-input::placeholder,
+body[data-theme='light'] .mantine-Select-input::placeholder,
+body[data-theme='light'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='light'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='light'] .mantine-NumberInput-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body[data-theme='dark'] input::placeholder,
+body[data-theme='dark'] textarea::placeholder,
+body[data-theme='dark'] .mantine-Input-input::placeholder,
+body[data-theme='dark'] .mantine-Textarea-input::placeholder,
+body[data-theme='dark'] .mantine-Select-input::placeholder,
+body[data-theme='dark'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='dark'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='dark'] .mantine-NumberInput-input::placeholder {
+  color: #d8e3ff !important;
+}
+
+body[data-theme='purple'] input::placeholder,
+body[data-theme='purple'] textarea::placeholder,
+body[data-theme='purple'] .mantine-Input-input::placeholder,
+body[data-theme='purple'] .mantine-Textarea-input::placeholder,
+body[data-theme='purple'] .mantine-Select-input::placeholder,
+body[data-theme='purple'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='purple'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='purple'] .mantine-NumberInput-input::placeholder {
+  color: #b9a6ff !important;
+}
+
+body[data-theme='green'] input::placeholder,
+body[data-theme='green'] textarea::placeholder,
+body[data-theme='green'] .mantine-Input-input::placeholder,
+body[data-theme='green'] .mantine-Textarea-input::placeholder,
+body[data-theme='green'] .mantine-Select-input::placeholder,
+body[data-theme='green'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='green'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='green'] .mantine-NumberInput-input::placeholder {
+  color: #49d6a1 !important;
+}
+
+body[data-theme='light'] [data-combobox-option]:hover,
+body[data-theme='light'] .mantine-Combobox-option:hover,
+body[data-theme='light'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+body[data-theme='light'] [data-combobox-option][data-combobox-selected],
+body[data-theme='light'] [data-combobox-option][data-selected='true'],
+body[data-theme='light'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(59, 130, 246, 0.20) !important;
+}
+
+body[data-theme='dark'] [data-combobox-option]:hover,
+body[data-theme='dark'] .mantine-Combobox-option:hover,
+body[data-theme='dark'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(99, 102, 241, 0.30) !important;
+}
+
+body[data-theme='dark'] [data-combobox-option][data-combobox-selected],
+body[data-theme='dark'] [data-combobox-option][data-selected='true'],
+body[data-theme='dark'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(99, 102, 241, 0.42) !important;
+}
+
+body[data-theme='purple'] [data-combobox-option]:hover,
+body[data-theme='purple'] .mantine-Combobox-option:hover,
+body[data-theme='purple'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(147, 51, 234, 0.14) !important;
+}
+
+body[data-theme='purple'] [data-combobox-option][data-combobox-selected],
+body[data-theme='purple'] [data-combobox-option][data-selected='true'],
+body[data-theme='purple'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(147, 51, 234, 0.24) !important;
+}
+
+body[data-theme='green'] [data-combobox-option]:hover,
+body[data-theme='green'] .mantine-Combobox-option:hover,
+body[data-theme='green'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+
+body[data-theme='green'] [data-combobox-option][data-combobox-selected],
+body[data-theme='green'] [data-combobox-option][data-selected='true'],
+body[data-theme='green'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(16, 185, 129, 0.24) !important;
 }

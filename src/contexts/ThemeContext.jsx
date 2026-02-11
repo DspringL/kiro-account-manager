@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { MantineProvider } from '@mantine/core'
+import { isLightTheme as checkIsLightTheme, getMantinePrimaryColor } from '../utils/themeMode'
 
 const ThemeContext = createContext()
 
@@ -427,10 +428,11 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     document.body.className = theme === 'dark' ? 'dark' : ''
+    document.body.setAttribute('data-theme', theme)
     
     // 设置 CSS 变量供 toast 使用
     const root = document.documentElement
-    const isLight = theme === 'light' || theme === 'purple' || theme === 'green'
+    const isLight = checkIsLightTheme(theme)
     root.style.setProperty('--toast-bg', isLight ? '#ffffff' : '#1a1a2e')
     root.style.setProperty('--toast-text', isLight ? '#000000' : '#ffffff')
   }, [theme])
@@ -443,7 +445,9 @@ export function ThemeProvider({ children }) {
   }
 
   // 根据主题动态生成 Mantine 配置
-  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
+  const isLightTheme = checkIsLightTheme(theme)
+  const mantinePrimaryColor = getMantinePrimaryColor(theme)
+  const unifiedPlaceholderColor = isLightTheme ? '#9ca3af' : '#c8d4ea'
   const mantineTheme = {
     colorScheme: isLightTheme ? 'light' : 'dark',
     colors: {
@@ -460,7 +464,7 @@ export function ThemeProvider({ children }) {
         '#101113',
       ],
     },
-    primaryColor: 'blue',
+    primaryColor: mantinePrimaryColor,
     defaultRadius: 'md',
     components: {
       Select: {
@@ -481,9 +485,6 @@ export function ThemeProvider({ children }) {
           option: {
             color: isLightTheme ? '#1f2937' : '#e5e7eb',
             backgroundColor: 'transparent',
-            '&:hover': {
-              backgroundColor: isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.1)',
-            },
           },
         },
       },
@@ -493,13 +494,6 @@ export function ThemeProvider({ children }) {
           option: {
             color: isLightTheme ? '#1f2937' : '#e5e7eb',
             backgroundColor: 'transparent',
-            '&:hover': {
-              backgroundColor: isLightTheme ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.1)',
-            },
-            // 使用 [data-selected] 替代 [data-combobox-selected]
-            '&[data-selected="true"]': {
-              backgroundColor: isLightTheme ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.2)',
-            },
           },
         },
       },
@@ -511,6 +505,10 @@ export function ThemeProvider({ children }) {
             borderColor: isLightTheme ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)',
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
+            },
+            '&::placeholder': {
+              color: unifiedPlaceholderColor,
+              opacity: 1,
             },
           },
         },
@@ -525,7 +523,8 @@ export function ThemeProvider({ children }) {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
             },
             '&::placeholder': {
-              color: isLightTheme ? '#9ca3af' : '#6b7280', // placeholder 颜色
+              color: unifiedPlaceholderColor,
+              opacity: 1,
             },
           },
         },
@@ -539,13 +538,24 @@ export function ThemeProvider({ children }) {
             '&:focus': {
               borderColor: isLightTheme ? '#3b82f6' : '#60a5fa',
             },
+            '&::placeholder': {
+              color: unifiedPlaceholderColor,
+              opacity: 1,
+            },
           },
         },
       },
       Switch: {
+        defaultProps: {
+          color: mantinePrimaryColor,
+        },
         styles: {
           track: {
             cursor: 'pointer',
+            transition: 'background-color 150ms ease, border-color 150ms ease',
+          },
+          thumb: {
+            borderColor: isLightTheme ? '#ffffff' : '#f8fafc',
           },
         },
       },
@@ -577,6 +587,31 @@ export function ThemeProvider({ children }) {
         styles: {
           root: {
             color: 'inherit', // 关键：继承父元素颜色
+          },
+        },
+      },
+      MultiSelect: {
+        styles: {
+          input: {
+            color: `${isLightTheme ? '#1f2937' : '#e5e7eb'} !important`, // 输入框文字颜色（强制）
+          },
+          inputField: {
+            color: `${isLightTheme ? '#1f2937' : '#e5e7eb'} !important`, // 输入字段文字颜色（强制）
+            '&::placeholder': {
+              color: `${unifiedPlaceholderColor} !important`,
+              opacity: 1,
+            },
+          },
+          searchInput: {
+            color: `${isLightTheme ? '#1f2937' : '#e5e7eb'} !important`, // 搜索输入框文字颜色（强制）
+            '&::placeholder': {
+              color: `${unifiedPlaceholderColor} !important`,
+              opacity: 1,
+            },
+          },
+          pill: {
+            backgroundColor: isLightTheme ? '#dbeafe' : 'rgba(59, 130, 246, 0.2)', // 标签背景
+            color: isLightTheme ? '#1e40af' : '#60a5fa', // 标签文字
           },
         },
       },

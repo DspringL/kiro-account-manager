@@ -164,8 +164,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="h-screen bg-[#0d0d0d] flex items-center justify-center">
-        <div className="text-white">加载中...</div>
+      <div className={`h-screen flex items-center justify-center ${colors.main}`}>
+        <div className={colors.text}>加载中...</div>
       </div>
     )
   }
