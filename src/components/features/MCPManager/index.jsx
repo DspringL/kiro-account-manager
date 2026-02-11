@@ -6,9 +6,12 @@ import { Server, Plus, Sparkles } from 'lucide-react'
 import MCPServerCard from './MCPServerCard'
 import AddMCPModal from './AddMCPModal'
 import EditMCPModal from './EditMCPModal'
+import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
 
 function MCPManager() {
-  const { t, colors } = useApp()
+  const { t, colors, theme } = useApp()
+  const accent = getThemeAccent(theme)
+  const accentGradientButtonClass = getGradientAccentButton(accent)
   const { showConfirm } = useDialog()
   const [servers, setServers] = useState({})
   const [loading, setLoading] = useState(true)
@@ -69,7 +72,7 @@ function MCPManager() {
       <div className={`${colors.card} border-b ${colors.cardBorder} px-6 py-4`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <div className={`w-10 h-10 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-xl flex items-center justify-center shadow-lg ${accent.shadow}`}>
               <Sparkles size={20} className="text-white" />
             </div>
             <div>
@@ -79,7 +82,7 @@ function MCPManager() {
           </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl text-sm font-medium hover:from-purple-600 hover:to-pink-700 flex items-center gap-1.5 shadow-lg shadow-purple-500/25"
+            className={`px-4 py-2 ${accentGradientButtonClass} rounded-xl text-sm font-medium flex items-center gap-1.5`}
           >
             <Plus size={16} />{t('mcpManager.addServer')}
           </button>

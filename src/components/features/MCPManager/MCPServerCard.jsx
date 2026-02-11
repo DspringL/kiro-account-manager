@@ -2,8 +2,7 @@ import { Server, Edit2, Trash2, Terminal } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 
 function MCPServerCard({ name, config, onToggle, onEdit, onDelete }) {
-  const { t, theme, colors } = useApp()
-  const isLightTheme = theme === 'light' || theme === 'purple' || theme === 'green'
+  const { t, colors } = useApp()
   const isDisabled = config.disabled
 
   const commandStr = [config.command, ...(config.args || [])].join(' ')

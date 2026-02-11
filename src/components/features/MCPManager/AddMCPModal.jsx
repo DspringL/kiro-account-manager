@@ -4,9 +4,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { Textarea } from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import { MCP_TEMPLATES } from './MCPTemplates'
+import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
 
 function AddMCPModal({ onClose, onSuccess }) {
-  const { t, colors } = useApp()
+  const { t, colors, theme } = useApp()
+  const accent = getThemeAccent(theme)
+  const accentGradientButtonClass = getGradientAccentButton(accent)
 
   const [jsonConfig, setJsonConfig] = useState('')
   const [saving, setSaving] = useState(false)
@@ -159,13 +162,13 @@ function AddMCPModal({ onClose, onSuccess }) {
         
       >
         {/* 顶部渐变装饰 */}
-        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-purple-500/10 via-transparent to-transparent pointer-events-none" />
+        <div className={`absolute top-0 left-0 right-0 h-24 ${accent.bgSoft} pointer-events-none`} />
         
         {/* 标题 */}
         <div className={`relative flex items-center justify-between px-6 py-4 border-b ${colors.cardBorder}`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/10 flex items-center justify-center shadow-lg">
-              <Terminal size={20} className="text-purple-400" />
+            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} flex items-center justify-center shadow-lg ${accent.shadow}`}>
+              <Terminal size={20} className="text-white" />
             </div>
             <h2 className={`text-base font-semibold ${colors.text}`}>{t('mcpManager.addMCPServer')}</h2>
           </div>
@@ -184,7 +187,7 @@ function AddMCPModal({ onClose, onSuccess }) {
                 <button
                   key={key}
                   onClick={() => applyTemplate(key)}
-                  className={`px-2.5 py-1 text-xs rounded-lg border ${colors.cardBorder} ${colors.input} hover:border-purple-500/50 ${colors.text}`}
+                  className={`px-2.5 py-1 text-xs rounded-lg border ${colors.cardBorder} ${colors.input} ${accent.hoverBorder} ${colors.text}`}
                 >
                   {key}
                 </button>
@@ -213,14 +216,14 @@ function AddMCPModal({ onClose, onSuccess }) {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={pasteFromClipboard}
-                  className={`text-xs ${colors.textMuted} hover:text-purple-500 flex items-center gap-1 transition-colors`}
+                  className={`text-xs ${colors.textMuted} ${accent.textHover} flex items-center gap-1 transition-colors`}
                 >
                   <ClipboardPaste size={12} />
                   粘贴
                 </button>
                 <button
                   onClick={formatJson}
-                  className={`text-xs ${colors.textMuted} hover:text-purple-500 flex items-center gap-1 transition-colors`}
+                  className={`text-xs ${colors.textMuted} ${accent.textHover} flex items-center gap-1 transition-colors`}
                 >
                   <Wand2 size={12} />
                   格式化
@@ -271,7 +274,7 @@ function AddMCPModal({ onClose, onSuccess }) {
           <button
             onClick={handleSave}
             disabled={saving || serverCount === 0}
-            className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 shadow-lg shadow-purple-500/30"
+            className={`px-6 py-2.5 ${accentGradientButtonClass} rounded-lg text-sm font-medium disabled:opacity-50`}
           >
             {saving ? t('common.saving') : serverCount > 1 ? `添加 ${serverCount} 个` : t('common.add')}
           </button>
