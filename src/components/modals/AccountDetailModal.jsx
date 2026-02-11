@@ -20,7 +20,7 @@ const QuotaCard = memo(({ title, used, quota, icon, status, expiry, colors, t })
   const hasQuota = quota > 0
   
   return (
-    <div className={`rounded-lg p-3 border transition-all hover:shadow-md ${
+    <div className={`rounded-lg p-3 border transition-colors duration-200 hover:shadow-md ${
       hasQuota && isActive
         ? 'border-blue-500/30 bg-blue-500/5 shadow-blue-500/10'
         : `${colors.cardBorder} ${colors.cardSecondary}`
@@ -230,7 +230,7 @@ function AccountDetailModal({ account, onClose }) {
                   <button 
                     type="button" 
                     onClick={() => handleCopy(account.machineId, 'machineId')} 
-                    className={`p-0.5 rounded ${colors.cardHover}`}
+                    className={`p-0.5 rounded ${colors.cardHover} cursor-pointer transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30`}
                   >
                     {copied === 'machineId' ? <Check size={10} className="text-green-500" /> : <Copy size={10} className={colors.textMuted} />}
                   </button>
@@ -256,8 +256,8 @@ function AccountDetailModal({ account, onClose }) {
                 onClick={handleRefresh} 
                 disabled={refreshing} 
                 className={`
-                  p-2 rounded-lg transition-all
-                  ${refreshing ? 'bg-blue-500/20' : 'bg-blue-500/20 hover:bg-blue-500/30 hover:scale-110'}
+                  p-2 rounded-lg transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30
+                  ${refreshing ? 'bg-blue-500/20' : 'bg-blue-500/20 hover:bg-blue-500/30'}
                   disabled:opacity-50 disabled:cursor-not-allowed
                 `} 
                 title={t('detail.syncQuota')}
@@ -338,7 +338,7 @@ function AccountDetailModal({ account, onClose }) {
                 </div>
                 <div className="space-y-3">
                   {bonuses.map((bonus, idx) => (
-                    <div key={idx} className={`flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md ${
+                    <div key={idx} className={`flex items-center justify-between p-4 rounded-xl border transition-colors duration-200 hover:shadow-md ${
                       bonus.status === 'ACTIVE' 
                         ? 'bg-purple-500/10 border-purple-500/30' 
                         : bonus.status === 'EXHAUSTED' 

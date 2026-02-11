@@ -33,8 +33,8 @@ const QQIcon = () => (
 // Logo 组件
 const AppLogo = ({ accent, iconColors }) => (
   <div className="relative group">
-    <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-3xl blur-xl opacity-40 group-hover:opacity-60 transition-all duration-500`} />
-    <div className={`relative w-20 h-20 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-3xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-all duration-300 animate-float`}>
+    <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-3xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity duration-300`} />
+    <div className={`relative w-20 h-20 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-3xl flex items-center justify-center shadow-lg transition-shadow duration-300 group-hover:shadow-xl animate-float`}>
       <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
         <path d="M20 4C12 4 6 10 6 18C6 22 8 25 8 25C8 25 7 28 7 30C7 32 8 34 10 34C11 34 12 33 13 32C14 33 16 34 20 34C24 34 26 33 27 32C28 33 29 34 30 34C32 34 33 32 33 30C33 28 32 25 32 25C32 25 34 22 34 18C34 10 28 4 20 4ZM14 20C12.5 20 11 18.5 11 17C11 15.5 12.5 14 14 14C15.5 14 17 15.5 17 17C17 18.5 15.5 20 14 20ZM26 20C24.5 20 23 18.5 23 17C23 15.5 24.5 14 26 14C27.5 14 29 15.5 29 17C29 18.5 27.5 20 26 20Z" fill="white"/>
       </svg>
@@ -53,7 +53,7 @@ const TechBadge = ({ icon: Icon, value, color }) => (
     variant="light"
     size="lg"
     radius="xl"
-    className="transition-all duration-300 hover:scale-105 hover:shadow-md cursor-default"
+  className="transition-colors duration-200 hover:shadow-md cursor-default"
   >
     {value}
   </Badge>
@@ -71,7 +71,7 @@ const LinkButton = ({ href, icon: Icon, children, color, variant = 'filled', ful
     color={color}
     radius="md"
     fullWidth={fullWidth}
-    className="transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+    className="transition-colors duration-200 hover:shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
   >
     {children}
   </Button>
@@ -88,17 +88,17 @@ const QRCodeImage = ({ src, alt, onClick, accent, colors, onKeyDown }) => (
     tabIndex={0}
     onKeyDown={onKeyDown}
     aria-label={alt}
-    className="transition-all duration-300 hover:-translate-y-1"
+    className="transition-colors duration-200 hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
   >
     <div className="relative group">
-      <div className={`absolute inset-0 ${accent.bg} rounded-lg blur-md opacity-0 group-hover:opacity-40 transition-all duration-300`} />
+      <div className={`absolute inset-0 ${accent.bg} rounded-lg blur-md opacity-0 group-hover:opacity-40 transition-opacity duration-200`} />
       <Image
         src={src}
         alt={alt}
         w={120}
         h={120}
         radius="md"
-        className="relative hover:scale-105 transition-transform duration-300 shadow-md"
+        className="relative transition-transform duration-200 shadow-md"
       />
     </div>
     <Text size="sm" fw={500} className={colors.text}>{alt}</Text>
@@ -107,7 +107,7 @@ const QRCodeImage = ({ src, alt, onClick, accent, colors, onKeyDown }) => (
 
 // 信息卡片组件
 const InfoCard = ({ title, items, colors }) => (
-  <div className={`${colors.cardSecondary} rounded-xl p-4 transition-all duration-300 hover:shadow-md`}>
+  <div className={`${colors.cardSecondary} rounded-xl p-4 transition-colors duration-200 hover:shadow-md`}>
     {title && (
       <Text size="sm" fw={500} className={colors.text} mb="xs">
         {title}
@@ -171,9 +171,9 @@ function About() {
 
   // 付费服务列表
   const paidServices = useMemo(() => [
-    `💬 ${t('about.service1')}`,
-    `🔧 ${t('about.service2')}`,
-    `🎓 ${t('about.service3')}`
+    t('about.service1'),
+    t('about.service2'),
+    t('about.service3')
   ], [t])
 
   useEffect(() => {
@@ -322,7 +322,7 @@ function About() {
                 </Text>
 
                 <InfoCard
-                  title={`💖 ${t('about.sponsorBenefits')}`}
+                  title={t('about.sponsorBenefits')}
                   items={sponsorBenefits}
                   colors={colors}
                 />
@@ -377,7 +377,7 @@ function About() {
                     variant="light"
                     color={mantineAccentColor}
                     radius="xl"
-                    className="transition-all duration-300 hover:shadow-lg hover:scale-105"
+                    className="transition-colors duration-200 hover:shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
                   >
                     {t('about.contactQQ')}
                   </Button>
@@ -418,7 +418,7 @@ function About() {
         <div className="relative">
           <Image src={previewImg} alt="预览" maw={320} mah={320} radius="xl" />
           <button
-            className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-all duration-200 ${colors.card}`}
+            className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.card}`}
             onClick={closePreview}
             aria-label="关闭预览"
           >
