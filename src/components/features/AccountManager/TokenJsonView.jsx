@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Copy, Check, ChevronDown, Key, Clock } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 // 构建凭证 JSON 对象（直接使用整个账号对象）
 function buildCredentialsJson(account) {
@@ -39,7 +40,7 @@ function CollapsibleValue({ value, colors, threshold = 50 }) {
 }
 
 // JSON 渲染（带折叠，支持嵌套对象和数组）
-function JsonRenderer({ json, colors, indent = 0 }) {
+function JsonRenderer({ json, colors, accent, indent = 0 }) {
   const entries = Object.entries(json).filter(([_, value]) => value !== undefined)
   const pad = '  '.repeat(indent)
   const padInner = '  '.repeat(indent + 1)
@@ -50,14 +51,14 @@ function JsonRenderer({ json, colors, indent = 0 }) {
       {entries.map(([key, value], i) => (
         <div key={key} className="py-0.5">
           <span className={colors.textMuted}>{padInner}</span>
-          <span className="text-blue-500 font-semibold">"{key}"</span>
+          <span className={`${accent.text} font-semibold`}>"{key}"</span>
           <span className={colors.textMuted}>: </span>
           {typeof value === 'string' ? (
             <CollapsibleValue value={value} colors={colors} />
           ) : value === null || value === undefined ? (
             <span className="text-orange-500 font-medium">null</span>
           ) : typeof value === 'boolean' ? (
-            <span className="text-purple-500 font-medium">{String(value)}</span>
+            <span className={`${accent.text} font-medium`}>{String(value)}</span>
           ) : typeof value === 'number' ? (
             <span className="text-amber-500 font-medium">{value}</span>
           ) : Array.isArray(value) ? (
@@ -77,7 +78,8 @@ function JsonRenderer({ json, colors, indent = 0 }) {
 
 // Token JSON 视图（只读）
 export function TokenJsonView({ account, defaultExpanded = false }) {
-  const { t, colors } = useApp()
+  const { t, colors, theme } = useApp()
+  const accent = getThemeAccent(theme)
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef(null)
@@ -129,11 +131,11 @@ export function TokenJsonView({ account, defaultExpanded = false }) {
             <span className={`text-xs font-medium ${colors.textMuted}`}>
               {Object.keys(credentialsJson).length} {t('detail.fields') || '个字段'}
             </span>
-            <button 
-              type="button" 
-              onClick={handleCopy}
-              className={`
-                text-xs ${colors.textMuted} hover:text-blue-500 
+              <button 
+                type="button" 
+                onClick={handleCopy}
+                className={`
+                text-xs ${colors.textMuted} ${accent.textHover} 
                 flex items-center gap-1.5 px-3 py-1.5 rounded-lg 
                 ${colors.cardSecondary} ${colors.cardHover}
                 transition-all duration-200 font-medium
@@ -157,7 +159,7 @@ export function TokenJsonView({ account, defaultExpanded = false }) {
             max-h-96 overflow-auto
             scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent
           `}>
-            <JsonRenderer json={credentialsJson} colors={colors} />
+            <JsonRenderer json={credentialsJson} colors={colors} accent={accent} />
           </div>
         </div>
       )}

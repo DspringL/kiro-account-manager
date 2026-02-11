@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { X, ChevronDown, Tag } from 'lucide-react'
 import { useTheme } from '../../../contexts/ThemeContext'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 /**
  * 可搜索的标签选择下拉框
@@ -17,7 +18,9 @@ function SearchableTagSelect({
   hasLabel = '有标签',
   className = '',
 }) {
-  const { colors } = useTheme()
+  const { colors, theme } = useTheme()
+  const accent = getThemeAccent(theme)
+  const activeOptionClass = `${accent.bgSoft} ${accent.text} font-medium`
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef(null)
@@ -63,7 +66,7 @@ function SearchableTagSelect({
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {/* 输入框（可搜索） */}
-      <div className={`w-full flex items-center border rounded-xl text-sm ${colors.input} ${colors.inputFocus} ${open ? 'ring-2 ring-blue-500/30 border-blue-500' : ''} transition-all cursor-pointer`}>
+      <div className={`w-full flex items-center border rounded-xl text-sm ${colors.input} ${colors.inputFocus} ${open ? `ring-2 ${accent.ring} ${accent.border}` : ''} transition-all cursor-pointer`}>
         {selectedTag && (
           <span className="ml-4 w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: selectedTag.color }} />
         )}
@@ -101,7 +104,7 @@ function SearchableTagSelect({
                 type="button"
                 onClick={() => handleSelect(null)}
                 className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
-                  !value ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
+                  !value ? activeOptionClass : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <Tag size={16} className={colors.textMuted} strokeWidth={2.5} />
@@ -115,10 +118,10 @@ function SearchableTagSelect({
                 type="button"
                 onClick={() => handleSelect('__has__')}
                 className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
-                  value === '__has__' ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
+                  value === '__has__' ? activeOptionClass : `${colors.text} ${colors.cardHover}`
                 }`}
               >
-                <span className="w-3 h-3 rounded-full bg-green-500" />
+                <span className={`w-3 h-3 rounded-full ${accent.solidBg}`} />
                 {hasLabel}
               </button>
             )}
@@ -129,7 +132,7 @@ function SearchableTagSelect({
                 type="button"
                 onClick={() => handleSelect('__none__')}
                 className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
-                  value === '__none__' ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
+                  value === '__none__' ? activeOptionClass : `${colors.text} ${colors.cardHover}`
                 }`}
               >
                 <span className={`w-3 h-3 rounded-full border-2 border-dashed ${colors.cardBorder}`} />
@@ -145,7 +148,7 @@ function SearchableTagSelect({
                   type="button"
                   onClick={() => handleSelect(tag.id)}
                   className={`w-full px-4 py-3 text-left text-sm flex items-center gap-2.5 transition-all ${
-                    value === tag.id ? 'bg-blue-500/10 text-blue-500 font-medium' : `${colors.text} ${colors.cardHover}`
+                    value === tag.id ? activeOptionClass : `${colors.text} ${colors.cardHover}`
                   }`}
                 >
                   <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: tag.color }} />

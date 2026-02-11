@@ -5,6 +5,7 @@ import { TextInput, ColorInput } from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { getTags, getGroups } from '../../../api/groupTag'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 // 预设颜色
 const PRESET_COLORS = [
@@ -14,7 +15,8 @@ const PRESET_COLORS = [
 
 // 标签选择器（用于账号编辑）
 export function TagSelector({ selectedTagIds, onChange, allTags }) {
-  const { t, colors } = useApp()
+  const { t, colors, theme } = useApp()
+  const accent = getThemeAccent(theme)
   const [newTagName, setNewTagName] = useState('')
   const [tags, setTags] = useState(allTags || [])
   const [showDropdown, setShowDropdown] = useState(false)
@@ -148,7 +150,7 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
           type="button"
           onClick={handleAddTag}
           disabled={!newTagName.trim()}
-          className={`px-3 py-1.5 ${colors.accentBg || 'bg-purple-500'} text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 flex items-center gap-1`}
+          className={`px-3 py-1.5 ${accent.solidBg} text-white rounded-lg text-sm ${accent.solidHoverBg} disabled:opacity-50 flex items-center gap-1`}
           title={t('tags.addTag')}
         >
           <Plus size={14} />
@@ -161,7 +163,8 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
 
 // 标签管理弹窗（全局标签和分组管理）
 function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
-  const { t, colors } = useApp()
+  const { t, colors, theme } = useApp()
+  const accent = getThemeAccent(theme)
   const { showError, showConfirm } = useDialog()
   
   const [activeTab, setActiveTab] = useState(defaultTab)
@@ -283,7 +286,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               onClick={() => handleTabChange('tags')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'tags'
-                  ? `${colors.accentBg || 'bg-purple-500'} text-white`
+                  ? `${accent.solidBg} text-white`
                   : `${colors.text} ${colors.cardSecondary} ${colors.cardHover}`
               }`}
             >
@@ -294,7 +297,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               onClick={() => handleTabChange('groups')}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === 'groups'
-                  ? `${colors.primary} bg-blue-500 text-white`
+                  ? `${accent.solidBg} text-white`
                   : `${colors.text} ${colors.cardSecondary} ${colors.cardHover}`
               }`}
             >
@@ -345,7 +348,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
             <button
               onClick={handleAdd}
               disabled={!newName.trim()}
-              className={`px-4 py-2 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50 ${isTagMode ? (colors.accentBg || 'bg-purple-500') : 'bg-blue-500'}`}
+              className={`px-4 py-2 text-white rounded-lg text-sm ${accent.solidBg} ${accent.solidHoverBg} disabled:opacity-50`}
             >
               <Plus size={16} />
             </button>
@@ -356,7 +359,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
               <button
                 key={color}
                 onClick={() => setNewColor(color)}
-                className={`w-6 h-6 rounded-full ${newColor === color ? `ring-2 ring-offset-2 ${isTagMode ? (colors.accentBg || 'ring-purple-500') : 'ring-blue-500'}` : ''}`}
+                className={`w-6 h-6 rounded-full ${newColor === color ? `ring-2 ring-offset-2 ring-offset-transparent ${accent.ring}` : ''}`}
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -452,7 +455,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
         <div className={`flex justify-end px-5 py-4 border-t ${colors.cardBorder}`}>
           <button 
             onClick={() => { onSuccess?.(); onClose() }} 
-            className={`px-4 py-2 text-white rounded-lg text-sm font-medium hover:opacity-90 ${isTagMode ? (colors.accentBg || 'bg-purple-500') : 'bg-blue-500'}`}
+            className={`px-4 py-2 text-white rounded-lg text-sm font-medium ${accent.solidBg} ${accent.solidHoverBg}`}
           >
             {t('common.close')}
           </button>
