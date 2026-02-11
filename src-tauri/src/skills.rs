@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -93,6 +93,37 @@ impl SkillsManager {
         }
     }
 
+    fn validate_skill_name(name: &str) -> Result<(), String> {
+        if name.is_empty() {
+            return Err("Skill 名称不能为空".to_string());
+        }
+        if name.contains('/') || name.contains('\\') {
+            return Err("Skill 名称不能包含路径分隔符".to_string());
+        }
+        if name.contains("..") {
+            return Err("Skill 名称不能包含 ..".to_string());
+        }
+
+        let path = Path::new(name);
+        for comp in path.components() {
+            if !matches!(comp, Component::Normal(_)) {
+                return Err("Skill 名称非法".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn safe_skill_dir(base_dir: &Path, name: &str) -> Result<PathBuf, String> {
+        Self::validate_skill_name(name)?;
+        let candidate = base_dir.join(name);
+
+        if !candidate.starts_with(base_dir) {
+            return Err("非法路径".to_string());
+        }
+
+        Ok(candidate)
+    }
+
     pub fn load_all(project_dir: Option<&str>) -> Result<Vec<SkillInfo>, String> {
         let mut all = vec![];
         if let Some(dir) = Self::user_dir() {
@@ -106,7 +137,7 @@ impl SkillsManager {
 
     pub fn load(name: &str, scope: &str, project_dir: Option<&str>) -> Result<SkillInfo, String> {
         let dir = Self::resolve_dir(scope, project_dir)?;
-        let skill_dir = dir.join(name);
+        let skill_dir = Self::safe_skill_dir(&dir, name)?;
         let skill_md = skill_dir.join("SKILL.md");
 
         if !skill_md.exists() {
@@ -142,14 +173,14 @@ impl SkillsManager {
 
     pub fn save(name: &str, content: &str, scope: &str, project_dir: Option<&str>) -> Result<(), String> {
         let dir = Self::resolve_dir(scope, project_dir)?;
-        let skill_dir = dir.join(name);
+        let skill_dir = Self::safe_skill_dir(&dir, name)?;
         fs::create_dir_all(&skill_dir).ok();
         fs::write(skill_dir.join("SKILL.md"), content).map_err(|e| format!("写入失败: {e}"))
     }
 
     pub fn delete(name: &str, scope: &str, project_dir: Option<&str>) -> Result<(), String> {
         let dir = Self::resolve_dir(scope, project_dir)?;
-        let skill_dir = dir.join(name);
+        let skill_dir = Self::safe_skill_dir(&dir, name)?;
         if skill_dir.exists() {
             fs::remove_dir_all(&skill_dir).map_err(|e| format!("删除失败: {e}"))?;
         }
@@ -158,7 +189,7 @@ impl SkillsManager {
 
     pub fn create(name: &str, content: &str, scope: &str, project_dir: Option<&str>) -> Result<SkillInfo, String> {
         let dir = Self::resolve_dir(scope, project_dir)?;
-        let skill_dir = dir.join(name);
+        let skill_dir = Self::safe_skill_dir(&dir, name)?;
         if skill_dir.exists() {
             return Err(format!("Skill 已存在: {name}"));
         }

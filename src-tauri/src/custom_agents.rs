@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,6 +78,37 @@ impl CustomAgentsManager {
         }
     }
 
+    fn validate_file_name(file_name: &str) -> Result<(), String> {
+        if file_name.is_empty() {
+            return Err("文件名不能为空".to_string());
+        }
+        if file_name.contains('/') || file_name.contains('\\') {
+            return Err("文件名不能包含路径分隔符".to_string());
+        }
+        if file_name.contains("..") {
+            return Err("文件名不能包含 ..".to_string());
+        }
+
+        let path = Path::new(file_name);
+        for comp in path.components() {
+            if !matches!(comp, Component::Normal(_)) {
+                return Err("文件名非法".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn safe_agent_path(base_dir: &Path, file_name: &str) -> Result<PathBuf, String> {
+        Self::validate_file_name(file_name)?;
+        let candidate = base_dir.join(file_name);
+
+        if !candidate.starts_with(base_dir) {
+            return Err("非法路径".to_string());
+        }
+
+        Ok(candidate)
+    }
+
     pub fn load_all(project_dir: Option<&str>) -> Result<Vec<CustomAgentFile>, String> {
         let mut all_files = vec![];
 
@@ -95,7 +126,7 @@ impl CustomAgentsManager {
 
     pub fn load(file_name: &str, scope: &str, project_dir: Option<&str>) -> Result<CustomAgentFile, String> {
         let dir = Self::resolve_dir(scope, project_dir)?;
-        let path = dir.join(file_name);
+        let path = Self::safe_agent_path(&dir, file_name)?;
 
         if !path.exists() {
             return Err(format!("Agent 文件不存在: {file_name}"));
@@ -126,13 +157,13 @@ impl CustomAgentsManager {
         let dir = Self::resolve_dir(scope, project_dir)?;
         fs::create_dir_all(&dir).ok();
 
-        let path = dir.join(file_name);
+        let path = Self::safe_agent_path(&dir, file_name)?;
         fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))
     }
 
     pub fn delete(file_name: &str, scope: &str, project_dir: Option<&str>) -> Result<(), String> {
         let dir = Self::resolve_dir(scope, project_dir)?;
-        let path = dir.join(file_name);
+        let path = Self::safe_agent_path(&dir, file_name)?;
 
         if path.exists() {
             fs::remove_file(&path).map_err(|e| format!("删除失败: {e}"))?;
@@ -145,7 +176,7 @@ impl CustomAgentsManager {
         let dir = Self::resolve_dir(scope, project_dir)?;
         fs::create_dir_all(&dir).ok();
 
-        let path = dir.join(file_name);
+        let path = Self::safe_agent_path(&dir, file_name)?;
 
         if path.exists() {
             return Err(format!("文件已存在: {file_name}"));

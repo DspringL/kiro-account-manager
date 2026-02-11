@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 /// installed.json 中的已安装 Power 条目
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -198,6 +198,104 @@ impl PowersManager {
         }).unwrap_or(0)
     }
 
+    fn validate_power_name(name: &str) -> Result<(), String> {
+        if name.is_empty() {
+            return Err("Power 名称不能为空".to_string());
+        }
+        if name.contains('/') || name.contains('\\') {
+            return Err("Power 名称不能包含路径分隔符".to_string());
+        }
+        if name.contains("..") {
+            return Err("Power 名称不能包含 ..".to_string());
+        }
+
+        let path = Path::new(name);
+        for comp in path.components() {
+            if !matches!(comp, Component::Normal(_)) {
+                return Err("Power 名称非法".to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_branch_name(branch: &str) -> Result<(), String> {
+        if branch.is_empty() {
+            return Ok(());
+        }
+        if branch.starts_with('-') {
+            return Err("分支名非法".to_string());
+        }
+        if branch.contains('\0') || branch.contains(' ') || branch.contains('\t') || branch.contains('\n') || branch.contains('\r') {
+            return Err("分支名非法".to_string());
+        }
+        if branch.contains("..") || branch.contains("~") || branch.contains("^") || branch.contains(":") || branch.contains('?') || branch.contains('*') || branch.contains("\\") {
+            return Err("分支名非法".to_string());
+        }
+        if branch.ends_with('.') || branch.ends_with('/') || branch.ends_with(".lock") || branch.contains("@{") || branch.contains("//") {
+            return Err("分支名非法".to_string());
+        }
+        Ok(())
+    }
+
+    fn validate_clone_url(url: &str) -> Result<(), String> {
+        let https_url = Self::convert_to_https_url(url);
+        let parsed = reqwest::Url::parse(&https_url)
+            .map_err(|_| "仓库 URL 非法".to_string())?;
+
+        if parsed.scheme() != "https" {
+            return Err("仅允许 https 仓库地址".to_string());
+        }
+
+        let host = parsed.host_str().unwrap_or_default().to_ascii_lowercase();
+        if host != "github.com" {
+            return Err("仅允许 github.com 仓库地址".to_string());
+        }
+
+        let mut segs = parsed.path().trim_start_matches('/').split('/').filter(|s| !s.is_empty());
+        let owner = segs.next().unwrap_or_default();
+        let repo = segs.next().unwrap_or_default();
+        if owner.is_empty() || repo.is_empty() {
+            return Err("仓库地址必须包含 owner/repo".to_string());
+        }
+
+        Ok(())
+    }
+
+    fn safe_power_subdir(base_dir: &Path, name: &str) -> Result<PathBuf, String> {
+        Self::validate_power_name(name)?;
+        let candidate = base_dir.join(name);
+
+        if !candidate.starts_with(base_dir) {
+            return Err("非法路径".to_string());
+        }
+
+        Ok(candidate)
+    }
+
+    fn safe_path_in_repo(clone_path: &Path, path_in_repo: &str) -> Result<PathBuf, String> {
+        if path_in_repo.is_empty() {
+            return Ok(clone_path.to_path_buf());
+        }
+
+        let relative = Path::new(path_in_repo);
+        if relative.is_absolute() {
+            return Err("仓库内路径必须是相对路径".to_string());
+        }
+
+        for comp in relative.components() {
+            if !matches!(comp, Component::Normal(_)) {
+                return Err("仓库内路径非法".to_string());
+            }
+        }
+
+        let candidate = clone_path.join(relative);
+        if !candidate.starts_with(clone_path) {
+            return Err("仓库内路径非法".to_string());
+        }
+
+        Ok(candidate)
+    }
+
     /// 加载所有已安装 Power 的详细信息
     pub fn load_all() -> Result<Vec<PowerInfo>, String> {
         let dir = Self::powers_dir().ok_or("无法获取用户目录")?;
@@ -250,7 +348,8 @@ impl PowersManager {
     /// 获取单个 Power 详情
     pub fn load(name: &str) -> Result<PowerInfo, String> {
         let dir = Self::powers_dir().ok_or("无法获取用户目录")?;
-        let power_dir = dir.join("installed").join(name);
+        let installed_base = dir.join("installed");
+        let power_dir = Self::safe_power_subdir(&installed_base, name)?;
         if !power_dir.exists() {
             return Err(format!("Power 不存在: {name}"));
         }
@@ -284,14 +383,21 @@ impl PowersManager {
     /// 3. 更新 installed.json
     pub fn install(name: &str, clone_url: &str, path_in_repo: &str, branch: &str) -> Result<(), String> {
         let dir = Self::powers_dir().ok_or("无法获取用户目录")?;
-        let install_path = dir.join("installed").join(name);
+
+        Self::validate_power_name(name)?;
+        Self::validate_clone_url(clone_url)?;
+        Self::validate_branch_name(branch)?;
+
+        let installed_base = dir.join("installed");
+        let repos_base = dir.join("repos");
+        let install_path = Self::safe_power_subdir(&installed_base, name)?;
 
         if install_path.exists() {
             return Err(format!("Power 已存在: {name}"));
         }
 
         // 1) clone 到 repos/<name>（与 Kiro IDE 一致）
-        let clone_path = dir.join("repos").join(name);
+        let clone_path = Self::safe_power_subdir(&repos_base, name)?;
         // 清理旧的 clone
         if clone_path.exists() {
             let _ = fs::remove_dir_all(&clone_path);
@@ -318,16 +424,24 @@ impl PowersManager {
         }
 
         // 2) 确定源目录
-        let source_path = if path_in_repo.is_empty() {
-            clone_path.clone()
-        } else {
-            clone_path.join(path_in_repo)
-        };
+        let source_path = Self::safe_path_in_repo(&clone_path, path_in_repo)?;
 
         if !source_path.exists() {
             let _ = fs::remove_dir_all(&clone_path);
             return Err(format!("仓库中未找到路径: {path_in_repo}"));
         }
+
+        let clone_path_canonical = fs::canonicalize(&clone_path)
+            .map_err(|e| format!("解析仓库目录失败: {e}"))?;
+        let source_path_canonical = fs::canonicalize(&source_path)
+            .map_err(|e| format!("解析仓库内路径失败: {e}"))?;
+
+        if !source_path_canonical.starts_with(&clone_path_canonical) {
+            let _ = fs::remove_dir_all(&clone_path);
+            return Err("仓库内路径非法".to_string());
+        }
+
+        let source_path = source_path_canonical;
 
         // 3) 只复制允许的文件到 installed/<name>/（与 Kiro copyPowerFiles 一致）
         fs::create_dir_all(&install_path).map_err(|e| format!("创建安装目录失败: {e}"))?;
@@ -382,9 +496,14 @@ impl PowersManager {
             let entry = entry.map_err(|e| format!("读取条目失败: {e}"))?;
             let src_path = entry.path();
             let dst_path = dst.join(entry.file_name());
-            if src_path.is_dir() {
+            let metadata = fs::symlink_metadata(&src_path)
+                .map_err(|e| format!("读取文件元信息失败: {e}"))?;
+            if metadata.file_type().is_symlink() {
+                continue;
+            }
+            if metadata.is_dir() {
                 Self::copy_steering_dir(&src_path, &dst_path)?;
-            } else if src_path.extension().map_or(false, |e| e == "md") {
+            } else if metadata.is_file() && src_path.extension().map_or(false, |e| e == "md") {
                 fs::copy(&src_path, &dst_path).map_err(|e| format!("复制文件失败: {e}"))?;
             }
         }
@@ -394,7 +513,8 @@ impl PowersManager {
     /// 卸载 Power（删除目录 + 从 installed.json 中移除）
     pub fn uninstall(name: &str) -> Result<(), String> {
         let dir = Self::powers_dir().ok_or("无法获取用户目录")?;
-        let power_dir = dir.join("installed").join(name);
+        let installed_base = dir.join("installed");
+        let power_dir = Self::safe_power_subdir(&installed_base, name)?;
         if power_dir.exists() {
             fs::remove_dir_all(&power_dir).map_err(|e| format!("删除 Power 目录失败: {e}"))?;
         }
