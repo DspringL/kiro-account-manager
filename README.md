@@ -31,18 +31,24 @@
 
 **最新版本**：[GitHub Releases](https://github.com/hj01857655/kiro-account-manager/releases/latest)
 
-| 平台 | 下载链接 |
-|------|---------|
-| 🪟 **Windows** | [KiroAccountManager_x64_zh-CN.msi](https://github.com/hj01857655/kiro-account-manager/releases/latest/download/KiroAccountManager_x64_zh-CN.msi) |
-| 🍎 **macOS (Intel)** | [KiroAccountManager_x64.dmg](https://github.com/hj01857655/kiro-account-manager/releases/latest/download/KiroAccountManager_x64.dmg) |
-| 🍎 **macOS (Apple Silicon)** | [KiroAccountManager_aarch64.dmg](https://github.com/hj01857655/kiro-account-manager/releases/latest/download/KiroAccountManager_aarch64.dmg) |
-| 🐧 **Linux (AppImage)** | [KiroAccountManager_amd64.AppImage](https://github.com/hj01857655/kiro-account-manager/releases/latest/download/KiroAccountManager_amd64.AppImage) |
-| 🐧 **Linux (deb)** | [KiroAccountManager_amd64.deb](https://github.com/hj01857655/kiro-account-manager/releases/latest/download/KiroAccountManager_amd64.deb) |
+| 平台 | 架构 | 文件格式 | 下载链接 |
+|------|------|---------|---------|
+| 🪟 **Windows** | x64 | MSI 安装包 | [下载 MSI](https://github.com/hj01857655/kiro-account-manager/releases/latest) |
+| 🍎 **macOS** | Intel (x64) | DMG 镜像 | [下载 DMG](https://github.com/hj01857655/kiro-account-manager/releases/latest) |
+| 🍎 **macOS** | Apple Silicon (M1/M2/M3) | DMG 镜像 | [下载 DMG](https://github.com/hj01857655/kiro-account-manager/releases/latest) |
+| 🐧 **Linux** | x86_64 | AppImage | [下载 AppImage](https://github.com/hj01857655/kiro-account-manager/releases/latest) |
+| 🐧 **Linux** | x86_64 | DEB 包 | [下载 DEB](https://github.com/hj01857655/kiro-account-manager/releases/latest) |
 
 **系统要求**：
-- **Windows**: Windows 10/11 (64-bit)，需要 WebView2 (Win11 已内置)
-- **macOS**: macOS 10.15+ (Intel / Apple Silicon 通用)
-- **Linux**: x86_64，需要 WebKitGTK
+- **Windows**: Windows 10/11 (64-bit)，需要 [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) (Win11 已内置)
+- **macOS**: macOS 10.15+ (Catalina 及以上)
+- **Linux**: x86_64 架构，需要 WebKitGTK 4.0+
+
+**安装说明**：
+- **Windows**: 双击 `.msi` 文件安装，首次运行可能需要安装 WebView2
+- **macOS**: 打开 `.dmg` 文件，拖动应用到 Applications 文件夹，首次运行需要在「系统偏好设置 → 安全性与隐私」中允许
+- **Linux AppImage**: 添加执行权限 `chmod +x KiroAccountManager_amd64.AppImage`，然后直接运行
+- **Linux DEB**: 使用 `sudo dpkg -i KiroAccountManager_amd64.deb` 安装
 
 ---
 
