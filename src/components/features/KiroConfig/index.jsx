@@ -10,6 +10,7 @@ import HooksPanel from './HooksPanel'
 import AgentsPanel from './AgentsPanel'
 import PowersPanel from './PowersPanel'
 import { getThemeAccent } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 function KiroConfig() {
   const { t, theme, colors } = useApp()
@@ -53,7 +54,7 @@ function KiroConfig() {
         setProjectDir(selected)
       }
     } catch (e) {
-      console.error('选择项目目录失败:', e)
+      handleUiError('选择项目目录失败', e, { userMessage: '选择项目目录失败' })
     }
   }
 
@@ -67,7 +68,7 @@ function KiroConfig() {
   ]
 
   return (
-    <div className={`h-full flex flex-col ${colors.main}`}>
+    <div className={`h-full flex flex-col max-w-full overflow-x-hidden ${colors.main}`}>
       <div className="flex flex-col">
       {/* 头部 */}
       <div className={`${colors.card} border-b ${colors.cardBorder} px-6 py-4 flex items-center gap-4`}>
@@ -85,7 +86,7 @@ function KiroConfig() {
           <div className="flex items-center gap-2">
               <button
                 onClick={handleSelectProjectDir}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all cursor-pointer ${colors.cardHover} border ${colors.cardBorder} ${colors.text}`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-200 cursor-pointer ${colors.cardHover} border ${colors.cardBorder} ${colors.text} focus:outline-none focus:ring-2 ${accent.ring}`}
                 title={t('kiroConfig.selectProjectDir')}
               >
               <FolderOpen size={16} className="text-amber-500" />
@@ -98,7 +99,7 @@ function KiroConfig() {
             {projectDir && (
               <button
                 onClick={() => setProjectDir(null)}
-                className={`p-1.5 rounded-lg ${colors.cardHover} transition-colors cursor-pointer`}
+                className={`p-1.5 rounded-lg ${colors.cardHover} transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 ${accent.ring}`}
                 title={t('kiroConfig.clearProjectDir')}
               >
                 <X size={14} className={colors.textMuted} />

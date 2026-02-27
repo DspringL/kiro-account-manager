@@ -40,6 +40,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor': ['react', 'react-dom'],
+          'mantine': ['@mantine/core', '@mantine/hooks'],
+          'icons': ['lucide-react'],
           'tauri': [
             '@tauri-apps/api',
             '@tauri-apps/plugin-dialog',

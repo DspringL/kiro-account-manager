@@ -196,14 +196,14 @@ function AccountHeader({
               <div className="flex gap-1.5">
                 <button
                   onClick={() => onViewModeChange('card')}
-                  className={`p-3 rounded-xl transition-all duration-200 hover:shadow-md ${viewMode === 'card' ? `${accentSolidButtonClass} shadow-lg ${accent.shadow}` : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
+                  className={`cursor-pointer p-3 rounded-xl transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 ${accent.ring} ${viewMode === 'card' ? `${accentSolidButtonClass} shadow-lg ${accent.shadow}` : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
                   title={t('accounts.cardView')}
                 >
                   <LayoutGrid size={18} />
                 </button>
                 <button
                   onClick={() => onViewModeChange('table')}
-                  className={`p-3 rounded-xl transition-all duration-200 hover:shadow-md ${viewMode === 'table' ? `${accentSolidButtonClass} shadow-lg ${accent.shadow}` : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
+                  className={`cursor-pointer p-3 rounded-xl transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 ${accent.ring} ${viewMode === 'table' ? `${accentSolidButtonClass} shadow-lg ${accent.shadow}` : `${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}`}
                   title={t('accounts.tableView')}
                 >
                   <List size={18} />
@@ -211,18 +211,19 @@ function AccountHeader({
               </div>
 
               {/* 筛选面板 */}
-              <FilterDropdown
-                filters={advancedFilters}
-                onFiltersChange={onAdvancedFiltersChange}
-                allGroups={allGroups}
-                selectedGroup={selectedGroup}
-                onGroupFilter={onGroupFilter}
-                allTags={allTags}
-                selectedTag={selectedTag}
-                onTagFilter={onTagFilter}
-                selectedStatus={selectedStatus}
-                onStatusFilter={onStatusFilter}
-              />
+               <FilterDropdown
+                 filters={advancedFilters}
+                 onFiltersChange={onAdvancedFiltersChange}
+                 allGroups={allGroups}
+                 selectedGroup={selectedGroup}
+                 onGroupFilter={onGroupFilter}
+                 allTags={allTags}
+                 selectedTag={selectedTag}
+                 onTagFilter={onTagFilter}
+                 selectedStatus={selectedStatus}
+                 onStatusFilter={onStatusFilter}
+                 defaultGroupCollapsed={true}
+               />
             </>
           )}
 
@@ -232,14 +233,14 @@ function AccountHeader({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onSelectAll}
-                  className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} transition-all duration-200 hover:shadow-md`}
+                  className={`cursor-pointer p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 ${accent.ring}`}
                   title="全选"
                 >
                   <CheckSquare size={16} className={accent.text} />
                 </button>
                 <button
                   onClick={onDeselectAll}
-                  className={`p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} transition-all duration-200 hover:shadow-md`}
+                  className={`cursor-pointer p-2.5 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 ${accent.ring}`}
                   title="取消全选"
                 >
                   <Square size={16} className={colors.textMuted} />

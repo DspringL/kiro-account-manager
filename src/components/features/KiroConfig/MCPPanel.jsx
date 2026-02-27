@@ -7,6 +7,7 @@ import { TextInput } from '@mantine/core'
 import AddMCPModal from '../MCPManager/AddMCPModal'
 import EditMCPModal from '../MCPManager/EditMCPModal'
 import { getThemeAccent, getGradientAccentButton } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 // 搜索框组件
 function SearchInput({ value, onChange, placeholder, colors, t, accent }) {
@@ -59,7 +60,7 @@ function MCPPanel({ onCountChange, projectDir }) {
       const stats = await invoke('get_mcp_tool_stats', { projectDir: projectDir || null })
       setToolCount(stats.estimatedTools)
     } catch (e) {
-      console.error('加载 MCP 配置失败:', e)
+      handleUiError('加载 MCP 配置失败', e, { userMessage: '加载 MCP 配置失败' })
     } finally {
       setLoading(false)
     }
@@ -74,7 +75,7 @@ function MCPPanel({ onCountChange, projectDir }) {
       await invoke('toggle_mcp_server', { name, disabled, projectDir: projectDir || null })
     } catch (e) {
       setServers(prev => ({ ...prev, [name]: { ...prev[name], disabled: oldDisabled } }))
-      console.error('切换状态失败:', e)
+      handleUiError('切换 MCP 状态失败', e, { userMessage: '切换状态失败' })
     }
   }
 
@@ -84,7 +85,7 @@ function MCPPanel({ onCountChange, projectDir }) {
       await invoke('delete_mcp_server', { name, projectDir: projectDir || null })
       setServers(prev => { const next = { ...prev }; delete next[name]; return next })
     } catch (e) {
-      console.error('删除失败:', e)
+      handleUiError('删除 MCP 服务失败', e, { userMessage: '删除失败' })
     }
   }
 
@@ -98,7 +99,7 @@ function MCPPanel({ onCountChange, projectDir }) {
   }, [serverList, searchQuery])
 
   return (
-    <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col max-w-full overflow-x-hidden">
       {/* 警告横幅 */}
       {toolCount > 50 && (
         <div className={`mx-6 mt-4 mb-2 px-4 py-3 rounded-xl border-2 ${colors.warning} ${colors.warningBorder} flex items-start gap-3`}>
@@ -109,7 +110,7 @@ function MCPPanel({ onCountChange, projectDir }) {
             <div className={`text-sm font-medium ${colors.text} mb-1`}>
               MCP 工具数量较多
             </div>
-            <div className={`text-xs ${colors.textMuted}`}>
+            <div className={`text-xs ${colors.textMuted} leading-relaxed`}>
               您已配置约 {toolCount} 个 MCP 工具（{serverList.length} 个服务器）。过多的工具可能导致工具选择性能下降和上下文消耗增加。建议禁用不常用的服务器。
             </div>
           </div>
@@ -117,7 +118,7 @@ function MCPPanel({ onCountChange, projectDir }) {
       )}
 
       {/* 工具栏 */}
-      <div className={`px-6 py-3 border-b ${colors.cardBorder} flex items-center justify-between gap-4`}>
+      <div className={`px-6 py-3 border-b ${colors.cardBorder} flex items-center justify-between gap-4 max-w-full overflow-x-hidden`}>
         <SearchInput
           value={searchQuery}
           onChange={setSearchQuery}
@@ -130,7 +131,7 @@ function MCPPanel({ onCountChange, projectDir }) {
           <span className={`text-sm ${colors.textMuted}`}>{filteredServers.length}/{serverList.length}</span>
           <button
             onClick={() => setShowAddModal(true)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${accentGradientButtonClass}`}
+            className={`cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${accentGradientButtonClass} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
           >
             <Plus size={14} />{t('mcp.add')}
           </button>
@@ -230,14 +231,20 @@ function MCPServerItem({ name, config, accent, colors, onToggle, onEdit, onDelet
       <div className="flex items-center gap-2">
         <button
           onClick={() => onToggle(!isDisabled)}
-          className={`relative w-10 h-5 rounded-full transition-colors ${isDisabled ? colors.toggleOff : colors.toggleOn}`}
+          className={`cursor-pointer relative w-11 h-6 min-h-[24px] rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${isDisabled ? colors.toggleOff : colors.toggleOn}`}
         >
-          <div className={`absolute top-0.5 w-4 h-4 ${colors.toggleThumb} rounded-full transition-transform ${isDisabled ? 'left-0.5' : 'left-5'}`} />
+          <div className={`absolute top-0.5 w-5 h-5 ${colors.toggleThumb} rounded-full transition-transform ${isDisabled ? 'left-0.5' : 'left-5'}`} />
         </button>
-        <button onClick={onEdit} className={`p-2 rounded-lg ${colors.cardHover}`}>
+        <button
+          onClick={onEdit}
+          className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+        >
           <Edit2 size={16} className={colors.textMuted} />
         </button>
-        <button onClick={onDelete} className="p-2 rounded-lg hover:bg-red-500/10">
+        <button
+          onClick={onDelete}
+          className="cursor-pointer p-2 rounded-lg hover:bg-red-500/10 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
+        >
           <Trash2 size={16} className="text-red-500" />
         </button>
       </div>

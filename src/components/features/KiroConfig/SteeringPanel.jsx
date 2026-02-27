@@ -10,6 +10,7 @@ import {
   getGradientAccentButton,
   getThemeSurfaceStyles,
 } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 // 解析 front-matter（v0.10.32: inclusion + name + description + fileMatchPattern）
 const parseFrontMatter = (content) => {
@@ -74,7 +75,7 @@ function SteeringPanel({ onCountChange, projectDir }) {
       setFiles(data)
       onCountChange?.(data?.length || 0)
     } catch (e) {
-      console.error('加载 Steering 文件失败:', e)
+      handleUiError('加载 Steering 文件失败', e, { userMessage: '加载 Steering 文件失败' })
     } finally {
       setLoading(false)
     }
@@ -142,7 +143,7 @@ function SteeringPanel({ onCountChange, projectDir }) {
         setHasChanges(false)
       }
     } catch (e) {
-      console.error('删除失败:', e)
+      handleUiError('删除 Steering 文件失败', e, { userMessage: '删除失败' })
     }
   }
 
@@ -359,7 +360,7 @@ function FileList({ files, selectedFile, onSelect, onDelete, onRefresh, onCreate
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); onDelete(file) }}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200"
+                            className="cursor-pointer opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
                             title={t('common.delete')}
                           >
                             <Trash2 size={14} className="text-red-500" />
@@ -403,7 +404,7 @@ function Editor({ file, editState, hasChanges, saving, inclusionOptions, onConte
         <button
           onClick={onSave}
           disabled={!hasChanges || saving}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${
             hasChanges ? accentSolidButtonClass : colors.btnDisabled
           } disabled:opacity-50`}
         >

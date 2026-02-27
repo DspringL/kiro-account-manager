@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Filter, X } from 'lucide-react'
+import { Filter, X, ChevronDown } from 'lucide-react'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { useTranslation } from 'react-i18next'
 import SearchableTagSelect from './SearchableTagSelect'
@@ -55,7 +55,7 @@ function FilterSelect({ label, value, options, onChange, onClear, colors, accent
               onChange(v)
             }
           }}
-          className={`w-full px-3 py-2 ${hasValue ? 'pr-9' : 'pr-3'} text-sm rounded-lg border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all cursor-pointer`}
+          className={`w-full px-3 py-2 ${hasValue ? 'pr-9' : 'pr-3'} text-sm rounded-lg border ${colors.input} ${colors.inputFocus} ${colors.text} transition-all duration-200 cursor-pointer`}
         >
           {options.map(opt => (
             <option key={opt.value} value={opt.value}>
@@ -69,7 +69,7 @@ function FilterSelect({ label, value, options, onChange, onClear, colors, accent
               e.stopPropagation()
               onClear?.()
             }}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${colors.cardHover} hover:bg-red-500/10 transition-all`}
+            className={`cursor-pointer absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${colors.cardHover} hover:bg-red-500/10 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60`}
             title="清空"
           >
             <X size={12} className="text-red-500" strokeWidth={2.5} />
@@ -89,11 +89,13 @@ function FilterDropdown({
   allTags = [],
   selectedTag,
   onTagFilter,
+  defaultGroupCollapsed = false,
 }) {
   const { colors, theme } = useTheme()
   const accent = getThemeAccent(theme)
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [showGroupSection, setShowGroupSection] = useState(() => !defaultGroupCollapsed)
   const dropdownRef = useRef(null)
 
   useEffect(() => {
@@ -105,6 +107,12 @@ function FilterDropdown({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (selectedGroup) {
+      setShowGroupSection(true)
+    }
+  }, [selectedGroup])
 
   const activeCount = [
     filters.subscriptions?.length || 0,
@@ -126,11 +134,11 @@ function FilterDropdown({
       <button
         onClick={() => setOpen(!open)}
         className={`
-          flex items-center gap-2.5 px-3 py-2.5
+          cursor-pointer flex items-center gap-2.5 px-3 py-2.5
           ${colors.card} border-2 ${colors.cardBorder}
           rounded-xl ${colors.cardHover}
           transition-all duration-200
-          shadow-sm hover:shadow-md
+          shadow-sm hover:shadow-md focus:outline-none focus:ring-2 ${accent.ring}
           ${activeCount > 0 ? `${accent.border} ${accent.bgSoft} ${accent.shadow}` : ''}
           ${open ? `ring-2 ${accent.ring}` : ''}
         `}
@@ -180,7 +188,7 @@ function FilterDropdown({
             {activeCount > 0 && (
               <button
                 onClick={clearAll}
-                className={`text-xs ${colors.textMuted} hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-500/10 transition-all`}
+                className={`cursor-pointer text-xs ${colors.textMuted} hover:text-red-500 flex items-center gap-1 px-2 py-1 rounded hover:bg-red-500/10 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60`}
               >
                 <X size={12} strokeWidth={2.5} />
                 清空
@@ -189,24 +197,30 @@ function FilterDropdown({
           </div>
 
           {/* 筛选项 */}
-          <div className="p-4 space-y-3 max-h-[420px] overflow-y-auto custom-scrollbar">
-            {/* 分组 */}
+          <div className="p-4 space-y-3 max-h-[420px] overflow-y-auto custom-scrollbar max-w-full">
+            {/* 分组（默认折叠，弱化主筛选） */}
             {allGroups.length > 0 && (
               <div>
-                <label className={`block text-xs font-medium ${colors.textMuted} mb-2`}>
-                  {t('groups.title') || '分组'}
-                </label>
-                <SearchableTagSelect
-                  tags={allGroups}
-                  value={selectedGroup}
-                  onChange={onGroupFilter}
-                  placeholder={t('groups.searchPlaceholder') || '搜索分组...'}
-                  showAllOption={true}
-                  showNoneOption={true}
-                  allLabel={t('groups.all') || '全部'}
-                  noneLabel={t('groups.noGroup') || '无分组'}
-                  hasLabel={t('groups.hasGroup') || '有分组'}
-                />
+                <button
+                  onClick={() => setShowGroupSection(prev => !prev)}
+                  className={`cursor-pointer w-full flex items-center justify-between text-xs font-medium ${colors.textMuted} mb-2 px-2 py-1.5 rounded ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+                >
+                  <span>{(t('groups.title') || '分组') + (showGroupSection ? '' : '（已折叠）')}</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${showGroupSection ? 'rotate-180' : ''}`} />
+                </button>
+                {showGroupSection && (
+                  <SearchableTagSelect
+                    tags={allGroups}
+                    value={selectedGroup}
+                    onChange={onGroupFilter}
+                    placeholder={t('groups.searchPlaceholder') || '搜索分组...'}
+                    showAllOption={true}
+                    showNoneOption={true}
+                    allLabel={t('groups.all') || '全部'}
+                    noneLabel={t('groups.noGroup') || '无分组'}
+                    hasLabel={t('groups.hasGroup') || '有分组'}
+                  />
+                )}
               </div>
             )}
 

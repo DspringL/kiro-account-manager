@@ -5,6 +5,9 @@ import { Textarea } from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import { MCP_TEMPLATES } from './MCPTemplates'
 import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
+import { showSuccess } from '../../../utils/toast.jsx'
+
+const DUPLICATE_STRATEGY_KEY = 'mcpDuplicateStrategy'
 
 function AddMCPModal({ onClose, onSuccess, projectDir }) {
   const { t, colors, theme } = useApp()
@@ -17,6 +20,17 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
   const [parseResult, setParseResult] = useState(null)
   const [existingServers, setExistingServers] = useState([])
   const [duplicates, setDuplicates] = useState([])
+  const [duplicateStrategy, setDuplicateStrategy] = useState(() => localStorage.getItem(DUPLICATE_STRATEGY_KEY) || 'skip')
+
+  const getUniqueServerName = (baseName, occupiedNames) => {
+    let i = 1
+    let candidate = `${baseName}-${i}`
+    while (occupiedNames.has(candidate)) {
+      i += 1
+      candidate = `${baseName}-${i}`
+    }
+    return candidate
+  }
 
   // 加载现有服务列表
   useEffect(() => {
@@ -24,6 +38,11 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
       setExistingServers(Object.keys(config.mcpServers || {}))
     }).catch(() => {})
   }, [projectDir])
+
+  // 持久化冲突处理策略
+  useEffect(() => {
+    localStorage.setItem(DUPLICATE_STRATEGY_KEY, duplicateStrategy)
+  }, [duplicateStrategy])
 
   // 初始化示例
   useEffect(() => {
@@ -115,9 +134,32 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
     setSaving(true)
     setError('')
 
-    const results = { success: [], failed: [] }
+    let latestServers = existingServers
+    try {
+      const latestConfig = await invoke('get_mcp_config', { projectDir: projectDir || null })
+      latestServers = Object.keys(latestConfig.mcpServers || {})
+      setExistingServers(latestServers)
+    } catch {
+      // 读取失败时回退到已缓存列表
+    }
+
+    const occupiedNames = new Set(latestServers)
+    const results = { success: [], failed: [], skipped: [], renamed: [] }
 
     for (const { name, config } of parseResult.servers) {
+      let targetName = name
+
+      if (occupiedNames.has(name)) {
+        if (duplicateStrategy === 'skip') {
+          results.skipped.push(name)
+          continue
+        }
+        if (duplicateStrategy === 'rename') {
+          targetName = getUniqueServerName(name, occupiedNames)
+          results.renamed.push({ from: name, to: targetName })
+        }
+      }
+
       try {
         const finalConfig = {
           command: config.command,
@@ -126,10 +168,11 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
           disabled: config.disabled ?? false,
           autoApprove: config.autoApprove || []
         }
-        await invoke('save_mcp_server', { name, config: finalConfig, projectDir: projectDir || null })
-        results.success.push(name)
+        await invoke('save_mcp_server', { name: targetName, config: finalConfig, projectDir: projectDir || null })
+        results.success.push(targetName)
+        occupiedNames.add(targetName)
       } catch (e) {
-        results.failed.push({ name, error: String(e) })
+        results.failed.push({ name: targetName, error: String(e) })
       }
     }
 
@@ -137,14 +180,28 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
 
     if (results.failed.length > 0) {
       const failedNames = results.failed.map(f => f.name).join(', ')
-      if (results.success.length > 0) {
-        setError(`部分失败: ${failedNames}（已成功: ${results.success.join(', ')}）`)
-      } else {
-        setError(`保存失败: ${failedNames}`)
-      }
-    } else {
-      onSuccess()
+      const summary = [`部分失败: ${failedNames}`]
+      if (results.success.length > 0) summary.push(`已成功: ${results.success.join(', ')}`)
+      if (results.skipped.length > 0) summary.push(`已跳过: ${results.skipped.join(', ')}`)
+      if (results.renamed.length > 0) summary.push(`已重命名: ${results.renamed.map(r => `${r.from}→${r.to}`).join(', ')}`)
+      setError(summary.join('；'))
+      return
     }
+
+    if (results.success.length === 0 && results.skipped.length > 0) {
+      setError(`未添加任何服务，已跳过: ${results.skipped.join(', ')}`)
+      return
+    }
+
+    const summaryParts = []
+    if (results.success.length > 0) summaryParts.push(`新增 ${results.success.length}`)
+    if (results.skipped.length > 0) summaryParts.push(`跳过 ${results.skipped.length}`)
+    if (results.renamed.length > 0) summaryParts.push(`重命名 ${results.renamed.length}`)
+    if (summaryParts.length > 0) {
+      showSuccess(`MCP 服务已处理：${summaryParts.join('，')}`)
+    }
+
+    onSuccess()
   }
 
   const serverCount = parseResult?.servers?.length || 0
@@ -157,7 +214,7 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className={`relative overflow-hidden ${colors.card} border ${colors.cardBorder} rounded-lg shadow-2xl w-[560px] max-h-[85vh] flex flex-col`}
+        className={`relative overflow-hidden ${colors.card} border ${colors.cardBorder} rounded-lg shadow-2xl w-[560px] max-w-full max-h-[85vh] flex flex-col`}
         onClick={e => e.stopPropagation()}
         
       >
@@ -172,7 +229,10 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
             </div>
             <h2 className={`text-base font-semibold ${colors.text}`}>{t('mcpManager.addMCPServer')}</h2>
           </div>
-          <button onClick={onClose} className={`p-2 rounded-lg ${colors.cardHover}`}>
+          <button
+            onClick={onClose}
+            className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+          >
             <X size={18} className={colors.textMuted} />
           </button>
         </div>
@@ -187,7 +247,7 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
                 <button
                   key={key}
                   onClick={() => applyTemplate(key)}
-                  className={`px-2.5 py-1 text-xs rounded-lg border ${colors.cardBorder} ${colors.input} ${accent.hoverBorder} ${colors.text}`}
+                  className={`cursor-pointer px-2.5 py-1 text-xs rounded-lg border ${colors.cardBorder} ${colors.input} ${accent.hoverBorder} ${colors.text} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
                 >
                   {key}
                 </button>
@@ -216,14 +276,14 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={pasteFromClipboard}
-                  className={`text-xs ${colors.textMuted} ${accent.textHover} flex items-center gap-1 transition-colors`}
+                  className={`cursor-pointer text-xs ${colors.textMuted} ${accent.textHover} flex items-center gap-1 transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
                 >
                   <ClipboardPaste size={12} />
                   粘贴
                 </button>
                 <button
                   onClick={formatJson}
-                  className={`text-xs ${colors.textMuted} ${accent.textHover} flex items-center gap-1 transition-colors`}
+                  className={`cursor-pointer text-xs ${colors.textMuted} ${accent.textHover} flex items-center gap-1 transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
                 >
                   <Wand2 size={12} />
                   格式化
@@ -249,11 +309,39 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
             </div>
           </div>
 
-          {/* 重名警告 */}
+          {/* 重名处理 */}
           {duplicates.length > 0 && (
-            <div className="text-xs text-amber-500 bg-amber-500/10 px-3 py-2 rounded-lg flex items-start gap-2">
-              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-              <span>以下服务已存在，将被覆盖: {duplicates.join(', ')}</span>
+            <div className="text-xs text-amber-500 bg-amber-500/10 px-3 py-2 rounded-lg flex flex-col gap-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <span>
+                  以下服务已存在: {duplicates.join(', ')}
+                  {duplicateStrategy === 'overwrite' && '（将被覆盖）'}
+                  {duplicateStrategy === 'skip' && '（将跳过）'}
+                  {duplicateStrategy === 'rename' && '（将自动重命名）'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 pl-6">
+                <span className={`${colors.textMuted}`}>冲突处理:</span>
+                <button
+                  onClick={() => setDuplicateStrategy('skip')}
+                  className={`cursor-pointer px-2 py-1 rounded border text-xs transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${duplicateStrategy === 'skip' ? `${accent.border} ${accent.bgSoft}` : `${colors.cardBorder} ${colors.cardHover}`}`}
+                >
+                  跳过（推荐）
+                </button>
+                <button
+                  onClick={() => setDuplicateStrategy('overwrite')}
+                  className={`cursor-pointer px-2 py-1 rounded border text-xs transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${duplicateStrategy === 'overwrite' ? `${accent.border} ${accent.bgSoft}` : `${colors.cardBorder} ${colors.cardHover}`}`}
+                >
+                  覆盖
+                </button>
+                <button
+                  onClick={() => setDuplicateStrategy('rename')}
+                  className={`cursor-pointer px-2 py-1 rounded border text-xs transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${duplicateStrategy === 'rename' ? `${accent.border} ${accent.bgSoft}` : `${colors.cardBorder} ${colors.cardHover}`}`}
+                >
+                  自动重命名
+                </button>
+              </div>
             </div>
           )}
 
@@ -267,14 +355,14 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
         <div className={`relative flex justify-end gap-3 px-6 py-4 border-t ${colors.cardBorder}`}>
           <button
             onClick={onClose}
-            className={`px-5 py-2.5 rounded-lg text-sm ${colors.text} ${colors.cardHover}`}
+            className={`cursor-pointer px-5 py-2.5 rounded-lg text-sm ${colors.text} ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
           >
             {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving || serverCount === 0}
-            className={`px-6 py-2.5 ${accentGradientButtonClass} rounded-lg text-sm font-medium disabled:opacity-50`}
+            className={`cursor-pointer px-6 py-2.5 ${accentGradientButtonClass} rounded-lg text-sm font-medium disabled:opacity-50 transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
           >
             {saving ? t('common.saving') : serverCount > 1 ? `添加 ${serverCount} 个` : t('common.add')}
           </button>

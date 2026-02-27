@@ -7,6 +7,7 @@ import MCPServerCard from './MCPServerCard'
 import AddMCPModal from './AddMCPModal'
 import EditMCPModal from './EditMCPModal'
 import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 function MCPManager() {
   const { t, colors, theme } = useApp()
@@ -24,7 +25,7 @@ function MCPManager() {
       const config = await invoke('get_mcp_config', { projectDir: null })
       setServers(config.mcpServers || {})
     } catch (e) {
-      console.error('加载 MCP 配置失败:', e)
+      handleUiError('加载 MCP 配置失败', e, { userMessage: '加载 MCP 配置失败' })
     } finally {
       setLoading(false)
     }
@@ -43,7 +44,7 @@ function MCPManager() {
         [name]: { ...prev[name], disabled }
       }))
     } catch (e) {
-      console.error('切换状态失败:', e)
+      handleUiError('切换 MCP 状态失败', e, { userMessage: '切换状态失败' })
     }
   }
 
@@ -59,7 +60,7 @@ function MCPManager() {
           return next
         })
       } catch (e) {
-        console.error('删除失败:', e)
+        handleUiError('删除 MCP 服务失败', e, { userMessage: '删除失败' })
       }
     }
   }
@@ -80,10 +81,10 @@ function MCPManager() {
               <p className={`text-sm ${colors.textMuted}`}>{t('mcpManager.subtitle')}</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className={`px-4 py-2 ${accentGradientButtonClass} rounded-xl text-sm font-medium flex items-center gap-1.5`}
-          >
+            <button
+              onClick={() => setShowAddModal(true)}
+              className={`cursor-pointer px-4 py-2 ${accentGradientButtonClass} rounded-xl text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+            >
             <Plus size={16} />{t('mcpManager.addServer')}
           </button>
         </div>

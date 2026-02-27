@@ -6,7 +6,7 @@ export const MCP_TEMPLATES = {
     args: ['mcp-server-fetch'],
     env: {},
     disabled: false,
-    autoApprove: ['fetch']
+    autoApprove: ['*']
   },
   memory: {
     command: 'npx',
@@ -27,7 +27,7 @@ export const MCP_TEMPLATES = {
     args: ['-y', '@modelcontextprotocol/server-sequential-thinking'],
     env: {},
     disabled: false,
-    autoApprove: ['sequentialthinking']
+    autoApprove: ['*']
   },
   'chrome-devtools': {
     command: 'npx',
@@ -45,27 +45,6 @@ export const MCP_TEMPLATES = {
       PROGRAMFILES: 'C:\\Program Files'
     },
     disabled: false,
-    autoApprove: [
-      'take_snapshot',
-      'take_screenshot',
-      'list_pages',
-      'new_page',
-      'select_page',
-      'close_page',
-      'navigate_page',
-      'click',
-      'fill',
-      'fill_form',
-      'hover',
-      'drag',
-      'press_key',
-      'wait_for',
-      'handle_dialog',
-      'evaluate_script',
-      'list_console_messages',
-      'get_console_message',
-      'list_network_requests',
-      'get_network_request'
-    ]
+    autoApprove: ['*']
   }
 }
