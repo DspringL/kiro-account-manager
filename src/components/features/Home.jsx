@@ -42,7 +42,7 @@ function Home({ onNavigate }) {
   useEffect(() => {
     const loadMcpToolCount = async () => {
       try {
-        const stats = await invoke('get_mcp_tool_stats')
+        const stats = await invoke('get_mcp_tool_stats', { projectDir: null })
         setMcpToolCount(stats.estimatedTools)
       } catch (e) {
         // 静默处理

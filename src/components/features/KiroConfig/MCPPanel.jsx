@@ -36,7 +36,7 @@ function SearchInput({ value, onChange, placeholder, colors, t, accent }) {
   )
 }
 
-function MCPPanel({ onCountChange }) {
+function MCPPanel({ onCountChange, projectDir }) {
   const { t, theme, colors } = useApp()
   const accent = getThemeAccent(theme)
   const accentGradientButtonClass = getGradientAccentButton(accent)
@@ -50,20 +50,20 @@ function MCPPanel({ onCountChange }) {
 
   const loadConfig = useCallback(async () => {
     try {
-      const config = await invoke('get_mcp_config')
+      const config = await invoke('get_mcp_config', { projectDir: projectDir || null })
       const mcpServers = config.mcpServers || {}
       setServers(mcpServers)
       onCountChange?.(Object.keys(mcpServers).length)
       
       // 加载工具统计
-      const stats = await invoke('get_mcp_tool_stats')
+      const stats = await invoke('get_mcp_tool_stats', { projectDir: projectDir || null })
       setToolCount(stats.estimatedTools)
     } catch (e) {
       console.error('加载 MCP 配置失败:', e)
     } finally {
       setLoading(false)
     }
-  }, [onCountChange])
+  }, [onCountChange, projectDir])
 
   useEffect(() => { loadConfig() }, [loadConfig])
 
@@ -71,7 +71,7 @@ function MCPPanel({ onCountChange }) {
     const oldDisabled = servers[name]?.disabled
     setServers(prev => ({ ...prev, [name]: { ...prev[name], disabled } }))
     try {
-      await invoke('toggle_mcp_server', { name, disabled })
+      await invoke('toggle_mcp_server', { name, disabled, projectDir: projectDir || null })
     } catch (e) {
       setServers(prev => ({ ...prev, [name]: { ...prev[name], disabled: oldDisabled } }))
       console.error('切换状态失败:', e)
@@ -81,7 +81,7 @@ function MCPPanel({ onCountChange }) {
   const handleDelete = async (name) => {
     if (!await showConfirm(t('mcp.confirmDelete'), `${t('common.confirm')} ${name}?`)) return
     try {
-      await invoke('delete_mcp_server', { name })
+      await invoke('delete_mcp_server', { name, projectDir: projectDir || null })
       setServers(prev => { const next = { ...prev }; delete next[name]; return next })
     } catch (e) {
       console.error('删除失败:', e)
@@ -166,7 +166,11 @@ function MCPPanel({ onCountChange }) {
       </div>
 
       {showAddModal && (
-        <AddMCPModal onClose={() => setShowAddModal(false)} onSuccess={() => { setShowAddModal(false); loadConfig() }} />
+        <AddMCPModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => { setShowAddModal(false); loadConfig() }}
+          projectDir={projectDir}
+        />
       )}
       {editingServer && (
         <EditMCPModal
@@ -174,6 +178,7 @@ function MCPPanel({ onCountChange }) {
           config={editingServer.config}
           onClose={() => setEditingServer(null)}
           onSuccess={() => { setEditingServer(null); loadConfig() }}
+          projectDir={projectDir}
         />
       )}
     </div>

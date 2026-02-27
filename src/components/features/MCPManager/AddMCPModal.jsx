@@ -6,7 +6,7 @@ import { useApp } from '../../../hooks/useApp'
 import { MCP_TEMPLATES } from './MCPTemplates'
 import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
 
-function AddMCPModal({ onClose, onSuccess }) {
+function AddMCPModal({ onClose, onSuccess, projectDir }) {
   const { t, colors, theme } = useApp()
   const accent = getThemeAccent(theme)
   const accentGradientButtonClass = getGradientAccentButton(accent)
@@ -20,10 +20,10 @@ function AddMCPModal({ onClose, onSuccess }) {
 
   // 加载现有服务列表
   useEffect(() => {
-    invoke('get_mcp_config').then(config => {
+    invoke('get_mcp_config', { projectDir: projectDir || null }).then(config => {
       setExistingServers(Object.keys(config.mcpServers || {}))
     }).catch(() => {})
-  }, [])
+  }, [projectDir])
 
   // 初始化示例
   useEffect(() => {
@@ -126,7 +126,7 @@ function AddMCPModal({ onClose, onSuccess }) {
           disabled: config.disabled ?? false,
           autoApprove: config.autoApprove || []
         }
-        await invoke('save_mcp_server', { name, config: finalConfig })
+        await invoke('save_mcp_server', { name, config: finalConfig, projectDir: projectDir || null })
         results.success.push(name)
       } catch (e) {
         results.failed.push({ name, error: String(e) })

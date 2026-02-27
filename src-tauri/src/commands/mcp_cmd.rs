@@ -4,24 +4,31 @@
 
 use crate::mcp::{McpConfig, McpServer};
 
-/// 获取 MCP 配置
+/// 获取 MCP 配置（支持项目级合并）
 #[tauri::command]
-pub async fn get_mcp_config() -> Result<McpConfig, String> {
-    tokio::task::spawn_blocking(McpConfig::load)
+pub async fn get_mcp_config(project_dir: Option<String>) -> Result<McpConfig, String> {
+    tokio::task::spawn_blocking(move || McpConfig::load_merged(project_dir.as_deref()))
         .await
         .map_err(|e| e.to_string())?
 }
 
 /// 保存/更新服务器配置
 #[tauri::command]
-pub async fn save_mcp_server(name: String, config: McpServer) -> Result<(), String> {
+pub async fn save_mcp_server(name: String, config: McpServer, project_dir: Option<String>) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         // 验证配置
         validate_mcp_server(&config)?;
-        
-        let mut mcp_config = McpConfig::load()?;
-        mcp_config.mcp_servers.insert(name, config);
-        mcp_config.save()
+
+        if let Some(pd) = project_dir {
+            let path = McpConfig::project_config_path(&pd);
+            let mut mcp_config = McpConfig::load_from_path(&path)?;
+            mcp_config.mcp_servers.insert(name, config);
+            mcp_config.save_to_path(&path)
+        } else {
+            let mut mcp_config = McpConfig::load()?;
+            mcp_config.mcp_servers.insert(name, config);
+            mcp_config.save()
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -63,11 +70,18 @@ fn validate_mcp_server(config: &McpServer) -> Result<(), String> {
 
 /// 删除服务器
 #[tauri::command]
-pub async fn delete_mcp_server(name: String) -> Result<(), String> {
+pub async fn delete_mcp_server(name: String, project_dir: Option<String>) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
-        let mut mcp_config = McpConfig::load()?;
-        mcp_config.mcp_servers.remove(&name);
-        mcp_config.save()
+        if let Some(pd) = project_dir {
+            let path = McpConfig::project_config_path(&pd);
+            let mut mcp_config = McpConfig::load_from_path(&path)?;
+            mcp_config.mcp_servers.remove(&name);
+            mcp_config.save_to_path(&path)
+        } else {
+            let mut mcp_config = McpConfig::load()?;
+            mcp_config.mcp_servers.remove(&name);
+            mcp_config.save()
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -75,28 +89,42 @@ pub async fn delete_mcp_server(name: String) -> Result<(), String> {
 
 /// 启用/禁用服务器
 #[tauri::command]
-pub async fn toggle_mcp_server(name: String, disabled: bool) -> Result<(), String> {
+pub async fn toggle_mcp_server(name: String, disabled: bool, project_dir: Option<String>) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
-        let mut mcp_config = McpConfig::load()?;
-        if let Some(server) = mcp_config.mcp_servers.get_mut(&name) {
-            match server {
-                McpServer::Command(cmd) => cmd.disabled = disabled,
-                McpServer::Url(url) => url.disabled = disabled,
+        if let Some(pd) = project_dir {
+            let path = McpConfig::project_config_path(&pd);
+            let mut mcp_config = McpConfig::load_from_path(&path)?;
+            if let Some(server) = mcp_config.mcp_servers.get_mut(&name) {
+                match server {
+                    McpServer::Command(cmd) => cmd.disabled = disabled,
+                    McpServer::Url(url) => url.disabled = disabled,
+                }
+                mcp_config.save_to_path(&path)
+            } else {
+                Err(format!("服务器 {name} 不存在"))
             }
-            mcp_config.save()
         } else {
-            Err(format!("服务器 {name} 不存在"))
+            let mut mcp_config = McpConfig::load()?;
+            if let Some(server) = mcp_config.mcp_servers.get_mut(&name) {
+                match server {
+                    McpServer::Command(cmd) => cmd.disabled = disabled,
+                    McpServer::Url(url) => url.disabled = disabled,
+                }
+                mcp_config.save()
+            } else {
+                Err(format!("服务器 {name} 不存在"))
+            }
         }
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-/// 获取 MCP 工具统计信息
+/// 获取 MCP 工具统计信息（支持项目级合并）
 #[tauri::command]
-pub async fn get_mcp_tool_stats() -> Result<serde_json::Value, String> {
-    tokio::task::spawn_blocking(|| {
-        let mcp_config = McpConfig::load()?;
+pub async fn get_mcp_tool_stats(project_dir: Option<String>) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || {
+        let mcp_config = McpConfig::load_merged(project_dir.as_deref())?;
         
         let total_servers = mcp_config.mcp_servers.len();
         let enabled_servers = mcp_config.mcp_servers.values()

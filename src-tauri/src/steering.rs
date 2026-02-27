@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -80,6 +80,30 @@ impl SteeringManager {
         }
     }
 
+fn sanitize_file_name(file_name: &str) -> Result<&str, String> {
+        if file_name.trim().is_empty() {
+            return Err("文件名不能为空".to_string());
+        }
+if !file_name.ends_with(".md") {
+            return Err("Steering 文件必须以 .md 结尾".to_string());
+        }
+
+        let path = Path::new(file_name);
+        let mut components = path.components();
+        let only_normal = matches!(components.next(), Some(Component::Normal(_))) && components.next().is_none();
+        if !only_normal {
+            return Err("文件名不合法".to_string());
+        }
+
+        Ok(file_name)
+    }
+
+    fn resolve_file_path(file_name: &str, scope: &str, project_dir: Option<&str>) -> Result<PathBuf, String> {
+        let safe_name = Self::sanitize_file_name(file_name)?;
+        let dir = Self::resolve_dir(scope, project_dir)?;
+        Ok(dir.join(safe_name))
+    }
+
     /// 读取所有 steering 文件（合并用户级和项目级）
     pub fn load_all(project_dir: Option<&str>) -> Result<Vec<SteeringFile>, String> {
         let mut all_files = vec![];
@@ -98,8 +122,7 @@ impl SteeringManager {
 
     /// 读取单个 steering 文件
     pub fn load(file_name: &str, scope: &str, project_dir: Option<&str>) -> Result<SteeringFile, String> {
-        let dir = Self::resolve_dir(scope, project_dir)?;
-        let path = dir.join(file_name);
+        let path = Self::resolve_file_path(file_name, scope, project_dir)?;
 
         if !path.exists() {
             return Err(format!("Steering 文件不存在: {file_name}"));
@@ -131,15 +154,14 @@ impl SteeringManager {
         let dir = Self::resolve_dir(scope, project_dir)?;
         fs::create_dir_all(&dir).ok();
 
-        let path = dir.join(file_name);
+        let path = Self::resolve_file_path(file_name, scope, project_dir)?;
         fs::write(&path, content)
             .map_err(|e| format!("写入失败: {e}"))
     }
 
     /// 删除 steering 文件
     pub fn delete(file_name: &str, scope: &str, project_dir: Option<&str>) -> Result<(), String> {
-        let dir = Self::resolve_dir(scope, project_dir)?;
-        let path = dir.join(file_name);
+        let path = Self::resolve_file_path(file_name, scope, project_dir)?;
 
         if path.exists() {
             fs::remove_file(&path)
@@ -154,7 +176,7 @@ impl SteeringManager {
         let dir = Self::resolve_dir(scope, project_dir)?;
         fs::create_dir_all(&dir).ok();
 
-        let path = dir.join(file_name);
+        let path = Self::resolve_file_path(file_name, scope, project_dir)?;
 
         if path.exists() {
             return Err(format!("文件已存在: {file_name}"));

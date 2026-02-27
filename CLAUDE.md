@@ -99,14 +99,14 @@ When adding a new command: define the Rust function with `#[tauri::command]`, ad
 - Reads/writes `~/.kiro/config.json` (proxy, model settings)
 - Reads/writes `~/.kiro/token.json` (current account tokens)
 - Account switching = update token.json + optionally reset machine ID
-- MCP config: `~/.kiro/mcp.json`
-- Steering rules: `~/.kiro/steering/*.json`
+- MCP config: `~/.kiro/settings/mcp.json`
+- Steering rules: `~/.kiro/steering/*.md`
 
 ## Data Storage
 
 App data in `~/.kiro-account-manager/`: `accounts.json`, `groups-tags.json`, `settings.json`, `usage-history.json`, `machine-bindings.json`
 
-Kiro IDE data in `~/.kiro/`: `config.json`, `token.json`, `mcp.json`, `steering/*.json`
+Kiro IDE data in `~/.kiro/`: `config.json`, `token.json`, `settings/mcp.json`, `steering/*.md`
 
 ## Important Implementation Details
 

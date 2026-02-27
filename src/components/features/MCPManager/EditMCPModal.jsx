@@ -5,7 +5,7 @@ import { Textarea } from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
 
-function EditMCPModal({ name, config, onClose, onSuccess }) {
+function EditMCPModal({ name, config, onClose, onSuccess, projectDir }) {
   const { t, colors, theme } = useApp()
   const accent = getThemeAccent(theme)
   const accentGradientButtonClass = getGradientAccentButton(accent)
@@ -80,7 +80,7 @@ function EditMCPModal({ name, config, onClose, onSuccess }) {
         autoApprove: parsed.autoApprove || []
       }
 
-      await invoke('save_mcp_server', { name, config: newConfig })
+      await invoke('save_mcp_server', { name, config: newConfig, projectDir: projectDir || null })
       onSuccess()
     } catch (e) {
       setError(String(e))

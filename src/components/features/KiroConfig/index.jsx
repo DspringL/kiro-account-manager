@@ -140,7 +140,7 @@ function KiroConfig() {
 
       {/* 内容区 */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        {activeTab === 'mcp' && <MCPPanel onCountChange={setMcpCount} />}
+{activeTab === 'mcp' && <MCPPanel onCountChange={setMcpCount} projectDir={projectDir} />}
         {activeTab === 'steering' && <SteeringPanel onCountChange={setSteeringCount} projectDir={projectDir} />}
         {activeTab === 'skills' && <SkillsPanel onCountChange={setSkillsCount} projectDir={projectDir} />}
         {activeTab === 'hooks' && (

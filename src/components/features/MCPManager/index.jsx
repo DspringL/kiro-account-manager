@@ -21,7 +21,7 @@ function MCPManager() {
   // 加载配置
   const loadConfig = useCallback(async () => {
     try {
-      const config = await invoke('get_mcp_config')
+      const config = await invoke('get_mcp_config', { projectDir: null })
       setServers(config.mcpServers || {})
     } catch (e) {
       console.error('加载 MCP 配置失败:', e)
@@ -37,7 +37,7 @@ function MCPManager() {
   // 切换启用/禁用
   const handleToggle = async (name, disabled) => {
     try {
-      await invoke('toggle_mcp_server', { name, disabled })
+      await invoke('toggle_mcp_server', { name, disabled, projectDir: null })
       setServers(prev => ({
         ...prev,
         [name]: { ...prev[name], disabled }
@@ -52,7 +52,7 @@ function MCPManager() {
     const confirmed = await showConfirm(t('mcpManager.deleteServer'), `${t('mcpManager.confirmDelete')} ${name}？`)
     if (confirmed) {
       try {
-        await invoke('delete_mcp_server', { name })
+        await invoke('delete_mcp_server', { name, projectDir: null })
         setServers(prev => {
           const next = { ...prev }
           delete next[name]
@@ -121,6 +121,7 @@ function MCPManager() {
         <AddMCPModal
           onClose={() => setShowAddModal(false)}
           onSuccess={() => { setShowAddModal(false); loadConfig() }}
+          projectDir={null}
         />
       )}
 
@@ -131,6 +132,7 @@ function MCPManager() {
           config={editingServer.config}
           onClose={() => setEditingServer(null)}
           onSuccess={() => { setEditingServer(null); loadConfig() }}
+          projectDir={null}
         />
       )}
     </div>
