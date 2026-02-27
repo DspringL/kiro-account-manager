@@ -1,6 +1,7 @@
 // Hooks 管理（与 Kiro IDE 0.10.32 对齐：仅支持 <project>/.kiro/hooks/）
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
 
@@ -15,6 +16,58 @@ pub struct HookFile {
     pub scope: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HookSchemaForRead {
+    name: String,
+    #[allow(dead_code)]
+    description: Option<String>,
+    #[allow(dead_code)]
+    enabled: Option<bool>,
+    #[allow(dead_code)]
+    version: Option<String>,
+    when: HookWhen,
+    then: HookThen,
+    #[allow(dead_code)]
+    workspace_folder_name: Option<String>,
+    #[allow(dead_code)]
+    short_name: Option<String>,
+    #[allow(dead_code)]
+    file_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct HookWhen {
+    r#type: HookWhenType,
+    #[allow(dead_code)]
+    file_pattern: Option<Value>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum HookWhenType {
+    UserTriggered,
+    FileEdited,
+    PromptSubmit,
+    AgentStop,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum HookThen {
+    AskAgent {
+        prompt: String,
+    },
+    RunShellCommand {
+        command: String,
+        #[allow(dead_code)]
+        args: Option<Vec<String>>,
+        #[allow(dead_code)]
+        cwd: Option<String>,
+    },
+}
+
 pub struct HooksManager;
 
 impl HooksManager {
@@ -25,6 +78,37 @@ impl HooksManager {
     fn require_project_dir(project_dir: Option<&str>) -> Result<PathBuf, String> {
         let pd = project_dir.ok_or("Hooks 仅支持项目级，请先选择项目目录")?;
         Ok(Self::project_dir(pd))
+    }
+
+    fn validate_hook_content_for_read(file_name: &str, content: &str) -> Result<(), String> {
+        let parsed: HookSchemaForRead = serde_json::from_str(content)
+            .map_err(|e| format!("Hook 文件无效(invalid-data): {file_name}: {e}"))?;
+
+        if parsed.name.trim().is_empty() {
+            return Err(format!(
+                "Hook 文件无效(invalid-data): {file_name}: name 不能为空"
+            ));
+        }
+
+        match parsed.then {
+            HookThen::AskAgent { prompt } => {
+                if prompt.trim().is_empty() {
+                    return Err(format!(
+                        "Hook 文件无效(invalid-data): {file_name}: askAgent.prompt 不能为空"
+                    ));
+                }
+            }
+            HookThen::RunShellCommand { command, .. } => {
+                if command.trim().is_empty() {
+                    return Err(format!(
+                        "Hook 文件无效(invalid-data): {file_name}: runShellCommand.command 不能为空"
+                    ));
+                }
+            }
+        }
+
+        let _ = parsed.when.r#type;
+        Ok(())
     }
 
     fn load_from_dir(dir: &PathBuf) -> Result<Vec<HookFile>, String> {
@@ -50,6 +134,9 @@ impl HooksManager {
                 continue;
             }
 
+            let content = fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {e}"))?;
+            Self::validate_hook_content_for_read(&file_name, &content)?;
+
             let metadata = fs::metadata(&path).ok();
             let size = metadata.as_ref().map_or(0, std::fs::Metadata::len);
             let modified_at = metadata
@@ -59,7 +146,6 @@ impl HooksManager {
                     datetime.format("%Y/%m/%d %H:%M:%S").to_string()
                 });
 
-            let content = fs::read_to_string(&path).unwrap_or_default();
             files.push(HookFile {
                 file_name,
                 content,
@@ -82,6 +168,9 @@ impl HooksManager {
         }
         if file_name.contains("..") {
             return Err("文件名不能包含 ..".to_string());
+        }
+        if !file_name.ends_with(".kiro.hook") {
+            return Err("文件名必须以 .kiro.hook 结尾".to_string());
         }
 
         let path = Path::new(file_name);
@@ -115,6 +204,8 @@ impl HooksManager {
         }
 
         let content = fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {e}"))?;
+        Self::validate_hook_content_for_read(file_name, &content)?;
+
         let metadata = fs::metadata(&path).ok();
         let size = metadata.as_ref().map_or(0, std::fs::Metadata::len);
         let modified_at = metadata

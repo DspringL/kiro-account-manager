@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Textarea, TextInput } from '@mantine/core'
-import { Link2, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
+import { FolderOpen, Link2, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { getThemeAccent, getGradientAccentButton, getSolidAccentButton, getThemeSurfaceStyles } from './themeAccent'
@@ -26,9 +26,19 @@ function HooksPanel({ onCountChange, projectDir }) {
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const loadHooks = useCallback(async () => {
+    if (!projectDir) {
+      setHooks([])
+      setSelectedHook(null)
+      setEditContent('')
+      setHasChanges(false)
+      onCountChange?.(0)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     try {
-      const data = await invoke('get_hooks', { projectDir: projectDir || null })
+      const data = await invoke('get_hooks', { projectDir })
       setHooks(data)
       onCountChange?.(data?.length || 0)
     } catch (e) {
@@ -53,13 +63,14 @@ function HooksPanel({ onCountChange, projectDir }) {
   }
 
   const handleSave = async () => {
-    if (!selectedHook) return
+    if (!selectedHook || !projectDir) return
+
     setSaving(true)
     try {
       await invoke('save_hook', {
         fileName: selectedHook.fileName,
         content: editContent,
-        projectDir: projectDir || null
+        projectDir
       })
       const newList = hooks.map(h => (h.fileName === selectedHook.fileName)
         ? { ...h, content: editContent }
@@ -75,11 +86,12 @@ function HooksPanel({ onCountChange, projectDir }) {
   }
 
   const handleDelete = async (hookFile) => {
+    if (!projectDir) return
     if (!await showConfirm(t('hooks.confirmDelete'), t('hooks.confirmDeleteFile', { fileName: hookFile.fileName }))) return
     try {
       await invoke('delete_hook', {
         fileName: hookFile.fileName,
-        projectDir: projectDir || null
+        projectDir
       })
       const next = hooks.filter(h => h.fileName !== hookFile.fileName)
       setHooks(next)
@@ -95,27 +107,60 @@ function HooksPanel({ onCountChange, projectDir }) {
   }
 
   const handleCreate = async (fileName) => {
-    const normalized = fileName.endsWith('.kiro.hook') ? fileName : `${fileName}.kiro.hook`
+    if (!projectDir) return false
+
+    const raw = fileName.trim()
+    if (!raw) {
+      showError(t('hooks.createFailed'), t('hooks.fileNameRequired'))
+      return false
+    }
+
+    const normalized = raw.endsWith('.kiro.hook') ? raw : `${raw}.kiro.hook`
+    if (!/^[A-Za-z0-9._-]+\.kiro\.hook$/.test(normalized)) {
+      showError(t('hooks.createFailed'), t('hooks.fileNameInvalid'))
+      return false
+    }
+
+    const exists = hooks.some(h => h.fileName.toLowerCase() === normalized.toLowerCase())
+    if (exists) {
+      showError(t('hooks.createFailed'), t('hooks.fileNameDuplicate'))
+      return false
+    }
+
+    const baseName = normalized.replace(/\.kiro\.hook$/i, '')
     const template = `{
   "enabled": true,
-  "event": "userPromptSubmit",
-  "matcher": "",
-  "actions": []
+  "name": "${baseName}",
+  "description": "",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "filePattern": null
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "请在这里填写执行说明"
+  },
+  "workspaceFolderName": "",
+  "shortName": "${baseName}",
+  "fileName": "${normalized}"
 }
 `
     try {
       const newHook = await invoke('create_hook', {
         fileName: normalized,
         content: template,
-        projectDir: projectDir || null
+        projectDir
       })
       const next = [...hooks, newHook]
       setHooks(next)
       onCountChange?.(next.length)
       setShowCreateModal(false)
       handleSelect(newHook)
+      return true
     } catch (e) {
       showError(t('hooks.createFailed'), String(e))
+      return false
     }
   }
 
@@ -124,8 +169,8 @@ function HooksPanel({ onCountChange, projectDir }) {
   }
 
   return (
-    <div className="h-full flex gap-4 p-4">
-      <div className={`w-80 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg max-w-full`}>
+    <div className="flex h-full min-h-0 gap-4 p-4 overflow-hidden">
+      <div className={`w-80 min-h-0 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg max-w-full`}>
         <div className={`p-4 border-b ${colors.cardBorder}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -134,7 +179,12 @@ function HooksPanel({ onCountChange, projectDir }) {
             <span className={`text-xs ${colors.textMuted}`}>({hooks.length})</span>
           </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowCreateModal(true)} className={`p-2 rounded-lg ${colors.cardHover} transition-colors cursor-pointer`} title={t('hooks.newHook')}>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                disabled={!projectDir}
+                className={`p-2 rounded-lg ${colors.cardHover} transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={projectDir ? t('hooks.newHook') : t('kiroConfig.selectProjectDir')}
+              >
                 <Plus size={16} className={accent.text} />
               </button>
               <button onClick={loadHooks} className={`p-2 rounded-lg ${colors.cardHover} transition-colors cursor-pointer`} title={t('common.refresh')}>
@@ -149,10 +199,12 @@ function HooksPanel({ onCountChange, projectDir }) {
           {hooks.length === 0 ? (
             <div className={`text-center py-16 ${colors.textMuted}`}>
               <Link2 size={48} className="mx-auto mb-3 opacity-20" />
-              <p className="text-sm">{t('hooks.noHooks')}</p>
-              <button onClick={() => setShowCreateModal(true)} className={`mt-4 px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer ${accentSolidButtonClass}`}>
-                {t('hooks.createFirst')}
-              </button>
+              <p className="text-sm">{projectDir ? t('hooks.noHooks') : t('kiroConfig.selectProjectDir')}</p>
+              {projectDir && (
+                <button onClick={() => setShowCreateModal(true)} className={`mt-4 px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer ${accentSolidButtonClass}`}>
+                  {t('hooks.createFirst')}
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
@@ -196,8 +248,15 @@ function HooksPanel({ onCountChange, projectDir }) {
         </div>
       </div>
 
-      <div className={`flex-1 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
-        {selectedHook ? (
+      <div className={`flex-1 min-h-0 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
+        {!projectDir ? (
+          <div className={`flex-1 flex items-center justify-center ${colors.textMuted}`}>
+            <div className="text-center px-6">
+              <FolderOpen size={44} className="mx-auto mb-2 opacity-30" />
+              <p>{t('kiroConfig.selectProjectDir')}</p>
+            </div>
+          </div>
+        ) : selectedHook ? (
           <>
             <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
               <div className="flex items-center gap-2">
@@ -262,14 +321,32 @@ function HooksPanel({ onCountChange, projectDir }) {
           t={t}
           accent={accent}
           accentGradientButtonClass={accentGradientButtonClass}
+          existingFileNames={hooks.map(h => h.fileName)}
         />
       )}
     </div>
   )
 }
 
-function CreateHookModal({ onCreate, onClose, colors, t, accent, accentGradientButtonClass }) {
+function CreateHookModal({ onCreate, onClose, colors, t, accent, accentGradientButtonClass, existingFileNames }) {
   const [fileName, setFileName] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const raw = fileName.trim()
+  const normalized = raw ? (raw.endsWith('.kiro.hook') ? raw : `${raw}.kiro.hook`) : ''
+  const invalidName = raw && !/^[A-Za-z0-9._-]+(\.kiro\.hook)?$/.test(raw)
+  const duplicateName = normalized && existingFileNames.some(name => name.toLowerCase() === normalized.toLowerCase())
+  const canSubmit = !!raw && !invalidName && !duplicateName && !creating
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return
+    setCreating(true)
+    try {
+      await onCreate(raw)
+    } finally {
+      setCreating(false)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -293,19 +370,28 @@ function CreateHookModal({ onCreate, onClose, colors, t, accent, accentGradientB
               placeholder={t('hooks.fileNamePlaceholder')}
               value={fileName}
               onChange={(e) => setFileName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleSubmit()
+                }
+              }}
               size="md"
               classNames={{ input: `${colors.text} ${colors.input} ${colors.inputFocus}` }}
               styles={{ input: { borderRadius: '0.5rem' } }}
             />
             <p className={`text-xs ${colors.textMuted} mt-1`}>{t('hooks.fileNameHint')}</p>
+            {!!normalized && <p className={`text-xs mt-1 ${colors.textMuted}`}>{t('hooks.fileNamePreview')}: {normalized}</p>}
+            {invalidName && <p className="text-xs mt-1 text-red-500">{t('hooks.fileNameInvalid')}</p>}
+            {duplicateName && <p className="text-xs mt-1 text-red-500">{t('hooks.fileNameDuplicate')}</p>}
           </div>
 
-
           <button
-            disabled={!fileName.trim()}
+            onClick={handleSubmit}
+            disabled={!canSubmit}
             className={`w-full px-4 py-3 rounded-xl text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] cursor-pointer ${accentGradientButtonClass}`}
           >
-            {t('common.add')}
+            {creating ? t('hooks.saving') : t('common.add')}
           </button>
         </div>
       </div>
