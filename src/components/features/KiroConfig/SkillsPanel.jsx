@@ -10,6 +10,7 @@ import {
   getGradientAccentButton,
   getThemeSurfaceStyles,
 } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 // 格式化文件大小
 const formatSize = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
@@ -73,11 +74,11 @@ function SkillsPanel({ onCountChange, projectDir }) {
       setSkills(data)
       onCountChange?.(data?.length || 0)
     } catch (e) {
-      console.error('加载 Skills 失败:', e)
+      handleUiError('加载 Skills 失败', e, { userMessage: t('skills.loadFailed') || '加载 Skills 失败' })
     } finally {
       setLoading(false)
     }
-  }, [onCountChange, projectDir])
+  }, [onCountChange, projectDir, t])
 
   useEffect(() => {
     setSelectedSkill(null)
@@ -118,7 +119,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
       setSelectedSkill({ ...selectedSkill, content: fullContent })
       setHasChanges(false)
     } catch (e) {
-      showError(t('skills.saveFailed'), String(e))
+      handleUiError('保存 Skill 失败', e, { userMessage: t('skills.saveFailed') || '保存失败' })
     } finally {
       setSaving(false)
     }
@@ -141,7 +142,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
         setHasChanges(false)
       }
     } catch (e) {
-      console.error('删除失败:', e)
+      handleUiError('删除 Skill 失败', e, { userMessage: t('skills.deleteFailed') || '删除失败' })
     }
   }
 
@@ -161,7 +162,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
       setShowCreateModal(false)
       handleSelect(newSkill)
     } catch (e) {
-      showError(t('skills.createFailed'), String(e))
+      handleUiError('创建 Skill 失败', e, { userMessage: t('skills.createFailed') || '创建失败' })
     }
   }
 
@@ -174,7 +175,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
   }
 
   return (
-    <div className="h-full flex gap-4 p-4">
+    <div className="h-full flex gap-4 p-4 max-w-full overflow-x-hidden">
       {/* 左侧列表 */}
       <div className={`w-80 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
         <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
@@ -186,16 +187,16 @@ function SkillsPanel({ onCountChange, projectDir }) {
           <div className="flex gap-2">
             <button
               onClick={() => setShowCreateModal(true)}
-              className={`p-2 rounded-lg ${colors.cardHover} transition-colors`}
+              className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
               title={t('skills.create')}
             >
               <Plus size={16} className={accent.text} />
             </button>
-            <button
-              onClick={loadSkills}
-              className={`p-2 rounded-lg ${colors.cardHover} transition-colors`}
-              title={t('common.refresh')}
-            >
+              <button
+                onClick={loadSkills}
+                className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+                title={t('common.refresh')}
+              >
               <RefreshCw size={16} className={colors.textMuted} />
             </button>
           </div>
@@ -208,7 +209,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
               <p className={`text-xs mt-2 ${colors.textMuted}`}>{t('skills.noSkillsHint')}</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className={`mt-4 px-4 py-2 rounded-lg text-sm transition-colors ${accentSolidButtonClass}`}
+                className={`cursor-pointer mt-4 px-4 py-2 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${accentSolidButtonClass}`}
               >
                 {t('skills.createFirst')}
               </button>
@@ -250,7 +251,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(skill) }}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 hover:scale-110"
+                        className="cursor-pointer opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
                         title={t('common.delete')}
                       >
                         <Trash2 size={16} className="text-red-500" />
@@ -291,7 +292,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
               <button
                 onClick={handleSave}
                 disabled={!hasChanges || saving}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${
                   hasChanges ? accentSolidButtonClass : colors.btnDisabled
                 } disabled:opacity-50`}
               >

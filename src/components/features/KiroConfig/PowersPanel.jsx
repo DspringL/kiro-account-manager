@@ -4,13 +4,14 @@ import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { Zap, RefreshCw, Trash2, Server, FileText, Tag, ChevronDown, ChevronRight, ExternalLink, Download, Check, Globe, Loader2 } from 'lucide-react'
 import { getThemeAccent, getSolidAccentButton, getGradientAccentButton, getThemeSurfaceStyles } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 // 格式化文件大小
 const formatSize = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 
 function PowersPanel({ onCountChange }) {
   const { t, theme, colors } = useApp()
-  const { showConfirm, showError, showSuccess } = useDialog()
+  const { showConfirm, showSuccess } = useDialog()
   const surface = getThemeSurfaceStyles(theme)
   const accent = getThemeAccent(theme)
   const accentSolidButtonClass = getSolidAccentButton(accent)
@@ -38,11 +39,11 @@ function PowersPanel({ onCountChange }) {
       setRegistries(regs)
       onCountChange?.(data?.length || 0)
     } catch (e) {
-      console.error('加载 Powers 失败:', e)
+      handleUiError('加载 Powers 失败', e, { userMessage: t('powers.loadFailed') || '加载 Powers 失败' })
     } finally {
       setLoading(false)
     }
-  }, [onCountChange])
+  }, [onCountChange, t])
 
   const loadRecommended = useCallback(async () => {
     setRecLoading(true)
@@ -50,11 +51,11 @@ function PowersPanel({ onCountChange }) {
       const data = await invoke('get_recommended_powers')
       setRecommended(data)
     } catch (e) {
-      console.error('加载推荐 Powers 失败:', e)
+      handleUiError('加载推荐 Powers 失败', e, { userMessage: t('powers.loadRecommendedFailed') || '加载推荐 Powers 失败' })
     } finally {
       setRecLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => { loadPowers() }, [loadPowers])
   useEffect(() => { loadRecommended() }, [loadRecommended])
@@ -70,7 +71,7 @@ function PowersPanel({ onCountChange }) {
       // 更新推荐列表中的安装状态
       setRecommended(prev => prev.map(r => r.name === power.name ? { ...r, installed: false } : r))
     } catch (e) {
-      showError(t('powers.uninstallFailed'), String(e))
+      handleUiError('卸载 Power 失败', e, { userMessage: t('powers.uninstallFailed') || '卸载失败' })
     }
   }
 
@@ -97,7 +98,7 @@ function PowersPanel({ onCountChange }) {
       onCountChange?.(data?.length || 0)
       showSuccess(t('powers.installSuccess'), rec.displayName || rec.name)
     } catch (e) {
-      showError(t('powers.installFailed'), String(e))
+      handleUiError('安装 Power 失败', e, { userMessage: t('powers.installFailed') || '安装失败' })
     } finally {
       setInstalling(null)
     }
@@ -116,10 +117,10 @@ function PowersPanel({ onCountChange }) {
   }
 
   return (
-    <div className="h-full flex gap-4 p-4">
+    <div className="h-full flex gap-4 p-4 max-w-full overflow-x-hidden">
       {/* 左侧列表 */}
-      <div className={`w-80 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
-        {/* 头部 Tab 切换 */}
+    <div className={`w-80 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg max-w-full`}>
+
         <div className={`p-3 border-b ${colors.cardBorder}`}>
           <div className={`flex items-center gap-1 p-1 rounded-xl ${colors.cardSecondary}`}>
             <button
@@ -195,7 +196,7 @@ function PowersPanel({ onCountChange }) {
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleUninstall(power) }}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200"
+                          className="cursor-pointer opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
                           title={t('powers.uninstall')}
                         >
                           <Trash2 size={14} className="text-red-500" />
@@ -300,7 +301,7 @@ function PowersPanel({ onCountChange }) {
                 </div>
                 <button
                   onClick={() => handleUninstall(selectedPower)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"
+                  className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
                 >
                   <Trash2 size={14} />
                   {t('powers.uninstall')}

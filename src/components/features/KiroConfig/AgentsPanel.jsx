@@ -10,6 +10,7 @@ import {
   getGradientAccentButton,
   getThemeSurfaceStyles,
 } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 // 解析 agent front-matter（v0.10.32 完整 schema: name, description, tools, model, includeMcpJson, includePowers）
 const parseAgentFrontMatter = (content) => {
@@ -108,7 +109,7 @@ const normalizeToolTagsSelection = (nextValues, prevValues = []) => {
 
 function AgentsPanel({ onCountChange, projectDir }) {
   const { t, theme, colors } = useApp()
-  const { showConfirm, showError } = useDialog()
+  const { showConfirm } = useDialog()
   const surface = getThemeSurfaceStyles(theme)
   const accent = getThemeAccent(theme)
   const accentSolidButtonClass = getSolidAccentButton(accent)
@@ -134,11 +135,11 @@ function AgentsPanel({ onCountChange, projectDir }) {
       setAgents(data)
       onCountChange?.(data?.length || 0)
     } catch (e) {
-      console.error('加载 Custom Agents 失败:', e)
+      handleUiError('加载 Custom Agents 失败', e, { userMessage: t('agents.loadFailed') || '加载 Custom Agents 失败' })
     } finally {
       setLoading(false)
     }
-  }, [onCountChange, projectDir])
+  }, [onCountChange, projectDir, t])
 
   useEffect(() => {
     setSelectedAgent(null)
@@ -184,7 +185,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
       setSelectedAgent({ ...selectedAgent, content: fullContent })
       setHasChanges(false)
     } catch (e) {
-      showError(t('agents.saveFailed'), String(e))
+      handleUiError('保存 Custom Agent 失败', e, { userMessage: t('agents.saveFailed') || '保存失败' })
     } finally {
       setSaving(false)
     }
@@ -207,7 +208,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
         setHasChanges(false)
       }
     } catch (e) {
-      console.error('删除失败:', e)
+      handleUiError('删除 Custom Agent 失败', e, { userMessage: t('agents.deleteFailed') || '删除失败' })
     }
   }
 
@@ -228,7 +229,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
       setShowCreateModal(false)
       handleSelect(newAgent)
     } catch (e) {
-      showError(t('agents.createFailed'), String(e))
+      handleUiError('创建 Custom Agent 失败', e, { userMessage: t('agents.createFailed') || '创建失败' })
     }
   }
 
@@ -241,7 +242,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
   }
 
   return (
-    <div className="h-full flex gap-4 p-4">
+    <div className="h-full flex gap-4 p-4 max-w-full overflow-x-hidden">
       {/* 左侧列表 */}
       <div className={`w-80 flex flex-col ${colors.card} border ${colors.cardBorder} rounded-2xl overflow-hidden shadow-lg`}>
         <div className={`p-4 border-b ${colors.cardBorder} flex items-center justify-between`}>
@@ -253,16 +254,16 @@ function AgentsPanel({ onCountChange, projectDir }) {
           <div className="flex gap-2">
             <button
               onClick={() => setShowCreateModal(true)}
-              className={`p-2 rounded-lg ${colors.cardHover} transition-colors`}
+              className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
               title={t('agents.create')}
             >
               <Plus size={16} className={accent.text} />
             </button>
-            <button
-              onClick={loadAgents}
-              className={`p-2 rounded-lg ${colors.cardHover} transition-colors`}
-              title={t('common.refresh')}
-            >
+              <button
+                onClick={loadAgents}
+                className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+                title={t('common.refresh')}
+              >
               <RefreshCw size={16} className={colors.textMuted} />
             </button>
           </div>
@@ -275,7 +276,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
               <p className={`text-xs mt-2 ${colors.textMuted}`}>{t('agents.noAgentsHint')}</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className={`mt-4 px-4 py-2 rounded-lg text-sm transition-colors ${accentSolidButtonClass}`}
+                className={`cursor-pointer mt-4 px-4 py-2 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${accentSolidButtonClass}`}
               >
                 {t('agents.createFirst')}
               </button>
@@ -317,7 +318,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(agent) }}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 hover:scale-110"
+                        className="cursor-pointer opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
                         title={t('common.delete')}
                       >
                         <Trash2 size={16} className="text-red-500" />
@@ -364,7 +365,7 @@ function AgentsPanel({ onCountChange, projectDir }) {
               <button
                 onClick={handleSave}
                 disabled={!hasChanges || saving}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${
                   hasChanges ? accentSolidButtonClass : colors.btnDisabled
                 } disabled:opacity-50`}
               >

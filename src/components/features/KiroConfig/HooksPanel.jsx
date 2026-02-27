@@ -5,6 +5,7 @@ import { FolderOpen, Link2, Plus, RefreshCw, Save, Trash2, X } from 'lucide-reac
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { getThemeAccent, getGradientAccentButton, getSolidAccentButton, getThemeSurfaceStyles } from './themeAccent'
+import { handleUiError } from '../../../utils/errorLogger'
 
 const formatSize = (bytes) => bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`
 
@@ -42,11 +43,11 @@ function HooksPanel({ onCountChange, projectDir }) {
       setHooks(data)
       onCountChange?.(data?.length || 0)
     } catch (e) {
-      console.error('加载 Hooks 失败:', e)
+      handleUiError('加载 Hooks 失败', e, { userMessage: t('hooks.loadFailed') || '加载 Hooks 失败' })
     } finally {
       setLoading(false)
     }
-  }, [onCountChange, projectDir])
+  }, [onCountChange, projectDir, t])
 
   useEffect(() => {
     setSelectedHook(null)
@@ -79,7 +80,7 @@ function HooksPanel({ onCountChange, projectDir }) {
       setSelectedHook({ ...selectedHook, content: editContent })
       setHasChanges(false)
     } catch (e) {
-      showError(t('hooks.saveFailed'), String(e))
+      handleUiError('保存 Hook 失败', e, { userMessage: t('hooks.saveFailed') || '保存失败' })
     } finally {
       setSaving(false)
     }
@@ -102,7 +103,7 @@ function HooksPanel({ onCountChange, projectDir }) {
         setHasChanges(false)
       }
     } catch (e) {
-      showError(t('hooks.deleteFailed'), String(e))
+      handleUiError('删除 Hook 失败', e, { userMessage: t('hooks.deleteFailed') || '删除失败' })
     }
   }
 
@@ -159,7 +160,7 @@ function HooksPanel({ onCountChange, projectDir }) {
       handleSelect(newHook)
       return true
     } catch (e) {
-      showError(t('hooks.createFailed'), String(e))
+      handleUiError('创建 Hook 失败', e, { userMessage: t('hooks.createFailed') || '创建失败' })
       return false
     }
   }
@@ -182,13 +183,13 @@ function HooksPanel({ onCountChange, projectDir }) {
               <button
                 onClick={() => setShowCreateModal(true)}
                 disabled={!projectDir}
-                className={`p-2 rounded-lg ${colors.cardHover} transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={projectDir ? t('hooks.newHook') : t('kiroConfig.selectProjectDir')}
+                className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} disabled:opacity-50 disabled:cursor-not-allowed`}
+
               >
                 <Plus size={16} className={accent.text} />
               </button>
-              <button onClick={loadHooks} className={`p-2 rounded-lg ${colors.cardHover} transition-colors cursor-pointer`} title={t('common.refresh')}>
-                <RefreshCw size={16} className={colors.textMuted} />
+              <button onClick={loadHooks} className={`cursor-pointer p-2 rounded-lg ${colors.cardHover} transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring}`} title={t('common.refresh')}>
+
               </button>
             </div>
           </div>
@@ -201,8 +202,8 @@ function HooksPanel({ onCountChange, projectDir }) {
               <Link2 size={48} className="mx-auto mb-3 opacity-20" />
               <p className="text-sm">{projectDir ? t('hooks.noHooks') : t('kiroConfig.selectProjectDir')}</p>
               {projectDir && (
-                <button onClick={() => setShowCreateModal(true)} className={`mt-4 px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer ${accentSolidButtonClass}`}>
-                  {t('hooks.createFirst')}
+                  <button onClick={() => setShowCreateModal(true)} className={`cursor-pointer mt-4 px-4 py-2 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:ring-2 ${accent.ring} ${accentSolidButtonClass}`}>
+
                 </button>
               )}
             </div>
@@ -231,8 +232,8 @@ function HooksPanel({ onCountChange, projectDir }) {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(h) }}
-                        className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 cursor-pointer"
-                        title={t('common.delete')}
+                        className="cursor-pointer opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-500/20 flex-shrink-0 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/60"
+
                       >
                         <Trash2 size={16} className="text-red-500" />
                       </button>
