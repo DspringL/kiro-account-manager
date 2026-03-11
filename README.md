@@ -33,21 +33,20 @@
 - 🐛 [提交 Issue](https://github.com/hj01857655/kiro-account-manager/issues)
 - 💬 QQ 1群：[1020204332](https://qm.qq.com/q/Vh7mUrNpa8)
 - 💬 QQ 2群：[1080919449](https://qm.qq.com/q/xi0AglEqGs)
-- 💬 QQ 3群：[1076442194](https://qm.qq.com/q/3KYs28eAKQ)
 
 ---
 
 ## 📥 下载
 
-**最新版本**：[v1.8.2](https://github.com/hj01857655/kiro-account-manager/releases/latest)
+**最新版本**：[v1.8.3](https://github.com/hj01857655/kiro-account-manager/releases/latest)
 
 | 平台 | 架构 | 文件格式 | 下载链接 |
 |------|------|---------|---------|
-| 🪟 **Windows** | x64 | MSI 安装包 | [KiroAccountManager_1.8.2_x64_zh-CN.msi](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.2/KiroAccountManager_1.8.2_x64_zh-CN.msi) |
-| 🍎 **macOS** | Intel (x64) | DMG 镜像 | [KiroAccountManager_1.8.2_x64.dmg](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.2/KiroAccountManager_1.8.2_x64.dmg) |
-| 🍎 **macOS** | Apple Silicon (M1/M2/M3) | DMG 镜像 | [KiroAccountManager_1.8.2_aarch64.dmg](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.2/KiroAccountManager_1.8.2_aarch64.dmg) |
-| 🐧 **Linux** | x86_64 | AppImage | [KiroAccountManager_1.8.2_amd64.AppImage](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.2/KiroAccountManager_1.8.2_amd64.AppImage) |
-| 🐧 **Linux** | x86_64 | DEB 包 | [KiroAccountManager_1.8.2_amd64.deb](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.2/KiroAccountManager_1.8.2_amd64.deb) |
+| 🪟 **Windows** | x64 | MSI 安装包 | [KiroAccountManager_1.8.3_x64_zh-CN.msi](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_x64_zh-CN.msi) |
+| 🍎 **macOS** | Intel (x64) | DMG 镜像 | [KiroAccountManager_1.8.3_x64.dmg](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_x64.dmg) |
+| 🍎 **macOS** | Apple Silicon (M1/M2/M3) | DMG 镜像 | [KiroAccountManager_1.8.3_aarch64.dmg](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_aarch64.dmg) |
+| 🐧 **Linux** | x86_64 | AppImage | [KiroAccountManager_1.8.3_amd64.AppImage](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_amd64.AppImage) |
+| 🐧 **Linux** | x86_64 | DEB 包 | [KiroAccountManager_1.8.3_amd64.deb](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_amd64.deb) |
 
 **系统要求**：
 - **Windows**: Windows 10/11 (64-bit)，需要 [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) (Win11 已内置)
@@ -150,7 +149,7 @@
 **Steering 规则管理**
 - 4 种 inclusion 模式：
   - `always` - 始终包含
-  - `auto` - 自动包含（关键词匹配）
+  - `auto` - 通过 discloseContext 按需激活
   - `fileMatch` - 文件匹配时包含
   - `manual` - 手动引用（`#steering-name`）
 - frontmatter 元数据（name / description / keywords）
@@ -162,6 +161,12 @@
 - 创建 / 编辑 / 删除 SKILL.md
 - frontmatter 支持（name / description）
 - 快速激活 / 停用
+
+**Hooks 管理**（源码行为总结）
+- 存储位置：`<project>/.kiro/hooks/*.kiro.hook`（项目级）
+- 触发类型（`when.type`）：`userTriggered` / `fileEdited` / `promptSubmit` / `agentStop`
+- 动作类型（`then.type`）：`askAgent` / `runShellCommand`
+- 行为语义：保存不做 schema 阻断，读取时做结构校验（`HookSchema.safeParse`）
 
 **Custom Agents 管理**（Kiro v0.9.2+）
 - 完整 v0.10.32 schema 支持：
@@ -189,9 +194,11 @@
   - MCP：Prompts / Resource Templates / Elicitation
 
 **项目级配置支持**
-- Skills / Steering / Custom Agents 同时支持：
+- Skills / Steering / Custom Agents / MCP 同时支持：
   - 用户级：`~/.kiro/`（全局生效）
   - 项目级：`<project>/.kiro/`（仅当前项目）
+- Hooks：仅项目级（`<project>/.kiro/hooks/`）
+- MCP 配置：用户级 `~/.kiro/settings/mcp.json` + 项目级 `<project>/.kiro/settings/mcp.json`（同名服务项目级覆盖用户级；Powers 注入可再覆盖）
 - 自动检测并切换配置路径
 - 项目级配置优先级更高
 
