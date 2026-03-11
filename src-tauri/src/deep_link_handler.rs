@@ -28,7 +28,6 @@ impl DeepLinkCallbackWaiter {
     /// 获取 `redirect_uri` (根据环境自动选择协议)
     pub fn get_redirect_uri() -> String {
         // 临时：开发和生产都使用 kiro:// 协议
-        // TODO: 等 Cognito 配置好新协议后再改回来
         "kiro://kiro.kiroAgent/authenticate-success".to_string()
     }
     
