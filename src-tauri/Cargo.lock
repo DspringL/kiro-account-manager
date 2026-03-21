@@ -2348,6 +2348,7 @@ dependencies = [
  "tiny_http",
  "tokio",
  "tokio-stream",
+ "tower",
  "url",
  "urlencoding",
  "uuid",

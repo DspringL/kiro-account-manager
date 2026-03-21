@@ -3,10 +3,13 @@
 use tauri::{AppHandle, State};
 
 use crate::gateway::{
+    clear_gateway_request_logs as clear_gateway_request_logs_inner,
     GatewayConfig,
+    GatewayRequestLogEntry,
     GatewayStatus,
     get_gateway_config as get_gateway_config_inner,
     get_gateway_log_dir as get_gateway_log_dir_inner,
+    get_gateway_request_logs as get_gateway_request_logs_inner,
     get_gateway_status as get_gateway_status_inner,
     open_gateway_log_dir as open_gateway_log_dir_inner,
     save_gateway_config as save_gateway_config_inner,
@@ -58,8 +61,18 @@ pub async fn get_gateway_log_dir(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub async fn get_gateway_request_logs(limit: Option<usize>) -> Result<Vec<GatewayRequestLogEntry>, String> {
+    get_gateway_request_logs_inner(limit)
+}
+
+#[tauri::command]
 pub async fn open_gateway_log_dir(app: AppHandle) -> Result<String, String> {
     open_gateway_log_dir_inner(&app)
+}
+
+#[tauri::command]
+pub async fn clear_gateway_request_logs() -> Result<(), String> {
+    clear_gateway_request_logs_inner()
 }
 
 #[cfg(test)]

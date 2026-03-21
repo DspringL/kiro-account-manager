@@ -65,7 +65,7 @@ use commands::mcp_cmd::{get_mcp_config, save_mcp_server, delete_mcp_server, togg
 use commands::kiro_cli_cmd::{get_kiro_cli_default_path, import_from_kiro_cli};
 use commands::gateway_cmd::{
     start_gateway, stop_gateway, get_gateway_status, get_gateway_config, save_gateway_config,
-    get_gateway_log_dir, open_gateway_log_dir
+    get_gateway_log_dir, get_gateway_request_logs, open_gateway_log_dir, clear_gateway_request_logs
 };
 
 use commands::proxy_cmd::detect_system_proxy;
@@ -314,7 +314,9 @@ fn main() {
             get_gateway_config,
             save_gateway_config,
             get_gateway_log_dir,
+            get_gateway_request_logs,
             open_gateway_log_dir,
+            clear_gateway_request_logs,
             // 代理检测命令
             detect_system_proxy,
             // 更新检查命令

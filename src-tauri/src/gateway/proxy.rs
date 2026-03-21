@@ -3,12 +3,13 @@ use axum::{
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Json, Response},
 };
+use chrono::Local;
 use futures_util::StreamExt;
 use rand::{seq::SliceRandom, thread_rng};
 use regex::Regex;
 use reqwest::Client;
 use serde_json::{json, Value};
-use std::{collections::HashMap, convert::Infallible, net::{IpAddr, SocketAddr}};
+use std::{collections::{HashMap, HashSet}, convert::Infallible, net::{IpAddr, SocketAddr}, time::Instant};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use url::Url;
@@ -16,12 +17,13 @@ use url::Url;
 use crate::{
     account::{Account, AccountStore},
     commands::common::{calc_expires_at, calc_status, get_usage_by_provider, refresh_token_by_provider, RefreshResult},
-    kiro::KiroLocalToken,
 };
 
 use super::{
+    append_gateway_request_log,
     converter::{build_kiro_payload, get_available_models, normalize_anthropic_request, normalize_responses_request},
-    models::{AnthropicContentBlock, AnthropicMessagesRequest, AnthropicMessagesResponse, AnthropicUsage, NormalizedMessage, ToolCall, ToolCallFunction, WebSearchToolOptions, NormalizedRequest},
+    GatewayRequestLogEntry,
+    models::{AnthropicContentBlock, AnthropicMessagesRequest, AnthropicMessagesResponse, AnthropicUsage, ModelsResponse, NormalizedMessage, ToolCall, ToolCallFunction, WebSearchToolOptions, NormalizedRequest},
     stream::{self, aggregate_kiro_response, extract_json, parse_kiro_event_full, KiroEvent},
     thinking_parser::{SegmentType, ThinkingParser},
     GatewayConfig, ResponseFormat, RouterState, DEFAULT_AGENT_MODE,
@@ -32,6 +34,7 @@ struct UpstreamCredentials {
     access_token: String,
     profile_arn: Option<String>,
     region: String,
+    source_label: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,11 +52,28 @@ struct ProxyExecutionOutcome {
     server_tool_calls: Vec<ServerToolCall>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+struct ResponsesOutputText {
+    text: String,
+    annotations: Vec<Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct WebSearchSource {
+    title: String,
+    url: String,
+}
+
+type UpstreamRequestError = (StatusCode, &'static str, String, Option<String>);
+
+const MAX_LOG_BODY_CHARS: usize = 20_000;
+const STREAMING_RESPONSE_PLACEHOLDER: &str = "[streaming response omitted from request log]";
+
 pub async fn models_handler() -> impl IntoResponse {
-    Json(json!({
-        "object": "list",
-        "data": get_available_models(),
-    }))
+    Json(ModelsResponse {
+        object: "list".to_string(),
+        data: get_available_models(),
+    })
 }
 
 pub async fn count_tokens_handler(payload: Value) -> impl IntoResponse {
@@ -69,6 +89,135 @@ pub async fn count_tokens_handler(payload: Value) -> impl IntoResponse {
     Json(json!({ "input_tokens": (chars / 4).max(1) }))
 }
 
+fn request_endpoint(format: ResponseFormat) -> &'static str {
+    match format {
+        ResponseFormat::Anthropic => "messages",
+        ResponseFormat::Responses => "responses",
+    }
+}
+
+fn serialize_logged_value(value: &Value) -> String {
+    serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
+}
+
+fn prepare_logged_body(body: &str) -> Option<String> {
+    if body.trim().is_empty() {
+        return None;
+    }
+
+    let sanitized = sanitize_error(body);
+    let total_chars = sanitized.chars().count();
+    if total_chars <= MAX_LOG_BODY_CHARS {
+        return Some(sanitized);
+    }
+
+    let mut truncated: String = sanitized.chars().take(MAX_LOG_BODY_CHARS).collect();
+    truncated.push_str(&format!(
+        "\n...[truncated {} chars]",
+        total_chars.saturating_sub(MAX_LOG_BODY_CHARS)
+    ));
+    Some(truncated)
+}
+
+fn write_request_log(
+    request_index: u64,
+    endpoint: &str,
+    client_addr: SocketAddr,
+    request: Option<&NormalizedRequest>,
+    upstream: Option<&UpstreamCredentials>,
+    status: StatusCode,
+    outcome: &str,
+    started_at: Instant,
+    error: Option<&str>,
+    request_body: Option<&str>,
+    response_body: Option<&str>,
+) {
+    let duration_ms = started_at
+        .elapsed()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64;
+    let entry = GatewayRequestLogEntry {
+        occurred_at: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        request_index,
+        endpoint: endpoint.to_string(),
+        client_ip: client_addr.ip().to_string(),
+        model: request.map(|item| item.model.clone()),
+        stream: request.map(|item| item.stream).unwrap_or(false),
+        upstream_source: upstream.map(|item| item.source_label.clone()),
+        region: upstream.map(|item| item.region.clone()),
+        status_code: status.as_u16(),
+        outcome: outcome.to_string(),
+        duration_ms,
+        error: error.map(str::to_string),
+        request_body: request_body.and_then(prepare_logged_body),
+        response_body: response_body.and_then(prepare_logged_body),
+    };
+    let _ = append_gateway_request_log(&entry);
+}
+
+fn build_gateway_error_body(
+    format: ResponseFormat,
+    status: StatusCode,
+    error_type: &str,
+    message: &str,
+) -> Value {
+    match format {
+        ResponseFormat::Anthropic => json!({
+            "type": "error",
+            "error": {
+                "type": error_type,
+                "message": message
+            }
+        }),
+        ResponseFormat::Responses => json!({
+            "error": {
+                "message": message,
+                "type": error_type,
+                "code": status.as_u16()
+            }
+        }),
+    }
+}
+
+async fn gateway_error_with_log(
+    state: &RouterState,
+    format: ResponseFormat,
+    request_index: u64,
+    endpoint: &str,
+    client_addr: SocketAddr,
+    request: Option<&NormalizedRequest>,
+    upstream: Option<&UpstreamCredentials>,
+    started_at: Instant,
+    status: StatusCode,
+    error_type: &'static str,
+    message: &str,
+    request_body: Option<&str>,
+    response_body: Option<&str>,
+) -> Response {
+    *state.last_error.lock().await = Some(message.to_string());
+    let logged_response_body =
+        response_body.map(str::to_string).or_else(|| Some(serialize_logged_value(&build_gateway_error_body(
+            format,
+            status,
+            error_type,
+            message,
+        ))));
+    write_request_log(
+        request_index,
+        endpoint,
+        client_addr,
+        request,
+        upstream,
+        status,
+        "error",
+        started_at,
+        Some(message),
+        request_body,
+        logged_response_body.as_deref(),
+    );
+    gateway_error_response(format, status, error_type, message)
+}
+
 pub async fn proxy_handler(
     state: RouterState,
     client_addr: SocketAddr,
@@ -77,33 +226,92 @@ pub async fn proxy_handler(
     format: ResponseFormat,
 ) -> Response {
     let request_index = state.request_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let endpoint = request_endpoint(format);
+    let started_at = Instant::now();
+    let raw_request_body = payload.to_string();
 
     if state.config.local_only && !client_addr.ip().is_loopback() {
         let message = format!("已拒绝来自非本机地址的访问: {}", client_addr.ip());
-        *state.last_error.lock().await = Some(message.clone());
-        return gateway_error_response(format, StatusCode::FORBIDDEN, "permission_error", &message);
+        return gateway_error_with_log(
+            &state,
+            format,
+            request_index,
+            endpoint,
+            client_addr,
+            None,
+            None,
+            started_at,
+            StatusCode::FORBIDDEN,
+            "permission_error",
+            &message,
+            Some(raw_request_body.as_str()),
+            None,
+        )
+        .await;
     }
     if !state.config.local_only
         && !state.config.allowed_ips.is_empty()
         && !ip_matches_allowlist(client_addr.ip(), &state.config.allowed_ips)
     {
         let message = format!("访问地址 {} 不在网关白名单中", client_addr.ip());
-        *state.last_error.lock().await = Some(message.clone());
-        return gateway_error_response(format, StatusCode::FORBIDDEN, "permission_error", &message);
+        return gateway_error_with_log(
+            &state,
+            format,
+            request_index,
+            endpoint,
+            client_addr,
+            None,
+            None,
+            started_at,
+            StatusCode::FORBIDDEN,
+            "permission_error",
+            &message,
+            Some(raw_request_body.as_str()),
+            None,
+        )
+        .await;
     }
 
     if let Err(message) = verify_client_auth(&headers, &state.config) {
         let sanitized = sanitize_error(&message);
-        *state.last_error.lock().await = Some(sanitized.clone());
-        return gateway_error_response(format, StatusCode::UNAUTHORIZED, "authentication_error", &sanitized);
+        return gateway_error_with_log(
+            &state,
+            format,
+            request_index,
+            endpoint,
+            client_addr,
+            None,
+            None,
+            started_at,
+            StatusCode::UNAUTHORIZED,
+            "authentication_error",
+            &sanitized,
+            Some(raw_request_body.as_str()),
+            None,
+        )
+        .await;
     }
 
     let request = match normalize_request(format, &payload) {
         Ok(request) => request,
         Err(message) => {
             let sanitized = sanitize_error(&message);
-            *state.last_error.lock().await = Some(sanitized.clone());
-            return gateway_error_response(format, StatusCode::BAD_REQUEST, "invalid_request_error", &sanitized);
+            return gateway_error_with_log(
+                &state,
+                format,
+                request_index,
+                endpoint,
+                client_addr,
+                None,
+                None,
+                started_at,
+                StatusCode::BAD_REQUEST,
+                "invalid_request_error",
+                &sanitized,
+                Some(raw_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
 
@@ -111,8 +319,22 @@ pub async fn proxy_handler(
         Ok(creds) => creds,
         Err(message) => {
             let sanitized = sanitize_error(&message);
-            *state.last_error.lock().await = Some(sanitized.clone());
-            return gateway_error_response(format, StatusCode::UNAUTHORIZED, "authentication_error", &sanitized);
+            return gateway_error_with_log(
+                &state,
+                format,
+                request_index,
+                endpoint,
+                client_addr,
+                Some(&request),
+                None,
+                started_at,
+                StatusCode::UNAUTHORIZED,
+                "authentication_error",
+                &sanitized,
+                Some(raw_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
 
@@ -120,12 +342,39 @@ pub async fn proxy_handler(
         let outcome = match execute_request_with_server_tools(&state, &upstream, &request).await {
             Ok(outcome) => outcome,
             Err((status, error_type, message)) => {
-                *state.last_error.lock().await = Some(message.clone());
-                return gateway_error_response(format, status, error_type, &message);
+                return gateway_error_with_log(
+                    &state,
+                    format,
+                    request_index,
+                    endpoint,
+                    client_addr,
+                    Some(&request),
+                    Some(&upstream),
+                    started_at,
+                    status,
+                    error_type,
+                    &message,
+                    Some(raw_request_body.as_str()),
+                    None,
+                )
+                .await;
             }
         };
 
         if request.stream {
+            write_request_log(
+                request_index,
+                endpoint,
+                client_addr,
+                Some(&request),
+                Some(&upstream),
+                StatusCode::OK,
+                "stream",
+                started_at,
+                None,
+                Some(raw_request_body.as_str()),
+                Some(STREAMING_RESPONSE_PLACEHOLDER),
+            );
             return stream_completed_response(format, request.model, outcome);
         }
 
@@ -135,30 +384,88 @@ pub async fn proxy_handler(
                 &outcome.aggregated,
                 &outcome.server_tool_calls,
             ),
-            ResponseFormat::OpenAi => build_openai_response(&request.model, &outcome.aggregated),
-            ResponseFormat::Responses => build_responses_response(&request.model, &outcome.aggregated),
+            ResponseFormat::Responses => {
+                build_responses_response(&request.model, &outcome.aggregated, &outcome.server_tool_calls)
+            }
         };
+        let response_body = serialize_logged_value(&response);
+        write_request_log(
+            request_index,
+            endpoint,
+            client_addr,
+            Some(&request),
+            Some(&upstream),
+            StatusCode::OK,
+            "success",
+            started_at,
+            None,
+            Some(raw_request_body.as_str()),
+            Some(response_body.as_str()),
+        );
         return Json(response).into_response();
     }
 
-    let upstream_payload = match build_kiro_payload(&request, upstream.profile_arn.clone()) {
+    let upstream_payload = match build_kiro_payload(&state.http, &request, upstream.profile_arn.clone()).await {
         Ok(payload) => payload,
         Err(message) => {
             let sanitized = sanitize_error(&message);
-            *state.last_error.lock().await = Some(sanitized.clone());
-            return gateway_error_response(format, StatusCode::BAD_REQUEST, "invalid_request_error", &sanitized);
+            return gateway_error_with_log(
+                &state,
+                format,
+                request_index,
+                endpoint,
+                client_addr,
+                Some(&request),
+                Some(&upstream),
+                started_at,
+                StatusCode::BAD_REQUEST,
+                "invalid_request_error",
+                &sanitized,
+                Some(raw_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
+    let upstream_request_body = serde_json::to_string_pretty(&upstream_payload)
+        .unwrap_or_else(|_| "[failed to serialize upstream payload]".to_string());
 
     let upstream_resp = match send_generate_request(&state.http, &upstream, &upstream_payload).await {
         Ok(resp) => resp,
-        Err((status, error_type, message)) => {
-            *state.last_error.lock().await = Some(message.clone());
-            return gateway_error_response(format, status, error_type, &message);
+        Err((status, error_type, message, upstream_response_body)) => {
+            return gateway_error_with_log(
+                &state,
+                format,
+                request_index,
+                endpoint,
+                client_addr,
+                Some(&request),
+                Some(&upstream),
+                started_at,
+                status,
+                error_type,
+                &message,
+                Some(upstream_request_body.as_str()),
+                upstream_response_body.as_deref(),
+            )
+            .await;
         }
     };
 
     if request.stream {
+        write_request_log(
+            request_index,
+            endpoint,
+            client_addr,
+            Some(&request),
+            Some(&upstream),
+            upstream_resp.status(),
+            "stream",
+            started_at,
+            None,
+            Some(upstream_request_body.as_str()),
+            Some(STREAMING_RESPONSE_PLACEHOLDER),
+        );
         return stream_proxy_response(upstream_resp, format, request.model);
     }
 
@@ -166,16 +473,62 @@ pub async fn proxy_handler(
         Ok(body) => body,
         Err(error) => {
             let message = sanitize_error(&format!("读取上游响应失败: {error}"));
-            *state.last_error.lock().await = Some(message.clone());
-            return gateway_error_response(format, StatusCode::BAD_GATEWAY, "api_error", &message);
+            return gateway_error_with_log(
+                &state,
+                format,
+                request_index,
+                endpoint,
+                client_addr,
+                Some(&request),
+                Some(&upstream),
+                started_at,
+                StatusCode::BAD_GATEWAY,
+                "api_error",
+                &message,
+                Some(upstream_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
+
+    if let Some((status, error_type, message)) = detect_upstream_error_body(&body) {
+        return gateway_error_with_log(
+            &state,
+            format,
+            request_index,
+            endpoint,
+            client_addr,
+            Some(&request),
+            Some(&upstream),
+            started_at,
+            status,
+            error_type,
+            &message,
+            Some(upstream_request_body.as_str()),
+            Some(body.as_str()),
+        )
+        .await;
+    }
+
     let aggregated = aggregate_kiro_response(&body);
     let response = match format {
         ResponseFormat::Anthropic => build_anthropic_response(&request.model, &aggregated, &[]),
-        ResponseFormat::OpenAi => build_openai_response(&request.model, &aggregated),
-        ResponseFormat::Responses => build_responses_response(&request.model, &aggregated),
+        ResponseFormat::Responses => build_responses_response(&request.model, &aggregated, &[]),
     };
+    write_request_log(
+        request_index,
+        endpoint,
+        client_addr,
+        Some(&request),
+        Some(&upstream),
+        StatusCode::OK,
+        "success",
+        started_at,
+        None,
+        Some(upstream_request_body.as_str()),
+        Some(body.as_str()),
+    );
     Json(response).into_response()
 }
 
@@ -185,53 +538,91 @@ pub async fn mcp_proxy_handler(
     headers: HeaderMap,
     payload: Value,
 ) -> Response {
-    state.request_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let request_index = state.request_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let started_at = Instant::now();
+    let raw_request_body = payload.to_string();
 
     if state.config.local_only && !client_addr.ip().is_loopback() {
         let message = format!("已拒绝来自非本机地址的 MCP 访问: {}", client_addr.ip());
-        *state.last_error.lock().await = Some(message.clone());
-        return gateway_error_response(
+        return gateway_error_with_log(
+            &state,
             ResponseFormat::Responses,
+            request_index,
+            "mcp",
+            client_addr,
+            None,
+            None,
+            started_at,
             StatusCode::FORBIDDEN,
             "permission_error",
             &message,
-        );
+            Some(raw_request_body.as_str()),
+            None,
+        )
+        .await;
     }
     if !state.config.local_only
         && !state.config.allowed_ips.is_empty()
         && !ip_matches_allowlist(client_addr.ip(), &state.config.allowed_ips)
     {
         let message = format!("MCP 访问地址 {} 不在网关白名单中", client_addr.ip());
-        *state.last_error.lock().await = Some(message.clone());
-        return gateway_error_response(
+        return gateway_error_with_log(
+            &state,
             ResponseFormat::Responses,
+            request_index,
+            "mcp",
+            client_addr,
+            None,
+            None,
+            started_at,
             StatusCode::FORBIDDEN,
             "permission_error",
             &message,
-        );
+            Some(raw_request_body.as_str()),
+            None,
+        )
+        .await;
     }
     if let Err(message) = verify_client_auth(&headers, &state.config) {
         let sanitized = sanitize_error(&message);
-        *state.last_error.lock().await = Some(sanitized.clone());
-        return gateway_error_response(
+        return gateway_error_with_log(
+            &state,
             ResponseFormat::Responses,
+            request_index,
+            "mcp",
+            client_addr,
+            None,
+            None,
+            started_at,
             StatusCode::UNAUTHORIZED,
             "authentication_error",
             &sanitized,
-        );
+            Some(raw_request_body.as_str()),
+            None,
+        )
+        .await;
     }
 
-    let upstream = match resolve_upstream_credentials(&state.config, 0).await {
+    let upstream = match resolve_upstream_credentials(&state.config, request_index).await {
         Ok(creds) => creds,
         Err(message) => {
             let sanitized = sanitize_error(&message);
-            *state.last_error.lock().await = Some(sanitized.clone());
-            return gateway_error_response(
+            return gateway_error_with_log(
+                &state,
                 ResponseFormat::Responses,
+                request_index,
+                "mcp",
+                client_addr,
+                None,
+                None,
+                started_at,
                 StatusCode::UNAUTHORIZED,
                 "authentication_error",
                 &sanitized,
-            );
+                Some(raw_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
 
@@ -249,13 +640,22 @@ pub async fn mcp_proxy_handler(
         Ok(resp) => resp,
         Err(error) => {
             let message = sanitize_error(&format!("MCP 上游请求失败: {error}"));
-            *state.last_error.lock().await = Some(message.clone());
-            return gateway_error_response(
+            return gateway_error_with_log(
+                &state,
                 ResponseFormat::Responses,
+                request_index,
+                "mcp",
+                client_addr,
+                None,
+                Some(&upstream),
+                started_at,
                 StatusCode::BAD_GATEWAY,
                 "api_error",
                 &message,
-            );
+                Some(raw_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
 
@@ -265,21 +665,44 @@ pub async fn mcp_proxy_handler(
         Ok(body) => body,
         Err(error) => {
             let message = sanitize_error(&format!("读取 MCP 上游响应失败: {error}"));
-            *state.last_error.lock().await = Some(message.clone());
-            return gateway_error_response(
+            return gateway_error_with_log(
+                &state,
                 ResponseFormat::Responses,
+                request_index,
+                "mcp",
+                client_addr,
+                None,
+                Some(&upstream),
+                started_at,
                 StatusCode::BAD_GATEWAY,
                 "api_error",
                 &message,
-            );
+                Some(raw_request_body.as_str()),
+                None,
+            )
+            .await;
         }
     };
 
     if !status.is_success() {
         let body_text = String::from_utf8_lossy(&body).to_string();
         let (mapped_status, error_type, message) = map_upstream_error(status, &body_text);
-        *state.last_error.lock().await = Some(message.clone());
-        return gateway_error_response(ResponseFormat::Responses, mapped_status, error_type, &message);
+        return gateway_error_with_log(
+            &state,
+            ResponseFormat::Responses,
+            request_index,
+            "mcp",
+            client_addr,
+            None,
+            Some(&upstream),
+            started_at,
+            mapped_status,
+            error_type,
+            &message,
+            Some(raw_request_body.as_str()),
+            Some(body_text.as_str()),
+        )
+        .await;
     }
 
     let mut builder = Response::builder().status(status);
@@ -289,6 +712,20 @@ pub async fn mcp_proxy_handler(
         builder = builder.header(header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
     }
 
+    let logged_response_body = String::from_utf8_lossy(&body).to_string();
+    write_request_log(
+        request_index,
+        "mcp",
+        client_addr,
+        None,
+        Some(&upstream),
+        status,
+        "success",
+        started_at,
+        None,
+        Some(raw_request_body.as_str()),
+        Some(logged_response_body.as_str()),
+    );
     builder
         .body(Body::from(body))
         .unwrap_or_else(|error| {
@@ -312,7 +749,7 @@ async fn execute_request_with_server_tools(
         .as_ref()
         .and_then(|tools| tools.iter().find(|tool| tool.tool_type.starts_with("web_search_")))
         .and_then(|tool| tool.web_search.clone());
-    let max_uses = web_search_options
+    let _max_uses = web_search_options
         .as_ref()
         .and_then(|options| options.max_uses)
         .map(|value| value.max(0) as usize)
@@ -320,7 +757,8 @@ async fn execute_request_with_server_tools(
     let mut server_tool_calls = Vec::new();
 
     for _ in 0..8 {
-        let upstream_payload = build_kiro_payload(&working_request, upstream.profile_arn.clone())
+        let upstream_payload = build_kiro_payload(&state.http, &working_request, upstream.profile_arn.clone())
+            .await
             .map_err(|message| {
                 (
                     StatusCode::BAD_REQUEST,
@@ -328,7 +766,9 @@ async fn execute_request_with_server_tools(
                     sanitize_error(&message),
                 )
             })?;
-        let upstream_resp = send_generate_request(&state.http, upstream, &upstream_payload).await?;
+        let upstream_resp = send_generate_request(&state.http, upstream, &upstream_payload)
+            .await
+            .map_err(|(status, error_type, message, _)| (status, error_type, message))?;
         let body = upstream_resp.text().await.map_err(|error| {
             (
                 StatusCode::BAD_GATEWAY,
@@ -350,20 +790,7 @@ async fn execute_request_with_server_tools(
                 server_tool_calls,
             });
         }
-        if web_search_calls.len() != aggregated.tool_calls.len() {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "invalid_request_error",
-                "暂不支持 web_search 与普通客户端工具在同一轮混用".to_string(),
-            ));
-        }
-        if server_tool_calls.len() + web_search_calls.len() > max_uses {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "invalid_request_error",
-                format!("web_search 调用次数超过 max_uses={max_uses}"),
-            ));
-        }
+
 
         working_request
             .messages
@@ -410,7 +837,7 @@ async fn send_generate_request<T: serde::Serialize + ?Sized>(
     http: &Client,
     upstream: &UpstreamCredentials,
     upstream_payload: &T,
-) -> Result<reqwest::Response, (StatusCode, &'static str, String)> {
+) -> Result<reqwest::Response, UpstreamRequestError> {
     let upstream_url = format!(
         "https://q.{}.amazonaws.com/generateAssistantResponse",
         upstream.region
@@ -430,6 +857,7 @@ async fn send_generate_request<T: serde::Serialize + ?Sized>(
                 StatusCode::BAD_GATEWAY,
                 "api_error",
                 sanitize_error(&format!("上游请求失败: {error}")),
+                None,
             )
         })?;
 
@@ -437,7 +865,7 @@ async fn send_generate_request<T: serde::Serialize + ?Sized>(
         let status = upstream_resp.status();
         let body = upstream_resp.text().await.unwrap_or_default();
         let (mapped_status, error_type, message) = map_upstream_error(status, &body);
-        return Err((mapped_status, error_type, message));
+        return Err((mapped_status, error_type, message, Some(body)));
     }
 
     Ok(upstream_resp)
@@ -653,15 +1081,13 @@ fn normalize_request(format: ResponseFormat, payload: &Value) -> Result<Normaliz
                 .map_err(|error| format!("Anthropic 请求解析失败: {error}"))?;
             Ok(normalize_anthropic_request(&request))
         }
-        ResponseFormat::OpenAi => serde_json::from_value(payload.clone())
-            .map_err(|error| format!("OpenAI 请求解析失败: {error}")),
         ResponseFormat::Responses => normalize_responses_request(payload),
     }
 }
 
 fn verify_client_auth(headers: &HeaderMap, config: &GatewayConfig) -> Result<(), String> {
     let Some(expected) = config.access_token.as_ref().filter(|token| !token.trim().is_empty()) else {
-        return Ok(());
+        return Err("客户端 API Key 未配置".to_string());
     };
 
     let authorization = headers
@@ -683,36 +1109,10 @@ async fn resolve_upstream_credentials(
     request_index: u64,
 ) -> Result<UpstreamCredentials, String> {
     match config.account_mode.as_str() {
-        "single" | "group" | "tag" => resolve_managed_account_credentials(config, request_index).await,
-        _ => resolve_local_credentials(config).await,
+        "single" | "group" => resolve_managed_account_credentials(config, request_index).await,
+        "local" => Err("网关不再支持 local 模式，请改用 single/group 账号池模式".to_string()),
+        _ => Err("accountMode 必须是 single/group".to_string()),
     }
-}
-
-async fn resolve_local_credentials(config: &GatewayConfig) -> Result<UpstreamCredentials, String> {
-    let local_token = crate::kiro::get_kiro_local_token()
-        .await
-        .ok_or_else(|| "未找到 Kiro 本地 token，请先在 Kiro IDE 登录".to_string())?;
-
-    build_credentials_from_local_token(config, local_token)
-}
-
-fn build_credentials_from_local_token(
-    config: &GatewayConfig,
-    local_token: KiroLocalToken,
-) -> Result<UpstreamCredentials, String> {
-    let access_token = local_token
-        .access_token
-        .filter(|token| !token.trim().is_empty())
-        .ok_or_else(|| "Kiro 本地 token 缺少 accessToken".to_string())?;
-
-    Ok(UpstreamCredentials {
-        access_token,
-        profile_arn: local_token.profile_arn,
-        region: local_token
-            .region
-            .filter(|region| !region.trim().is_empty())
-            .unwrap_or_else(|| config.region.clone()),
-    })
 }
 
 async fn resolve_managed_account_credentials(
@@ -733,18 +1133,6 @@ async fn resolve_managed_account_credentials(
             .iter()
             .filter(|account| {
                 config.group_id.as_deref() == account.group_id.as_deref() && account.is_available()
-            })
-            .cloned()
-            .collect::<Vec<_>>(),
-        "tag" => store
-            .accounts
-            .iter()
-            .filter(|account| {
-                account.is_available()
-                    && account
-                        .tag_links
-                        .iter()
-                        .any(|link| config.tag_id.as_deref() == Some(link.tag_id.as_str()))
             })
             .cloned()
             .collect::<Vec<_>>(),
@@ -795,6 +1183,7 @@ async fn resolve_managed_account_credentials(
                         .clone()
                         .filter(|region| !region.trim().is_empty())
                         .unwrap_or_else(|| config.region.clone()),
+                    source_label: format_managed_upstream_source(config, account),
                 });
             }
             Err(error) => {
@@ -804,6 +1193,27 @@ async fn resolve_managed_account_credentials(
     }
 
     Err(last_error)
+}
+
+fn format_managed_upstream_source(config: &GatewayConfig, account: &Account) -> String {
+    let account_label = if !account.label.trim().is_empty() {
+        account.label.trim().to_string()
+    } else if let Some(email) = account.email.as_ref().filter(|value| !value.trim().is_empty()) {
+        email.trim().to_string()
+    } else if let Some(user_id) = account.user_id.as_ref().filter(|value| !value.trim().is_empty()) {
+        user_id.trim().to_string()
+    } else {
+        account.id.clone()
+    };
+
+    match config.account_mode.as_str() {
+        "single" => format!("single:{account_label}"),
+        "group" => format!(
+            "group:{}:{account_label}",
+            config.group_id.as_deref().unwrap_or("unknown")
+        ),
+        _ => account_label,
+    }
 }
 
 fn order_accounts(accounts: &mut [Account], strategy: &str, request_index: u64) {
@@ -903,6 +1313,103 @@ fn extract_plain_text(value: Option<&Value>) -> String {
     }
 }
 
+fn slice_text_by_char_range(text: &str, start: usize, end: usize) -> Option<String> {
+    if end < start {
+        return None;
+    }
+
+    let chars: Vec<char> = text.chars().collect();
+    if start > chars.len() || end > chars.len() {
+        return None;
+    }
+
+    Some(chars[start..end].iter().collect())
+}
+
+fn infer_citation_text(citation: &stream::AggregatedCitation, message_text: &str) -> String {
+    if let Some(text) = citation.text.as_ref() {
+        return text.clone();
+    }
+
+    citation
+        .target
+        .get("range")
+        .and_then(|range| {
+            let start = range.get("start").and_then(Value::as_u64)? as usize;
+            let end = range.get("end").and_then(Value::as_u64)? as usize;
+            slice_text_by_char_range(message_text, start, end)
+        })
+        .unwrap_or_default()
+}
+
+fn extract_anthropic_citation_bounds(
+    citation: &stream::AggregatedCitation,
+    message_text: &str,
+) -> Option<(usize, usize)> {
+    if let Some(range) = citation.target.get("range") {
+        let start = range.get("start").and_then(Value::as_u64)? as usize;
+        let end = range.get("end").and_then(Value::as_u64)? as usize;
+        if end < start {
+            return None;
+        }
+        return Some((start, end));
+    }
+
+    let start = citation.target.get("location").and_then(Value::as_u64)? as usize;
+    let cited_text = infer_citation_text(citation, message_text);
+    Some((start, start + cited_text.chars().count()))
+}
+
+fn build_anthropic_text_citation(
+    citation: &stream::AggregatedCitation,
+    message_text: &str,
+) -> Option<Value> {
+    let (start_char_index, end_char_index) =
+        extract_anthropic_citation_bounds(citation, message_text)?;
+    let cited_text = infer_citation_text(citation, message_text);
+
+    Some(json!({
+        "type": "char_location",
+        "cited_text": cited_text,
+        "document_index": 0,
+        "document_title": citation.link,
+        "start_char_index": start_char_index,
+        "end_char_index": end_char_index,
+        "file_id": Value::Null
+    }))
+}
+
+fn build_anthropic_text_citations(
+    citations: &[stream::AggregatedCitation],
+    message_text: &str,
+) -> Option<Value> {
+    let mapped: Vec<Value> = citations
+        .iter()
+        .filter_map(|citation| build_anthropic_text_citation(citation, message_text))
+        .collect();
+
+    if mapped.is_empty() {
+        None
+    } else {
+        Some(Value::Array(mapped))
+    }
+}
+
+fn build_anthropic_citation_delta_event(
+    index: usize,
+    citation: &stream::AggregatedCitation,
+    message_text: &str,
+) -> Option<Value> {
+    Some(json!({
+        "type": "content_block_delta",
+        "index": index,
+        "delta": {
+            "type": "citations_delta",
+            "citation": build_anthropic_text_citation(citation, message_text)?
+        }
+    }))
+}
+
 fn build_anthropic_content_blocks(
     aggregated: &stream::AggregatedKiroResponse,
     server_tool_calls: &[ServerToolCall],
@@ -955,7 +1462,7 @@ fn build_anthropic_content_blocks(
             input: None,
             tool_use_id: None,
             content: None,
-            citations: None,
+            citations: build_anthropic_text_citations(&aggregated.citations, &aggregated.text),
         });
     }
     for (id, name, arguments) in &aggregated.tool_calls {
@@ -1000,52 +1507,192 @@ fn build_anthropic_response(
     .unwrap_or_else(|_| json!({}))
 }
 
-fn build_openai_response(model: &str, aggregated: &stream::AggregatedKiroResponse) -> Value {
-    let tool_calls: Vec<Value> = aggregated
-        .tool_calls
+fn build_responses_citation_annotations(citations: &[stream::AggregatedCitation]) -> Vec<Value> {
+    citations
         .iter()
-        .map(|(id, name, arguments)| {
-            json!({
-                "id": id,
-                "type": "function",
-                "function": {
-                    "name": name,
-                    "arguments": arguments
+        .map(|citation| {
+            let mut value = json!({
+                "type": "url_citation",
+                "url": citation.link,
+                "target": citation.target,
+                "citationLink": citation.link
+            });
+            if let Some(range) = citation.target.get("range") {
+                if let Some(start_index) = range.get("start").and_then(Value::as_u64) {
+                    value["start_index"] = Value::from(start_index);
                 }
-            })
+                if let Some(end_index) = range.get("end").and_then(Value::as_u64) {
+                    value["end_index"] = Value::from(end_index);
+                }
+            }
+            if let Some(text) = citation.text.as_ref() {
+                value["citationText"] = Value::String(text.clone());
+            }
+            value
         })
-        .collect();
+        .collect()
+}
 
+fn build_responses_annotation_added_event(
+    response_id: &str,
+    message_id: &str,
+    annotation: Value,
+    annotation_index: usize,
+    sequence_number: usize,
+) -> Value {
     json!({
-        "id": format!("chatcmpl-{}", short_uuid()),
-        "object": "chat.completion",
-        "created": chrono::Utc::now().timestamp(),
-        "model": model,
-        "choices": [{
-            "index": 0,
-            "message": {
-                "role": "assistant",
-                "content": if aggregated.text.is_empty() { Value::Null } else { Value::String(aggregated.text.clone()) },
-                "tool_calls": if tool_calls.is_empty() { Value::Null } else { Value::Array(tool_calls) }
-            },
-            "finish_reason": if aggregated.tool_calls.is_empty() { "stop" } else { "tool_calls" }
-        }],
-        "usage": {
-            "prompt_tokens": aggregated.input_tokens,
-            "completion_tokens": aggregated.output_tokens,
-            "total_tokens": aggregated.input_tokens + aggregated.output_tokens
-        }
+        "type": "response.output_text.annotation.added",
+        "response_id": response_id,
+        "item_id": message_id,
+        "output_index": 0,
+        "content_index": 0,
+        "annotation_index": annotation_index,
+        "annotation": annotation,
+        "sequence_number": sequence_number
     })
 }
 
-fn build_responses_response(model: &str, aggregated: &stream::AggregatedKiroResponse) -> Value {
-    let message_id = format!("msg_{}", short_uuid());
+fn extract_web_search_sources(server_tool_calls: &[ServerToolCall]) -> Vec<WebSearchSource> {
+    let mut seen = HashSet::new();
+    let mut sources = Vec::new();
+
+    for call in server_tool_calls.iter().filter(|call| call.name == "web_search") {
+        let Some(results) = call.result_content.as_array() else {
+            continue;
+        };
+
+        for item in results {
+            let Some(url) = item
+                .get("url")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            else {
+                continue;
+            };
+
+            if !seen.insert(url.to_string()) {
+                continue;
+            }
+
+            let title = item
+                .get("title")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .unwrap_or(url)
+                .to_string();
+
+            sources.push(WebSearchSource {
+                title,
+                url: url.to_string(),
+            });
+        }
+    }
+
+    sources
+}
+
+fn build_responses_output_text(
+    aggregated: &stream::AggregatedKiroResponse,
+    server_tool_calls: &[ServerToolCall],
+) -> ResponsesOutputText {
+    let mut text = aggregated.text.clone();
+    let mut annotations = build_responses_citation_annotations(&aggregated.citations);
+    let sources = extract_web_search_sources(server_tool_calls);
+
+    if !sources.is_empty() {
+        if !text.is_empty() {
+            text.push_str("\n\n");
+        }
+        text.push_str("Sources:\n");
+
+        for (index, source) in sources.iter().enumerate() {
+            let prefix = format!("[{}] ", index + 1);
+            let start_index = text.chars().count() + prefix.chars().count();
+            text.push_str(&prefix);
+            text.push_str(&source.title);
+            let end_index = start_index + source.title.chars().count();
+            annotations.push(json!({
+                "type": "url_citation",
+                "start_index": start_index,
+                "end_index": end_index,
+                "url": source.url,
+                "title": source.title
+            }));
+            text.push('\n');
+        }
+
+        text.pop();
+    }
+
+    ResponsesOutputText { text, annotations }
+}
+
+fn build_responses_web_search_call(call: &ServerToolCall) -> Value {
+    let mut action = json!({
+        "type": "search"
+    });
+    if let Some(query) = call
+        .input
+        .get("query")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        action["query"] = Value::String(query.to_string());
+    }
+
+    let sources = extract_web_search_sources(std::slice::from_ref(call));
+    if !sources.is_empty() {
+        action["sources"] = Value::Array(
+            sources
+                .into_iter()
+                .map(|source| {
+                    json!({
+                        "type": "source",
+                        "url": source.url,
+                        "title": source.title
+                    })
+                })
+                .collect(),
+        );
+    }
+
+    json!({
+        "id": call.id,
+        "type": "web_search_call",
+        "status": "completed",
+        "action": action
+    })
+}
+
+fn build_responses_response(model: &str, aggregated: &stream::AggregatedKiroResponse, server_tool_calls: &[ServerToolCall]) -> Value {
+    build_responses_response_with_ids(
+        model,
+        aggregated,
+        server_tool_calls,
+        &format!("resp_{}", short_uuid()),
+        &format!("msg_{}", short_uuid()),
+        chrono::Utc::now().timestamp(),
+    )
+}
+
+fn build_responses_response_with_ids(
+    model: &str,
+    aggregated: &stream::AggregatedKiroResponse,
+    server_tool_calls: &[ServerToolCall],
+    response_id: &str,
+    message_id: &str,
+    created_at: i64,
+) -> Value {
+    let output_text = build_responses_output_text(aggregated, server_tool_calls);
     let mut content = Vec::new();
-    if !aggregated.text.is_empty() {
+    if !output_text.text.is_empty() {
         content.push(json!({
             "type": "output_text",
-            "text": aggregated.text,
-            "annotations": []
+            "text": output_text.text,
+            "annotations": output_text.annotations
         }));
     }
     if !aggregated.thinking.is_empty() {
@@ -1063,24 +1710,51 @@ fn build_responses_response(model: &str, aggregated: &stream::AggregatedKiroResp
         }));
     }
 
+    let mut output: Vec<Value> = server_tool_calls
+        .iter()
+        .filter(|call| call.name == "web_search")
+        .map(build_responses_web_search_call)
+        .collect();
+    output.push(json!({
+        "id": message_id,
+        "type": "message",
+        "role": "assistant",
+        "content": content
+    }));
+
     json!({
-        "id": format!("resp_{}", short_uuid()),
+        "id": response_id,
         "object": "response",
-        "created_at": chrono::Utc::now().timestamp(),
+        "created_at": created_at,
         "status": "completed",
         "model": model,
-        "output": [{
-            "id": message_id,
-            "type": "message",
-            "role": "assistant",
-            "content": content
-        }],
-        "output_text": aggregated.text,
+        "output": output,
+        "output_text": output_text.text,
         "usage": {
             "input_tokens": aggregated.input_tokens,
             "output_tokens": aggregated.output_tokens,
             "total_tokens": aggregated.input_tokens + aggregated.output_tokens
         }
+    })
+}
+
+fn build_stream_responses_completed_event(
+    model: &str,
+    aggregated: &stream::AggregatedKiroResponse,
+    response_id: &str,
+    message_id: &str,
+    created_at: i64,
+) -> Value {
+    json!({
+        "type": "response.completed",
+        "response": build_responses_response_with_ids(
+            model,
+            aggregated,
+            &[],
+            response_id,
+            message_id,
+            created_at,
+        )
     })
 }
 
@@ -1161,60 +1835,32 @@ fn stream_completed_response(
                 send_event(&tx, Some("message_delta"), &finish.to_string()).await;
                 send_event(&tx, Some("message_stop"), "{\"type\":\"message_stop\"}").await;
             }
-            ResponseFormat::OpenAi => {
-                let openai_id = format!("chatcmpl-{}", short_uuid());
-                let role = json!({
-                    "id": openai_id,
-                    "object": "chat.completion.chunk",
-                    "created": created_at,
-                    "model": model,
-                    "choices": [{ "index": 0, "delta": { "role": "assistant" }, "finish_reason": Value::Null }]
-                });
-                send_data(&tx, &role.to_string()).await;
-                if !outcome.aggregated.text.is_empty() {
-                    let chunk = json!({
-                        "id": openai_id,
-                        "object": "chat.completion.chunk",
-                        "created": created_at,
-                        "model": model,
-                        "choices": [{ "index": 0, "delta": { "content": outcome.aggregated.text }, "finish_reason": Value::Null }]
-                    });
-                    send_data(&tx, &chunk.to_string()).await;
-                }
-                let done = json!({
-                    "id": openai_id,
-                    "object": "chat.completion.chunk",
-                    "created": created_at,
-                    "model": model,
-                    "choices": [{ "index": 0, "delta": {}, "finish_reason": "stop" }]
-                });
-                send_data(&tx, &done.to_string()).await;
-                send_data(&tx, "[DONE]").await;
-            }
             ResponseFormat::Responses => {
                 let response_id = format!("resp_{}", short_uuid());
-                if !outcome.aggregated.text.is_empty() {
+                let message_id = format!("msg_{}", short_uuid());
+                let response = build_responses_response_with_ids(
+                    &model,
+                    &outcome.aggregated,
+                    &outcome.server_tool_calls,
+                    &response_id,
+                    &message_id,
+                    created_at,
+                );
+                if let Some(output_text) = response
+                    .get("output_text")
+                    .and_then(Value::as_str)
+                    .filter(|text| !text.is_empty())
+                {
                     let delta = json!({
                         "type": "response.output_text.delta",
                         "response_id": response_id,
-                        "delta": outcome.aggregated.text
+                        "delta": output_text
                     });
                     send_data(&tx, &delta.to_string()).await;
                 }
                 let completed = json!({
                     "type": "response.completed",
-                    "response": {
-                        "id": response_id,
-                        "object": "response",
-                        "created_at": created_at,
-                        "status": "completed",
-                        "model": model,
-                        "usage": {
-                            "input_tokens": outcome.aggregated.input_tokens,
-                            "output_tokens": outcome.aggregated.output_tokens,
-                            "total_tokens": outcome.aggregated.input_tokens + outcome.aggregated.output_tokens
-                        }
-                    }
+                    "response": response
                 });
                 send_data(&tx, &completed.to_string()).await;
                 send_data(&tx, "[DONE]").await;
@@ -1237,30 +1883,24 @@ fn gateway_error_response(
     error_type: &str,
     message: &str,
 ) -> Response {
-    let body = match format {
-        ResponseFormat::Anthropic => json!({
-            "type": "error",
-            "error": {
-                "type": error_type,
-                "message": message
-            }
-        }),
-        _ => json!({
-            "error": {
-                "message": message,
-                "type": error_type,
-                "code": status.as_u16()
-            }
-        }),
-    };
+    let body = build_gateway_error_body(format, status, error_type, message);
     (status, Json(body)).into_response()
 }
 
 fn map_upstream_error(status: StatusCode, body: &str) -> (StatusCode, &'static str, String) {
     let sanitized = sanitize_error(&extract_error_message(body));
+    let explicit_error_type = extract_error_type(body);
     let text = body.to_lowercase();
     let mapped_status = if status == StatusCode::BAD_GATEWAY || status == StatusCode::OK {
-        if text.contains("throttlingexception") || text.contains("servicequotaexceededexception") {
+        if explicit_error_type == Some("authentication_error") {
+            StatusCode::UNAUTHORIZED
+        } else if explicit_error_type == Some("permission_error") {
+            StatusCode::FORBIDDEN
+        } else if explicit_error_type == Some("rate_limit_error") {
+            StatusCode::TOO_MANY_REQUESTS
+        } else if explicit_error_type == Some("invalid_request_error") {
+            StatusCode::BAD_REQUEST
+        } else if text.contains("throttlingexception") || text.contains("servicequotaexceededexception") {
             StatusCode::TOO_MANY_REQUESTS
         } else if text.contains("accessdeniedexception") {
             StatusCode::FORBIDDEN
@@ -1275,14 +1915,57 @@ fn map_upstream_error(status: StatusCode, body: &str) -> (StatusCode, &'static s
         status
     };
 
-    let error_type = match mapped_status {
-        StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => "authentication_error",
+    let error_type = explicit_error_type.unwrap_or(match mapped_status {
+        StatusCode::UNAUTHORIZED => "authentication_error",
+        StatusCode::FORBIDDEN => "permission_error",
         StatusCode::TOO_MANY_REQUESTS => "rate_limit_error",
         StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND | StatusCode::CONFLICT => "invalid_request_error",
         _ => "api_error",
-    };
+    });
 
     (mapped_status, error_type, sanitized)
+}
+
+fn extract_error_type(body: &str) -> Option<&'static str> {
+    let value = serde_json::from_str::<Value>(body).ok()?;
+    let raw = value
+        .pointer("/error/type")
+        .and_then(Value::as_str)
+        .or_else(|| value.pointer("/type").and_then(Value::as_str))?;
+
+    match raw {
+        "authentication_error" => Some("authentication_error"),
+        "permission_error" => Some("permission_error"),
+        "rate_limit_error" => Some("rate_limit_error"),
+        "invalid_request_error" => Some("invalid_request_error"),
+        "api_error" => Some("api_error"),
+        _ => None,
+    }
+}
+
+fn detect_upstream_error_body(body: &str) -> Option<(StatusCode, &'static str, String)> {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let value = serde_json::from_str::<Value>(trimmed).ok()?;
+    let object = value.as_object()?;
+    let has_error_container = object.get("error").is_some();
+    let has_error_metadata = object.get("__type").and_then(Value::as_str).is_some()
+        || object.get("errorCode").and_then(Value::as_str).is_some()
+        || object.get("Message").and_then(Value::as_str).is_some();
+    let has_message_only_error = object.get("message").and_then(Value::as_str).is_some()
+        && object.get("content").is_none()
+        && object.get("output").is_none()
+        && object.get("choices").is_none()
+        && object.get("results").is_none();
+
+    if has_error_container || has_error_metadata || has_message_only_error {
+        Some(map_upstream_error(StatusCode::OK, trimmed))
+    } else {
+        None
+    }
 }
 
 fn extract_error_message(body: &str) -> String {
@@ -1336,6 +2019,8 @@ fn stream_proxy_response(
         let mut upstream_stream = upstream_resp.bytes_stream();
         let mut buffer = String::new();
         let mut parser = ThinkingParser::new();
+        let mut aggregated = stream::AggregatedKiroResponse::default();
+        let mut tool_accumulators: HashMap<String, (String, String)> = HashMap::new();
         let mut message_started = false;
         let mut next_block_index = 0usize;
         let mut text_block_index: Option<usize> = None;
@@ -1344,13 +2029,11 @@ fn stream_proxy_response(
         let mut saw_tool_calls = false;
         let mut input_tokens = 0i32;
         let mut output_tokens = 0i32;
-        let openai_id = format!("chatcmpl-{}", short_uuid());
         let anthropic_id = format!("msg_{}", short_uuid());
         let response_id = format!("resp_{}", short_uuid());
+        let message_id = format!("msg_{}", short_uuid());
         let created_at = chrono::Utc::now().timestamp();
-        let mut openai_role_sent = false;
-        let mut openai_tool_indexes: HashMap<String, usize> = HashMap::new();
-        let mut openai_next_tool_index = 0usize;
+        let mut responses_sequence_number = 0usize;
 
         while let Some(chunk_result) = upstream_stream.next().await {
             match chunk_result {
@@ -1370,55 +2053,50 @@ fn stream_proxy_response(
                                 } => {
                                     input_tokens = input;
                                     output_tokens = output;
+                                    aggregated.input_tokens = input;
+                                    aggregated.output_tokens = output;
                                 }
                                 KiroEvent::ContextUsage { percentage } => {
+                                    aggregated.context_usage_percentage = Some(percentage);
                                     if matches!(format, ResponseFormat::Anthropic) {
                                         let data = json!({"type":"context_usage","percentage":percentage});
                                         send_event(&tx, Some("context_usage"), &data.to_string()).await;
                                     }
                                 }
                                 KiroEvent::Thinking(text) => {
+                                    aggregated.thinking.push_str(&text);
                                     handle_stream_text(
                                         &tx,
                                         format,
                                         &model,
                                         &anthropic_id,
-                                        &openai_id,
                                         &response_id,
-                                        created_at,
                                         &text,
                                         true,
                                         &mut message_started,
                                         &mut next_block_index,
                                         &mut text_block_index,
                                         &mut thinking_block_index,
-                                        &mut openai_role_sent,
-                                        &mut openai_tool_indexes,
-                                        &mut openai_next_tool_index,
                                         input_tokens,
                                         output_tokens,
                                     )
                                     .await;
                                 }
                                 KiroEvent::Text(text) => {
+                                    aggregated.text.push_str(&text);
                                     for segment in parser.push_and_parse(&text) {
                                         handle_stream_text(
                                             &tx,
                                             format,
                                             &model,
                                             &anthropic_id,
-                                            &openai_id,
                                             &response_id,
-                                            created_at,
                                             &segment.content,
                                             segment.segment_type == SegmentType::Thinking,
                                             &mut message_started,
                                             &mut next_block_index,
                                             &mut text_block_index,
                                             &mut thinking_block_index,
-                                            &mut openai_role_sent,
-                                            &mut openai_tool_indexes,
-                                            &mut openai_next_tool_index,
                                             input_tokens,
                                             output_tokens,
                                         )
@@ -1427,6 +2105,9 @@ fn stream_proxy_response(
                                 }
                                 KiroEvent::ToolUseStart { id, name } => {
                                     saw_tool_calls = true;
+                                    tool_accumulators
+                                        .entry(id.clone())
+                                        .or_insert((name.clone(), String::new()));
                                     match format {
                                         ResponseFormat::Anthropic => {
                                             ensure_anthropic_message_start(
@@ -1455,34 +2136,6 @@ fn stream_proxy_response(
                                             });
                                             send_event(&tx, Some("content_block_start"), &data.to_string()).await;
                                         }
-                                        ResponseFormat::OpenAi => {
-                                            ensure_openai_role_chunk(&tx, &mut openai_role_sent, &openai_id, &model, created_at).await;
-                                            let index = openai_next_tool_index;
-                                            openai_next_tool_index += 1;
-                                            openai_tool_indexes.insert(id.clone(), index);
-                                            let data = json!({
-                                                "id": openai_id,
-                                                "object": "chat.completion.chunk",
-                                                "created": created_at,
-                                                "model": model,
-                                                "choices": [{
-                                                    "index": 0,
-                                                    "delta": {
-                                                        "tool_calls": [{
-                                                            "index": index,
-                                                            "id": id,
-                                                            "type": "function",
-                                                            "function": {
-                                                                "name": name,
-                                                                "arguments": ""
-                                                            }
-                                                        }]
-                                                    },
-                                                    "finish_reason": Value::Null
-                                                }]
-                                            });
-                                            send_data(&tx, &data.to_string()).await;
-                                        }
                                         ResponseFormat::Responses => {
                                             let data = json!({
                                                 "type": "response.output_item.added",
@@ -1498,59 +2151,45 @@ fn stream_proxy_response(
                                         }
                                     }
                                 }
-                                KiroEvent::ToolUseInputDelta { id, input_delta } => match format {
-                                    ResponseFormat::Anthropic => {
-                                        if let Some(index) = tool_block_indexes.get(&id).copied() {
+                                KiroEvent::ToolUseInputDelta { id, input_delta } => {
+                                    if let Some((_, current_input)) = tool_accumulators.get_mut(&id) {
+                                        current_input.push_str(&input_delta);
+                                    } else {
+                                        tool_accumulators.insert(
+                                            id.clone(),
+                                            (String::new(), input_delta.clone()),
+                                        );
+                                    }
+                                    match format {
+                                        ResponseFormat::Anthropic => {
+                                            if let Some(index) = tool_block_indexes.get(&id).copied() {
+                                                let data = json!({
+                                                    "type": "content_block_delta",
+                                                    "index": index,
+                                                    "delta": {
+                                                        "type": "input_json_delta",
+                                                        "partial_json": input_delta
+                                                    }
+                                                });
+                                                send_event(&tx, Some("content_block_delta"), &data.to_string()).await;
+                                            }
+                                        }
+                                        ResponseFormat::Responses => {
                                             let data = json!({
-                                                "type": "content_block_delta",
-                                                "index": index,
-                                                "delta": {
-                                                    "type": "input_json_delta",
-                                                    "partial_json": input_delta
-                                                }
+                                                "type": "response.function_call_arguments.delta",
+                                                "response_id": response_id,
+                                                "call_id": id,
+                                                "delta": input_delta
                                             });
-                                            send_event(&tx, Some("content_block_delta"), &data.to_string()).await;
+                                            send_data(&tx, &data.to_string()).await;
                                         }
                                     }
-                                    ResponseFormat::OpenAi => {
-                                        ensure_openai_role_chunk(&tx, &mut openai_role_sent, &openai_id, &model, created_at).await;
-                                        let index = *openai_tool_indexes.entry(id.clone()).or_insert_with(|| {
-                                            let current = openai_next_tool_index;
-                                            openai_next_tool_index += 1;
-                                            current
-                                        });
-                                        let data = json!({
-                                            "id": openai_id,
-                                            "object": "chat.completion.chunk",
-                                            "created": created_at,
-                                            "model": model,
-                                            "choices": [{
-                                                "index": 0,
-                                                "delta": {
-                                                    "tool_calls": [{
-                                                        "index": index,
-                                                        "function": {
-                                                            "arguments": input_delta
-                                                        }
-                                                    }]
-                                                },
-                                                "finish_reason": Value::Null
-                                            }]
-                                        });
-                                        send_data(&tx, &data.to_string()).await;
-                                    }
-                                    ResponseFormat::Responses => {
-                                        let data = json!({
-                                            "type": "response.function_call_arguments.delta",
-                                            "response_id": response_id,
-                                            "call_id": id,
-                                            "delta": input_delta
-                                        });
-                                        send_data(&tx, &data.to_string()).await;
-                                    }
-                                },
+                                }
                                 KiroEvent::ToolUseStop { id } => match format {
                                     ResponseFormat::Anthropic => {
+                                        if let Some((name, input)) = tool_accumulators.remove(&id) {
+                                            aggregated.tool_calls.push((id.clone(), name, input));
+                                        }
                                         if let Some(index) = tool_block_indexes.remove(&id) {
                                             let data = json!({
                                                 "type": "content_block_stop",
@@ -1560,6 +2199,9 @@ fn stream_proxy_response(
                                         }
                                     }
                                     ResponseFormat::Responses => {
+                                        if let Some((name, input)) = tool_accumulators.remove(&id) {
+                                            aggregated.tool_calls.push((id.clone(), name, input));
+                                        }
                                         let data = json!({
                                             "type": "response.output_item.done",
                                             "response_id": response_id,
@@ -1567,8 +2209,81 @@ fn stream_proxy_response(
                                         });
                                         send_data(&tx, &data.to_string()).await;
                                     }
-                                    ResponseFormat::OpenAi => {}
                                 },
+                                KiroEvent::Citation {
+                                    text,
+                                    link,
+                                    target,
+                                } => {
+                                    let citation = stream::AggregatedCitation {
+                                        text,
+                                        link,
+                                        target,
+                                    };
+                                    aggregated.citations.push(citation.clone());
+
+                                    match format {
+                                        ResponseFormat::Anthropic => {
+                                            ensure_anthropic_message_start(
+                                                &tx,
+                                                &mut message_started,
+                                                &anthropic_id,
+                                                &model,
+                                                input_tokens,
+                                                output_tokens,
+                                            )
+                                            .await;
+                                            close_content_block(&tx, &mut thinking_block_index).await;
+                                            if text_block_index.is_none() {
+                                                let index = next_block_index;
+                                                next_block_index += 1;
+                                                text_block_index = Some(index);
+                                                let data = json!({
+                                                    "type": "content_block_start",
+                                                    "index": index,
+                                                    "content_block": {
+                                                        "type": "text",
+                                                        "text": ""
+                                                    }
+                                                });
+                                                send_event(&tx, Some("content_block_start"), &data.to_string()).await;
+                                            }
+                                            if let Some(index) = text_block_index {
+                                                if let Some(data) = build_anthropic_citation_delta_event(
+                                                    index,
+                                                    &citation,
+                                                    &aggregated.text,
+                                                ) {
+                                                    send_event(
+                                                        &tx,
+                                                        Some("content_block_delta"),
+                                                        &data.to_string(),
+                                                    )
+                                                    .await;
+                                                }
+                                            }
+                                        }
+                                        ResponseFormat::Responses => {
+                                            if let Some(annotation) =
+                                                build_responses_citation_annotations(
+                                                    std::slice::from_ref(&citation),
+                                                )
+                                                .into_iter()
+                                                .next()
+                                            {
+                                                let data = build_responses_annotation_added_event(
+                                                    &response_id,
+                                                    &message_id,
+                                                    annotation,
+                                                    aggregated.citations.len() - 1,
+                                                    responses_sequence_number,
+                                                );
+                                                responses_sequence_number += 1;
+                                                send_data(&tx, &data.to_string()).await;
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                         buffer = buffer[start + json_len..].to_string();
@@ -1588,23 +2303,19 @@ fn stream_proxy_response(
                 format,
                 &model,
                 &anthropic_id,
-                &openai_id,
                 &response_id,
-                created_at,
                 &segment.content,
                 segment.segment_type == SegmentType::Thinking,
                 &mut message_started,
                 &mut next_block_index,
                 &mut text_block_index,
                 &mut thinking_block_index,
-                &mut openai_role_sent,
-                &mut openai_tool_indexes,
-                &mut openai_next_tool_index,
                 input_tokens,
                 output_tokens,
             )
             .await;
         }
+        aggregated.tool_calls = stream::deduplicate_tool_calls(aggregated.tool_calls);
 
         match format {
             ResponseFormat::Anthropic => {
@@ -1623,38 +2334,14 @@ fn stream_proxy_response(
                 send_event(&tx, Some("message_delta"), &finish.to_string()).await;
                 send_event(&tx, Some("message_stop"), "{\"type\":\"message_stop\"}").await;
             }
-            ResponseFormat::OpenAi => {
-                ensure_openai_role_chunk(&tx, &mut openai_role_sent, &openai_id, &model, created_at).await;
-                let done = json!({
-                    "id": openai_id,
-                    "object": "chat.completion.chunk",
-                    "created": created_at,
-                    "model": model,
-                    "choices": [{
-                        "index": 0,
-                        "delta": {},
-                        "finish_reason": if saw_tool_calls { "tool_calls" } else { "stop" }
-                    }]
-                });
-                send_data(&tx, &done.to_string()).await;
-                send_data(&tx, "[DONE]").await;
-            }
             ResponseFormat::Responses => {
-                let completed = json!({
-                    "type": "response.completed",
-                    "response": {
-                        "id": response_id,
-                        "object": "response",
-                        "created_at": created_at,
-                        "status": "completed",
-                        "model": model,
-                        "usage": {
-                            "input_tokens": input_tokens,
-                            "output_tokens": output_tokens,
-                            "total_tokens": input_tokens + output_tokens
-                        }
-                    }
-                });
+                let completed = build_stream_responses_completed_event(
+                    &model,
+                    &aggregated,
+                    &response_id,
+                    &message_id,
+                    created_at,
+                );
                 send_data(&tx, &completed.to_string()).await;
                 send_data(&tx, "[DONE]").await;
             }
@@ -1676,18 +2363,13 @@ async fn handle_stream_text(
     format: ResponseFormat,
     model: &str,
     anthropic_id: &str,
-    openai_id: &str,
     response_id: &str,
-    created_at: i64,
     text: &str,
     is_thinking: bool,
     message_started: &mut bool,
     next_block_index: &mut usize,
     text_block_index: &mut Option<usize>,
     thinking_block_index: &mut Option<usize>,
-    openai_role_sent: &mut bool,
-    _openai_tool_indexes: &mut HashMap<String, usize>,
-    _openai_next_tool_index: &mut usize,
     input_tokens: i32,
     output_tokens: i32,
 ) {
@@ -1759,26 +2441,6 @@ async fn handle_stream_text(
                 send_event(tx, Some("content_block_delta"), &data.to_string()).await;
             }
         }
-        ResponseFormat::OpenAi => {
-            if is_thinking {
-                return;
-            }
-            ensure_openai_role_chunk(tx, openai_role_sent, openai_id, model, created_at).await;
-            let data = json!({
-                "id": openai_id,
-                "object": "chat.completion.chunk",
-                "created": created_at,
-                "model": model,
-                "choices": [{
-                    "index": 0,
-                    "delta": {
-                        "content": text
-                    },
-                    "finish_reason": Value::Null
-                }]
-            });
-            send_data(tx, &data.to_string()).await;
-        }
         ResponseFormat::Responses => {
             let data = json!({
                 "type": if is_thinking { "response.reasoning.delta" } else { "response.output_text.delta" },
@@ -1821,33 +2483,6 @@ async fn ensure_anthropic_message_start(
     *message_started = true;
 }
 
-async fn ensure_openai_role_chunk(
-    tx: &mpsc::Sender<Result<Bytes, Infallible>>,
-    role_sent: &mut bool,
-    openai_id: &str,
-    model: &str,
-    created_at: i64,
-) {
-    if *role_sent {
-        return;
-    }
-    let data = json!({
-        "id": openai_id,
-        "object": "chat.completion.chunk",
-        "created": created_at,
-        "model": model,
-        "choices": [{
-            "index": 0,
-            "delta": {
-                "role": "assistant"
-            },
-            "finish_reason": Value::Null
-        }]
-    });
-    send_data(tx, &data.to_string()).await;
-    *role_sent = true;
-}
-
 async fn close_content_block(
     tx: &mpsc::Sender<Result<Bytes, Infallible>>,
     index: &mut Option<usize>,
@@ -1884,7 +2519,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn normalize_request_keeps_responses_as_primary_but_chat_compatible() {
+    fn normalize_request_only_accepts_responses_payloads() {
         let responses_payload = json!({
             "model": "claude-3-7-sonnet-20250219",
             "stream": true,
@@ -1975,42 +2610,36 @@ mod tests {
 
         let responses_request = normalize_request(ResponseFormat::Responses, &responses_payload)
             .expect("responses payload should normalize");
-        let chat_request = normalize_request(ResponseFormat::OpenAi, &chat_payload)
-            .expect("chat payload should normalize");
+        let chat_error = normalize_request(ResponseFormat::Responses, &chat_payload)
+            .expect_err("chat payload should be rejected by responses-only normalization");
 
-        assert_eq!(responses_request.model, chat_request.model);
-        assert_eq!(responses_request.stream, chat_request.stream);
-        assert_eq!(responses_request.tool_choice, chat_request.tool_choice);
+        assert_eq!(responses_request.model, "claude-3-7-sonnet-20250219");
+        assert!(responses_request.stream);
+        assert_eq!(responses_request.tool_choice, Some(json!({ "type": "function", "name": "search_docs" })));
         assert_eq!(responses_request.tools.as_ref().map(Vec::len), Some(1));
         assert_eq!(responses_request.tools.as_ref().map(Vec::len), Some(1));
-        assert_eq!(chat_request.tools.as_ref().map(Vec::len), Some(1));
         assert_eq!(
             responses_request
                 .tools
                 .as_ref()
                 .and_then(|items| items.first())
                 .map(|tool| tool.function.name.as_str()),
-            chat_request
-                .tools
-                .as_ref()
-                .and_then(|items| items.first())
-                .map(|tool| tool.function.name.as_str())
+            Some("search_docs")
         );
-        assert_eq!(responses_request.messages.len(), chat_request.messages.len());
-        assert_eq!(responses_request.messages[0].content, chat_request.messages[0].content);
+        assert_eq!(responses_request.messages.len(), 3);
         assert_eq!(
             responses_request.messages[1]
                 .tool_calls
                 .as_ref()
                 .and_then(|items| items.first())
                 .map(|call| &call.function.arguments),
-            chat_request.messages[1]
-                .tool_calls
-                .as_ref()
-                .and_then(|items| items.first())
-                .map(|call| &call.function.arguments)
+            Some(&"{\"q\":\"gateway\"}".to_string())
         );
-        assert_eq!(responses_request.messages[2].content, chat_request.messages[2].content);
+        assert_eq!(responses_request.messages[2].content, Some(json!("命中结果")));
+        assert!(
+            chat_error.contains("/v1/responses"),
+            "unexpected error: {chat_error}"
+        );
     }
 
     #[test]
@@ -2044,6 +2673,18 @@ mod tests {
     }
 
     #[test]
+    fn detect_upstream_error_body_maps_success_status_error_payloads() {
+        let error = detect_upstream_error_body(
+            r#"{"error":{"message":"Invalid model. Please select a different model to continue.","type":"invalid_request_error"}}"#,
+        )
+        .expect("error payload should be detected");
+
+        assert_eq!(error.0, StatusCode::BAD_REQUEST);
+        assert_eq!(error.1, "invalid_request_error");
+        assert!(error.2.contains("Invalid model"));
+    }
+
+    #[test]
     fn build_anthropic_response_emits_server_tool_blocks() {
         let aggregated = stream::AggregatedKiroResponse {
             text: "我查到了结果".to_string(),
@@ -2052,6 +2693,7 @@ mod tests {
             input_tokens: 10,
             output_tokens: 20,
             context_usage_percentage: None,
+            citations: Vec::new(),
         };
         let response = build_anthropic_response(
             "claude-sonnet-4-5",
@@ -2073,5 +2715,250 @@ mod tests {
         assert_eq!(response["content"][1]["type"], "web_search_tool_result");
         assert_eq!(response["content"][2]["type"], "text");
         assert_eq!(response["content"][1]["tool_use_id"], "srv_1");
+    }
+
+    #[test]
+    fn build_responses_response_emits_web_search_call_and_url_citations() {
+        let aggregated = stream::AggregatedKiroResponse {
+            text: "我查到了 Rust 发布记录。".to_string(),
+            thinking: String::new(),
+            tool_calls: Vec::new(),
+            input_tokens: 12,
+            output_tokens: 24,
+            context_usage_percentage: None,
+            citations: Vec::new(),
+        };
+        let response = build_responses_response_with_ids(
+            "gpt-4.1",
+            &aggregated,
+            &[ServerToolCall {
+                id: "srv_1".to_string(),
+                name: "web_search".to_string(),
+                input: json!({ "query": "Rust release" }),
+                result_content: json!([
+                    {
+                        "type": "web_search_result",
+                        "title": "Rust Blog",
+                        "url": "https://blog.rust-lang.org"
+                    },
+                    {
+                        "type": "web_search_result",
+                        "title": "Inside Rust",
+                        "url": "https://blog.rust-lang.org/inside-rust"
+                    }
+                ]),
+                tool_result_text: "{\"results\":[]}".to_string(),
+            }],
+            "resp_test",
+            "msg_test",
+            123,
+        );
+
+        assert_eq!(response["output"][0]["type"], "web_search_call");
+        assert_eq!(response["output"][0]["action"]["query"], "Rust release");
+        assert_eq!(response["output"][1]["type"], "message");
+        assert_eq!(response["output"][1]["content"][0]["type"], "output_text");
+        assert_eq!(response["output"][1]["content"][0]["annotations"][0]["type"], "url_citation");
+        assert_eq!(
+            response["output"][1]["content"][0]["annotations"][0]["url"],
+            "https://blog.rust-lang.org"
+        );
+        assert_eq!(
+            response["output"][1]["content"][0]["annotations"][0]["title"],
+            "Rust Blog"
+        );
+        assert!(response["output_text"]
+            .as_str()
+            .expect("output_text should be present")
+            .contains("Sources:\n[1] Rust Blog"));
+    }
+
+    #[test]
+    fn build_responses_response_emits_kiro_citation_annotations() {
+        let aggregated = stream::AggregatedKiroResponse {
+            text: "Hello Rust".to_string(),
+            thinking: String::new(),
+            tool_calls: Vec::new(),
+            input_tokens: 3,
+            output_tokens: 5,
+            context_usage_percentage: None,
+            citations: vec![stream::AggregatedCitation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/rust".to_string(),
+                target: json!({ "range": { "start": 6, "end": 10 } }),
+            }],
+        };
+
+        let response = build_responses_response_with_ids(
+            "gpt-4.1",
+            &aggregated,
+            &[],
+            "resp_test",
+            "msg_test",
+            123,
+        );
+
+        assert_eq!(response["output"][0]["content"][0]["annotations"][0]["type"], "url_citation");
+        assert_eq!(response["output"][0]["content"][0]["annotations"][0]["start_index"], 6);
+        assert_eq!(response["output"][0]["content"][0]["annotations"][0]["end_index"], 10);
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["url"],
+            "https://example.com/rust"
+        );
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["citationText"],
+            "Rust"
+        );
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["citationLink"],
+            "https://example.com/rust"
+        );
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["target"]["range"]["start"],
+            6
+        );
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["target"]["range"]["end"],
+            10
+        );
+        assert!(response["output"][0]["content"][0]["annotations"][0]["title"].is_null());
+    }
+
+    #[test]
+    fn build_responses_response_omits_guessed_range_for_location_citations() {
+        let aggregated = stream::AggregatedKiroResponse {
+            text: "Hello Rust".to_string(),
+            thinking: String::new(),
+            tool_calls: Vec::new(),
+            input_tokens: 3,
+            output_tokens: 5,
+            context_usage_percentage: None,
+            citations: vec![stream::AggregatedCitation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/rust".to_string(),
+                target: json!({ "location": 6 }),
+            }],
+        };
+
+        let response = build_responses_response_with_ids(
+            "gpt-4.1",
+            &aggregated,
+            &[],
+            "resp_test",
+            "msg_test",
+            123,
+        );
+
+        assert_eq!(response["output"][0]["content"][0]["annotations"][0]["type"], "url_citation");
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["citationText"],
+            "Rust"
+        );
+        assert_eq!(
+            response["output"][0]["content"][0]["annotations"][0]["target"]["location"],
+            6
+        );
+        assert!(response["output"][0]["content"][0]["annotations"][0]["start_index"].is_null());
+        assert!(response["output"][0]["content"][0]["annotations"][0]["end_index"].is_null());
+        assert!(response["output"][0]["content"][0]["annotations"][0]["title"].is_null());
+    }
+
+    #[test]
+    fn build_anthropic_response_maps_kiro_citations_into_sdk_shape() {
+        let aggregated = stream::AggregatedKiroResponse {
+            text: "Hello Rust".to_string(),
+            thinking: String::new(),
+            tool_calls: Vec::new(),
+            input_tokens: 3,
+            output_tokens: 5,
+            context_usage_percentage: None,
+            citations: vec![stream::AggregatedCitation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/rust".to_string(),
+                target: json!({ "range": { "start": 6, "end": 10 } }),
+            }],
+        };
+
+        let response = build_anthropic_response("claude-sonnet-4-5", &aggregated, &[]);
+
+        assert_eq!(response["content"][0]["type"], "text");
+        assert_eq!(response["content"][0]["citations"][0]["type"], "char_location");
+        assert_eq!(response["content"][0]["citations"][0]["start_char_index"], 6);
+        assert_eq!(response["content"][0]["citations"][0]["end_char_index"], 10);
+        assert_eq!(response["content"][0]["citations"][0]["cited_text"], "Rust");
+        assert_eq!(
+            response["content"][0]["citations"][0]["document_title"],
+            "https://example.com/rust"
+        );
+        assert!(response["content"][0]["citations"][0]["file_id"].is_null());
+    }
+
+    #[test]
+    fn build_stream_responses_completed_event_keeps_citations_and_tool_calls() {
+        let aggregated = stream::AggregatedKiroResponse {
+            text: "Hello Rust".to_string(),
+            thinking: String::new(),
+            tool_calls: vec![(
+                "call_1".to_string(),
+                "search_docs".to_string(),
+                "{\"q\":\"rust\"}".to_string(),
+            )],
+            input_tokens: 3,
+            output_tokens: 5,
+            context_usage_percentage: None,
+            citations: vec![stream::AggregatedCitation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/rust".to_string(),
+                target: json!({ "range": { "start": 6, "end": 10 } }),
+            }],
+        };
+
+        let event = build_stream_responses_completed_event(
+            "gpt-4.1",
+            &aggregated,
+            "resp_test",
+            "msg_test",
+            123,
+        );
+
+        assert_eq!(event["type"], "response.completed");
+        assert_eq!(event["response"]["output_text"], "Hello Rust");
+        assert_eq!(
+            event["response"]["output"][0]["content"][0]["annotations"][0]["citationText"],
+            "Rust"
+        );
+        assert!(event["response"]["output"][0]["content"][0]["annotations"][0]["title"].is_null());
+        assert_eq!(
+            event["response"]["output"][0]["content"][1]["type"],
+            "function_call"
+        );
+        assert_eq!(
+            event["response"]["output"][0]["content"][1]["call_id"],
+            "call_1"
+        );
+    }
+
+    #[test]
+    fn build_responses_annotation_added_event_uses_sdk_shape() {
+        let event = build_responses_annotation_added_event(
+            "resp_test",
+            "msg_test",
+            json!({
+                "type": "url_citation",
+                "url": "https://example.com/rust",
+                "citationText": "Rust"
+            }),
+            2,
+            7,
+        );
+
+        assert_eq!(event["type"], "response.output_text.annotation.added");
+        assert_eq!(event["response_id"], "resp_test");
+        assert_eq!(event["item_id"], "msg_test");
+        assert_eq!(event["output_index"], 0);
+        assert_eq!(event["content_index"], 0);
+        assert_eq!(event["annotation_index"], 2);
+        assert_eq!(event["sequence_number"], 7);
+        assert_eq!(event["annotation"]["type"], "url_citation");
     }
 }

@@ -6,12 +6,22 @@ use crate::gateway::models::{
     NormalizedRequest, Tool, ToolCall, ToolCallFunction, ToolFunction, UserInputMessage,
     UserInputMessageContext, WebSearchToolOptions,
 };
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+use reqwest::Client;
 use serde_json::{json, Map, Value};
+use std::{
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    time::Duration,
+};
+use tokio::net::lookup_host;
 use uuid::Uuid;
 
 pub const TOOL_DESCRIPTION_MAX_LENGTH: usize = 1024;
 const WEB_SEARCH_TOOL_NAME: &str = "web_search";
 const WEB_SEARCH_TOOL_DESCRIPTION: &str = "Search the web for current information and return relevant results.";
+const MAX_IMAGE_SOURCE_BYTES: usize = 5 * 1024 * 1024;
+const MAX_IMAGE_REDIRECTS: usize = 3;
+const IMAGE_FETCH_TIMEOUT_SECONDS: u64 = 15;
 
 pub fn normalize_anthropic_request(request: &AnthropicMessagesRequest) -> NormalizedRequest {
     let mut messages = Vec::new();
@@ -56,10 +66,14 @@ pub fn normalize_anthropic_request(request: &AnthropicMessagesRequest) -> Normal
 }
 
 pub fn normalize_responses_request(payload: &Value) -> Result<NormalizedRequest, String> {
+    if payload.get("messages").is_some() && payload.get("input").is_none() {
+        return Err("已移除 /v1/chat/completions，请改用 /v1/responses 并传 input".to_string());
+    }
+
     let model = payload
         .get("model")
         .and_then(Value::as_str)
-        .unwrap_or("claude-3-5-sonnet-latest")
+        .unwrap_or("claude-sonnet-4-5-20250929")
         .to_string();
 
     let stream = payload.get("stream").and_then(Value::as_bool).unwrap_or(false);
@@ -185,28 +199,45 @@ fn string_array_from_values(values: &[Value]) -> Vec<String> {
 }
 
 pub fn get_internal_model_id(external_model: &str) -> Result<String, String> {
-    let model_id = match external_model {
-        "claude-opus-4-5" | "claude-opus-4-5-20251101" | "opus" => "claude-opus-4.5",
+    let normalized_model = normalize_external_model_alias(external_model);
+    let model_id = match normalized_model.as_str() {
+        "claude-opus-4-6-20260205" => "claude-opus-4.6",
+        "claude-opus-4-6" | "claude-opus-4.6" | "opus-4-6" => "claude-opus-4.6",
+        "claude-opus-4-5" | "claude-opus-4-5-20251101" | "claude-opus-4.5" | "opus" => {
+            "claude-opus-4.5"
+        }
         "claude-haiku-4-5" | "claude-haiku-4-5-20251001" | "claude-haiku-4.5" | "haiku" => {
             "claude-haiku-4.5"
         }
-        "claude-sonnet-4-5" | "claude-sonnet-4-5-20250929" | "claude-sonnet-4.5" => {
-            "CLAUDE_SONNET_4_5_20250929_V1_0"
+        "claude-sonnet-4-6-20260217" => "claude-sonnet-4.6",
+        "claude-sonnet-4-6" | "claude-sonnet-4.6" | "sonnet-4-6" => "claude-sonnet-4.6",
+        "claude-sonnet-4-5"
+        | "claude-sonnet-4-5-20250929"
+        | "claude-sonnet-4.5"
+        | "claude-sonnet-latest"
+        | "sonnet" => {
+            "claude-sonnet-4.5"
         }
-        "claude-sonnet-4" | "claude-sonnet-4-20250514" => "CLAUDE_SONNET_4_20250514_V1_0",
-        "claude-3-7-sonnet-20250219" | "claude-3.7-sonnet" => "CLAUDE_3_7_SONNET_20250219_V1_0",
+        "claude-sonnet-4" | "claude-sonnet-4-20250514" => "claude-sonnet-4",
+        "claude-3-7-sonnet-20250219" | "claude-3.7-sonnet" => "claude-3-7-sonnet-20250219",
         "claude-3-5-sonnet-20241022"
         | "claude-3-5-sonnet-latest"
-        | "claude-3.5-sonnet"
-        | "sonnet" => "CLAUDE_SONNET_4_20250514_V1_0",
-        "auto" | "default" => "CLAUDE_SONNET_4_5_20250929_V1_0",
+        | "claude-3.5-sonnet" => "claude-3-5-sonnet-20241022",
+        "auto" | "default" => "auto",
+        other if other.starts_with("claude-opus-4-6-") => "claude-opus-4.6",
+        other if other.starts_with("claude-sonnet-4-6-") => "claude-sonnet-4.6",
         other => other,
     };
 
     Ok(model_id.to_string())
 }
 
-pub fn build_kiro_payload(
+fn normalize_external_model_alias(external_model: &str) -> String {
+    external_model.trim().to_ascii_lowercase()
+}
+
+pub async fn build_kiro_payload(
+    client: &Client,
     request: &NormalizedRequest,
     profile_arn: Option<String>,
 ) -> Result<KiroPayload, String> {
@@ -265,12 +296,13 @@ pub fn build_kiro_payload(
                     if Some(index) == first_user_index && !system_prompt.is_empty() {
                         content = join_with_double_newline(&system_prompt, &content);
                     }
+                    let images = extract_images(client, message.content.as_ref()).await;
                     history_items.push(HistoryItem::User {
                         user_input_message: HistoryUserMessage {
                             content,
                             model_id: model_id.clone(),
                             origin: "AI_EDITOR".to_string(),
-                            images: images_option(extract_images(message.content.as_ref())),
+                            images: images_option(images),
                             user_input_message_context: build_user_context(
                                 None,
                                 extract_tool_results(message.content.as_ref()),
@@ -333,7 +365,7 @@ pub fn build_kiro_payload(
         "tool" => extract_tool_results_from_tool_message(current_message),
         _ => extract_tool_results(current_message.content.as_ref()),
     };
-    let current_images = extract_images(current_message.content.as_ref());
+    let current_images = extract_images(client, current_message.content.as_ref()).await;
 
     Ok(KiroPayload {
         conversation_state: ConversationState {
@@ -360,12 +392,14 @@ pub fn build_kiro_payload(
 
 pub fn get_available_models() -> Vec<ModelInfo> {
     [
-        "claude-3-5-sonnet-20241022",
-        "claude-3-5-sonnet-latest",
+        "claude-opus-4-6",
+        "claude-opus-4-6-20260205",
         "claude-opus-4-5",
         "claude-opus-4-5-20251101",
         "claude-haiku-4-5",
         "claude-haiku-4-5-20251001",
+        "claude-sonnet-4-6",
+        "claude-sonnet-4-6-20260217",
         "claude-sonnet-4-5",
         "claude-sonnet-4-5-20250929",
         "claude-sonnet-4",
@@ -794,17 +828,21 @@ fn extract_tool_results_from_tool_message(message: &NormalizedMessage) -> Vec<Ki
     }]
 }
 
-fn extract_images(content: Option<&Value>) -> Vec<ImageBlock> {
+async fn extract_images(client: &Client, content: Option<&Value>) -> Vec<ImageBlock> {
     let Some(Value::Array(items)) = content else {
         return Vec::new();
     };
 
-    items.iter()
-        .filter_map(extract_image_block)
-        .collect()
+    let mut images = Vec::new();
+    for item in items {
+        if let Some(image) = extract_image_block(client, item).await {
+            images.push(image);
+        }
+    }
+    images
 }
 
-fn extract_image_block(item: &Value) -> Option<ImageBlock> {
+async fn extract_image_block(client: &Client, item: &Value) -> Option<ImageBlock> {
     let item_type = item.get("type").and_then(Value::as_str).unwrap_or_default();
     match item_type {
         "image" => {
@@ -813,6 +851,9 @@ fn extract_image_block(item: &Value) -> Option<ImageBlock> {
                 .get("data")
                 .and_then(Value::as_str)
                 .map(str::to_string)?;
+            if encoded_image_exceeds_limit(&bytes) {
+                return None;
+            }
             let media_type = source.get("media_type").and_then(Value::as_str).unwrap_or("image/png");
             Some(ImageBlock {
                 format: media_type_to_format(media_type)?,
@@ -824,7 +865,7 @@ fn extract_image_block(item: &Value) -> Option<ImageBlock> {
                 .get("image_url")
                 .and_then(|value| value.get("url").or(Some(value)))
                 .and_then(Value::as_str)?;
-            let (format, bytes) = parse_data_url(url)?;
+            let (format, bytes) = resolve_image_source(client, url).await?;
             Some(ImageBlock {
                 format,
                 source: ImageSource { bytes },
@@ -835,7 +876,7 @@ fn extract_image_block(item: &Value) -> Option<ImageBlock> {
                 .get("image_url")
                 .and_then(Value::as_str)
                 .or_else(|| item.get("url").and_then(Value::as_str))?;
-            let (format, bytes) = parse_data_url(url)?;
+            let (format, bytes) = resolve_image_source(client, url).await?;
             Some(ImageBlock {
                 format,
                 source: ImageSource { bytes },
@@ -859,7 +900,155 @@ fn parse_data_url(url: &str) -> Option<(String, String)> {
     let rest = url.strip_prefix("data:")?;
     let (meta, bytes) = rest.split_once(',')?;
     let media_type = meta.split(';').next().unwrap_or_default();
+    if encoded_image_exceeds_limit(bytes) {
+        return None;
+    }
     Some((media_type_to_format(media_type)?, bytes.to_string()))
+}
+
+async fn resolve_image_source(client: &Client, url: &str) -> Option<(String, String)> {
+    let _ = client;
+    if let Some(parsed) = parse_data_url(url) {
+        return Some(parsed);
+    }
+
+    let image_client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(IMAGE_FETCH_TIMEOUT_SECONDS))
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .ok()?;
+    let mut current_url = validate_remote_image_url(url).await?;
+
+    for _ in 0..=MAX_IMAGE_REDIRECTS {
+        let response = image_client.get(current_url.clone()).send().await.ok()?;
+        if response.status().is_redirection() {
+            let location = response.headers().get(reqwest::header::LOCATION)?.to_str().ok()?;
+            let next_url = current_url.join(location).ok()?;
+            current_url = validate_remote_image_url(next_url.as_str()).await?;
+            continue;
+        }
+        if !response.status().is_success() {
+            return None;
+        }
+
+        if response
+            .content_length()
+            .map(|length| length > MAX_IMAGE_SOURCE_BYTES as u64)
+            .unwrap_or(false)
+        {
+            return None;
+        }
+
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_string);
+        let final_url = response.url().clone();
+        let bytes = response.bytes().await.ok()?;
+        if bytes.len() > MAX_IMAGE_SOURCE_BYTES {
+            return None;
+        }
+        let format = content_type
+            .as_deref()
+            .and_then(|value| value.split(';').next())
+            .and_then(media_type_to_format)
+            .or_else(|| infer_image_format_from_url(final_url.as_str()))?;
+
+        return Some((format, STANDARD.encode(bytes)));
+    }
+
+    None
+}
+
+fn infer_image_format_from_url(url: &str) -> Option<String> {
+    let path = reqwest::Url::parse(url).ok()?.path().to_ascii_lowercase();
+    if path.ends_with(".png") {
+        Some("png".to_string())
+    } else if path.ends_with(".jpg") || path.ends_with(".jpeg") {
+        Some("jpeg".to_string())
+    } else if path.ends_with(".gif") {
+        Some("gif".to_string())
+    } else if path.ends_with(".webp") {
+        Some("webp".to_string())
+    } else {
+        None
+    }
+}
+
+async fn validate_remote_image_url(url: &str) -> Option<reqwest::Url> {
+    let parsed = reqwest::Url::parse(url).ok()?;
+    match parsed.scheme() {
+        "http" | "https" => {}
+        _ => return None,
+    }
+
+    let host = parsed.host_str()?;
+    if host.eq_ignore_ascii_case("localhost") {
+        return None;
+    }
+
+    let port = parsed.port_or_known_default()?;
+    let mut resolved_any = false;
+    for address in lookup_host((host, port)).await.ok()? {
+        resolved_any = true;
+        if is_restricted_remote_ip(address.ip()) {
+            return None;
+        }
+    }
+
+    if !resolved_any {
+        return None;
+    }
+
+    Some(parsed)
+}
+
+fn encoded_image_exceeds_limit(encoded: &str) -> bool {
+    encoded.len() > max_base64_len_for_bytes(MAX_IMAGE_SOURCE_BYTES)
+}
+
+fn max_base64_len_for_bytes(max_bytes: usize) -> usize {
+    max_bytes.div_ceil(3) * 4
+}
+
+fn is_restricted_remote_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(addr) => {
+            addr.is_private()
+                || addr.is_loopback()
+                || addr.is_link_local()
+                || addr.is_broadcast()
+                || addr.is_documentation()
+                || addr.is_unspecified()
+                || addr.is_multicast()
+                || is_ipv4_shared(addr)
+                || is_ipv4_reserved(addr)
+        }
+        IpAddr::V6(addr) => {
+            addr.is_loopback()
+                || addr.is_unspecified()
+                || addr.is_multicast()
+                || addr.is_unique_local()
+                || addr.is_unicast_link_local()
+                || is_ipv6_documentation(addr)
+        }
+    }
+}
+
+fn is_ipv4_shared(addr: Ipv4Addr) -> bool {
+    let octets = addr.octets();
+    octets[0] == 100 && (64..=127).contains(&octets[1])
+}
+
+fn is_ipv4_reserved(addr: Ipv4Addr) -> bool {
+    let octets = addr.octets();
+    octets[0] >= 240
+}
+
+fn is_ipv6_documentation(addr: Ipv6Addr) -> bool {
+    let segments = addr.segments();
+    segments[0] == 0x2001 && segments[1] == 0x0db8
 }
 
 fn extract_tool_uses(message: &NormalizedMessage) -> Option<Vec<KiroToolUse>> {
@@ -1010,13 +1199,20 @@ fn join_with_double_newline(left: &str, right: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::engine::general_purpose::STANDARD;
     use crate::gateway::models::AnthropicTool;
     use serde_json::json;
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        thread,
+        time::Duration,
+    };
 
     #[test]
     fn normalize_anthropic_request_keeps_system_tools_and_tool_result() {
         let request = AnthropicMessagesRequest {
-            model: "claude-3-5-sonnet-latest".to_string(),
+            model: "claude-sonnet-4-5-20250929".to_string(),
             messages: vec![crate::gateway::models::AnthropicMessage {
                 role: "user".to_string(),
                 content: json!([
@@ -1083,6 +1279,8 @@ mod tests {
             top_p: None,
             stop_sequences: None,
             tools: Some(vec![AnthropicTool {
+                // Use a documented versioned name as a compatibility sample. This test only
+                // proves `web_search_*` matching, not that Kiro emits this exact version.
                 r#type: Some("web_search_20260209".to_string()),
                 name: "web_search".to_string(),
                 description: None,
@@ -1183,10 +1381,10 @@ mod tests {
         );
     }
 
-    #[test]
-    fn build_kiro_payload_moves_long_tool_docs_and_tool_results_into_context() {
+    #[tokio::test]
+    async fn build_kiro_payload_moves_long_tool_docs_and_tool_results_into_context() {
         let request = NormalizedRequest {
-            model: "claude-3-5-sonnet-latest".to_string(),
+            model: "claude-sonnet-4-5-20250929".to_string(),
             messages: vec![
                 NormalizedMessage {
                     role: "system".to_string(),
@@ -1240,12 +1438,13 @@ mod tests {
             tool_choice: None,
         };
 
-        let payload = build_kiro_payload(&request, Some("arn:aws:codewhisperer:::profile/test".to_string()))
+        let payload = build_kiro_payload(&Client::new(), &request, Some("arn:aws:codewhisperer:::profile/test".to_string()))
+            .await
             .expect("payload should build");
         let current = &payload.conversation_state.current_message.user_input_message;
 
         assert!(current.content.contains("Tool Documentation"));
-        assert_eq!(current.model_id, "CLAUDE_SONNET_4_20250514_V1_0");
+        assert_eq!(current.model_id, "claude-sonnet-4.5");
         assert_eq!(payload.profile_arn.as_deref(), Some("arn:aws:codewhisperer:::profile/test"));
 
         let history = payload.conversation_state.history.expect("history should exist");
@@ -1274,6 +1473,64 @@ mod tests {
             }
             other => panic!("unexpected history item: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn build_kiro_payload_uses_cached_style_model_ids_for_claude_45() {
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-5-20250929".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!("hello")),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            stream: false,
+            max_tokens: Some(1024),
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: None,
+            tool_choice: None,
+        };
+
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
+
+        assert_eq!(
+            payload.conversation_state.current_message.user_input_message.model_id,
+            "claude-sonnet-4.5"
+        );
+    }
+
+    #[tokio::test]
+    async fn build_kiro_payload_uses_cached_style_model_ids_for_claude_46() {
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-6".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!("hello")),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            stream: false,
+            max_tokens: Some(1024),
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: None,
+            tool_choice: None,
+        };
+
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
+
+        assert_eq!(
+            payload.conversation_state.current_message.user_input_message.model_id,
+            "claude-sonnet-4.6"
+        );
     }
 
     #[test]
@@ -1305,6 +1562,21 @@ mod tests {
                 { "type": "input_image", "image_url": "data:image/png;base64,aGVsbG8=" }
             ]))
         );
+    }
+
+    #[test]
+    fn normalize_responses_request_defaults_to_claude_sonnet_45() {
+        let payload = json!({
+            "input": [
+                {
+                    "role": "user",
+                    "content": "hello"
+                }
+            ]
+        });
+
+        let converted = normalize_responses_request(&payload).expect("responses payload should convert");
+        assert_eq!(converted.model, "claude-sonnet-4-5-20250929");
     }
 
     #[test]
@@ -1384,10 +1656,10 @@ mod tests {
         assert_eq!(converted.messages[2].content, Some(json!("命中结果")));
     }
 
-    #[test]
-    fn build_kiro_payload_extracts_base64_images() {
+    #[tokio::test]
+    async fn build_kiro_payload_extracts_base64_images() {
         let request = NormalizedRequest {
-            model: "claude-3-5-sonnet-latest".to_string(),
+            model: "claude-sonnet-4-5-20250929".to_string(),
             messages: vec![NormalizedMessage {
                 role: "user".to_string(),
                 content: Some(json!([
@@ -1416,7 +1688,9 @@ mod tests {
             tool_choice: None,
         };
 
-        let payload = build_kiro_payload(&request, None).expect("payload should build");
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
         let current = &payload.conversation_state.current_message.user_input_message;
 
         assert_eq!(current.images.as_ref().map(Vec::len), Some(1));
@@ -1424,5 +1698,168 @@ mod tests {
             current.images.as_ref().and_then(|images| images.first()).map(|image| image.format.as_str()),
             Some("png")
         );
+    }
+
+    #[tokio::test]
+    async fn build_kiro_payload_rejects_private_remote_images() {
+        let expected_bytes = vec![137, 80, 78, 71, 13, 10, 26, 10];
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener should bind");
+        listener
+            .set_nonblocking(true)
+            .expect("listener should set nonblocking");
+        let address = format!(
+            "http://{}",
+            listener.local_addr().expect("local addr should resolve")
+        );
+
+        let handle = thread::spawn(move || {
+            let deadline = std::time::Instant::now() + Duration::from_secs(5);
+            loop {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        let mut buffer = [0u8; 1024];
+                        let _ = stream.read(&mut buffer);
+                        let response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                            expected_bytes.len()
+                        );
+                        stream
+                            .write_all(response.as_bytes())
+                            .expect("headers should write");
+                        stream
+                            .write_all(&expected_bytes)
+                            .expect("body should write");
+                        return true;
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        if std::time::Instant::now() >= deadline {
+                            return false;
+                        }
+                        thread::sleep(Duration::from_millis(20));
+                    }
+                    Err(_) => return false,
+                }
+            }
+        });
+
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-5-20250929".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!([
+                    {
+                        "type": "text",
+                        "text": "看图回答"
+                    },
+                    {
+                        "type": "input_image",
+                        "image_url": format!("{address}/sample.png")
+                    }
+                ])),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            stream: false,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: None,
+            tool_choice: None,
+        };
+
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
+        assert!(!handle.join().expect("server thread should finish"), "client should not fetch private image");
+        let current = &payload.conversation_state.current_message.user_input_message;
+
+        assert!(current.images.as_ref().map(Vec::is_empty).unwrap_or(true));
+    }
+
+    #[tokio::test]
+    async fn build_kiro_payload_rejects_oversized_data_url_images() {
+        let oversized = STANDARD.encode(vec![0u8; 6 * 1024 * 1024]);
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-5-20250929".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!([
+                    {
+                        "type": "text",
+                        "text": "看图回答"
+                    },
+                    {
+                        "type": "input_image",
+                        "image_url": format!("data:image/png;base64,{oversized}")
+                    }
+                ])),
+                tool_calls: None,
+                tool_call_id: None,
+            }],
+            stream: false,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: None,
+            tool_choice: None,
+        };
+
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
+        let current = &payload.conversation_state.current_message.user_input_message;
+
+        assert!(current.images.as_ref().map(Vec::is_empty).unwrap_or(true));
+    }
+
+    #[test]
+    fn get_internal_model_id_normalizes_versioned_public_model_names() {
+        assert_eq!(
+            get_internal_model_id("claude-sonnet-4-5-20250929").expect("versioned sonnet 4.5 should map"),
+            "claude-sonnet-4.5"
+        );
+        assert_eq!(
+            get_internal_model_id("claude-sonnet-4-6").expect("sonnet 4.6 alias should map"),
+            "claude-sonnet-4.6"
+        );
+        assert_eq!(
+            get_internal_model_id("claude-sonnet-4-6-20260217").expect("versioned sonnet 4.6 should map"),
+            "claude-sonnet-4.6"
+        );
+        assert_eq!(
+            get_internal_model_id("claude-opus-4-6").expect("opus 4.6 alias should map"),
+            "claude-opus-4.6"
+        );
+        assert_eq!(
+            get_internal_model_id("claude-opus-4-6-20260205").expect("versioned opus 4.6 should map"),
+            "claude-opus-4.6"
+        );
+        assert_eq!(
+            get_internal_model_id("claude-haiku-4-5-20251001").expect("versioned haiku 4.5 should map"),
+            "claude-haiku-4.5"
+        );
+        assert_eq!(
+            get_internal_model_id("claude-sonnet-latest").expect("latest sonnet alias should default to 4.5"),
+            "claude-sonnet-4.5"
+        );
+        assert_eq!(
+            get_internal_model_id("sonnet").expect("plain sonnet alias should default to 4.5"),
+            "claude-sonnet-4.5"
+        );
+    }
+
+    #[test]
+    fn get_available_models_includes_claude_46_official_ids() {
+        let model_ids: Vec<_> = get_available_models()
+            .into_iter()
+            .map(|model| model.id)
+            .collect();
+
+        assert!(model_ids.iter().any(|id| id == "claude-opus-4-6"));
+        assert!(model_ids.iter().any(|id| id == "claude-opus-4-6-20260205"));
+        assert!(model_ids.iter().any(|id| id == "claude-sonnet-4-6"));
+        assert!(model_ids.iter().any(|id| id == "claude-sonnet-4-6-20260217"));
     }
 }

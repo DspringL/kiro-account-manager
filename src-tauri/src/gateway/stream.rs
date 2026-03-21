@@ -7,6 +7,18 @@ pub enum KiroEvent {
     ToolUseStop { id: String },
     Usage { input_tokens: i32, output_tokens: i32 },
     ContextUsage { percentage: f32 },
+    Citation {
+        text: Option<String>,
+        link: String,
+        target: serde_json::Value,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct AggregatedCitation {
+    pub text: Option<String>,
+    pub link: String,
+    pub target: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -17,6 +29,7 @@ pub struct AggregatedKiroResponse {
     pub input_tokens: i32,
     pub output_tokens: i32,
     pub context_usage_percentage: Option<f32>,
+    pub citations: Vec<AggregatedCitation>,
 }
 
 pub fn extract_json(source: &str) -> Option<String> {
@@ -94,6 +107,14 @@ pub fn parse_kiro_event_full(json_str: &str) -> Option<KiroEvent> {
         if !text.is_empty() {
             return Some(KiroEvent::Thinking(text));
         }
+    }
+
+    if let Some(citation) = parse_citation_event(&value) {
+        return Some(KiroEvent::Citation {
+            text: citation.text,
+            link: citation.link,
+            target: citation.target,
+        });
     }
 
     if let Some(tool_use_id) = value.get("toolUseId").and_then(|item| item.as_str()) {
@@ -225,6 +246,17 @@ pub fn aggregate_kiro_response(raw: &str) -> AggregatedKiroResponse {
                 KiroEvent::ContextUsage { percentage } => {
                     aggregated.context_usage_percentage = Some(percentage);
                 }
+                KiroEvent::Citation {
+                    text,
+                    link,
+                    target,
+                } => {
+                    aggregated.citations.push(AggregatedCitation {
+                        text,
+                        link,
+                        target,
+                    });
+                }
             }
         }
 
@@ -305,6 +337,46 @@ fn parse_reasoning_text(value: &serde_json::Value) -> Option<String> {
     None
 }
 
+fn parse_citation_event(value: &serde_json::Value) -> Option<AggregatedCitation> {
+    let target = value.get("target")?.clone();
+    let link = value
+        .get("citationLink")
+        .and_then(|item| item.as_str())
+        .map(str::trim)
+        .filter(|item| !item.is_empty())?
+        .to_string();
+    let text = value
+        .get("citationText")
+        .and_then(|item| item.as_str())
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(str::to_string);
+    ensure_citation_target_supported(&target)?;
+
+    Some(AggregatedCitation {
+        text,
+        link,
+        target,
+    })
+}
+
+fn ensure_citation_target_supported(target: &serde_json::Value) -> Option<()> {
+    if let Some(range) = target.get("range") {
+        let start_index = range.get("start").and_then(|item| item.as_u64())? as usize;
+        let end_index = range.get("end").and_then(|item| item.as_u64())? as usize;
+        if end_index < start_index {
+            return None;
+        }
+        return Some(());
+    }
+
+    if target.get("location").and_then(|item| item.as_u64()).is_some() {
+        return Some(());
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -356,6 +428,58 @@ mod tests {
         assert_eq!(
             parse_kiro_event_full(r#"{"reasoningContentEvent":{"text":"分析中"}}"#),
             Some(KiroEvent::Thinking("分析中".to_string()))
+        );
+    }
+
+    #[test]
+    fn parse_kiro_event_full_reads_citation_events() {
+        assert_eq!(
+            parse_kiro_event_full(
+                r#"{"target":{"range":{"start":2,"end":5}},"citationText":"Rust","citationLink":"https://example.com/rust"}"#
+            ),
+            Some(KiroEvent::Citation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/rust".to_string(),
+                target: serde_json::json!({ "range": { "start": 2, "end": 5 } }),
+            })
+        );
+        assert_eq!(
+            parse_kiro_event_full(
+                r#"{"target":{"location":6},"citationText":"Rust","citationLink":"https://example.com/location"}"#
+            ),
+            Some(KiroEvent::Citation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/location".to_string(),
+                target: serde_json::json!({ "location": 6 }),
+            })
+        );
+    }
+
+    #[test]
+    fn ensure_citation_target_supported_accepts_location_without_guessing_range() {
+        assert_eq!(
+            ensure_citation_target_supported(&serde_json::json!({ "location": 6 })),
+            Some(())
+        );
+    }
+
+    #[test]
+    fn aggregate_kiro_response_collects_citations() {
+        let raw = concat!(
+            r#"{"assistantResponseEvent":{"content":"Hello Rust"}}"#,
+            r#"{"target":{"range":{"start":6,"end":10}},"citationText":"Rust","citationLink":"https://example.com/rust"}"#
+        );
+
+        let aggregated = aggregate_kiro_response(raw);
+
+        assert_eq!(aggregated.text, "Hello Rust");
+        assert_eq!(
+            aggregated.citations,
+            vec![AggregatedCitation {
+                text: Some("Rust".to_string()),
+                link: "https://example.com/rust".to_string(),
+                target: serde_json::json!({ "range": { "start": 6, "end": 10 } }),
+            }]
         );
     }
 
