@@ -26,6 +26,7 @@ mod custom_agents;
 mod powers;
 mod account;
 mod cmd_output;
+mod tray_behavior;
 
 use account::{AccountStore, GroupTagStore};
 use auth::AuthState;
@@ -114,10 +115,7 @@ fn setup_single_instance_callback(app: &tauri::AppHandle, argv: Vec<String>, _cw
     }
     
     // 聚焦主窗口
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
+    tray_behavior::show_main_window(app);
 }
 
 /// 处理 deep link 事件
@@ -146,9 +144,7 @@ fn handle_deep_link_event(app_handle: &tauri::AppHandle, payload: &str) {
     // 处理 OAuth 回调
     deep_link_handler::handle_deep_link(&url);
     // 聚焦窗口
-    if let Some(window) = app_handle.get_webview_window("main") {
-        let _ = window.set_focus();
-    }
+    tray_behavior::show_main_window(app_handle);
 }
 
 /// 应用 setup 回调
@@ -183,12 +179,20 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    let tray_icon = tray_behavior::create_tray_icon(app.handle())?;
+    app.state::<AppState>()
+        .tray_icon
+        .lock()
+        .expect("tray icon mutex poisoned")
+        .replace(tray_icon);
+
     Ok(())
 }
 
 #[allow(clippy::too_many_lines)] // Tauri 框架要求在 main 中注册所有命令，无法拆分
 fn main() {
     tauri::Builder::default()
+        .on_window_event(tray_behavior::handle_window_event)
         .plugin(setup_log_plugin().build())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_process::init())
@@ -206,6 +210,7 @@ fn main() {
             auth: AuthState::new(),
             pending_login: Mutex::new(None),
             gateway: Mutex::new(None),
+            tray_icon: Mutex::new(None),
         })
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
