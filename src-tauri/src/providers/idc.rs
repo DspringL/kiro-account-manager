@@ -25,7 +25,14 @@ static PENDING_IDC_LOGIN: std::sync::OnceLock<std::sync::Mutex<Option<PendingIdc
 
 fn set_pending_login(tx: CallbackSender, cancelled: Arc<AtomicBool>) {
     let storage = PENDING_IDC_LOGIN.get_or_init(|| std::sync::Mutex::new(None));
-    *storage.lock().expect("Failed to acquire pending IdC login lock") = Some(PendingIdcLogin { tx, cancelled });
+    let mut guard = storage.lock().expect("Failed to acquire pending IdC login lock");
+    if let Some(previous) = guard.take() {
+        previous.cancelled.store(true, Ordering::SeqCst);
+        if let Some(previous_tx) = previous.tx.lock().expect("Failed to acquire callback lock").take() {
+            let _ = previous_tx.send(Err("登录已取消".to_string()));
+        }
+    }
+    *guard = Some(PendingIdcLogin { tx, cancelled });
 }
 
 fn clear_pending_login() {
@@ -93,43 +100,60 @@ fn handle_oauth_callback(
     expected_state: &str,
 ) -> Result<String, String> {
     let url = request.url().to_string();
-    
-    // 解析 URL 参数
-    let query = url.split('?').nth(1).unwrap_or("");
-    let params: std::collections::HashMap<_, _> = query
-        .split('&')
-        .filter_map(|p| {
-            let mut parts = p.splitn(2, '=');
-            Some((parts.next()?, parts.next()?))
-        })
-        .collect();
+    let result = parse_callback_url(&url, expected_state);
 
-    // 返回成功页面
-    let response = tiny_http::Response::from_string(
-        "<html><body><h1>授权成功</h1><p>您可以关闭此窗口</p></body></html>"
-    ).with_header(
+    let response = tiny_http::Response::from_string(build_callback_page(&result)).with_header(
         tiny_http::Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
             .expect("Failed to create header")
     );
     let _ = request.respond(response);
 
-    // 验证 state
-    if let Some(returned_state) = params.get("state") {
-        if *returned_state != expected_state {
-            return Err("State 不匹配".to_string());
-        }
+    result
+}
+
+fn parse_callback_url(url: &str, expected_state: &str) -> Result<String, String> {
+    let query = url.split('?').nth(1).unwrap_or("");
+    let params: std::collections::HashMap<_, _> =
+        url::form_urlencoded::parse(query.as_bytes()).into_owned().collect();
+
+    let Some(returned_state) = params.get("state") else {
+        return Err("未收到 state".to_string());
+    };
+    if *returned_state != expected_state {
+        return Err("State 不匹配".to_string());
     }
 
-    // 检查错误
     if let Some(error) = params.get("error") {
-        let desc = params.get("error_description").unwrap_or(&"未知错误");
+        let desc = params
+            .get("error_description")
+            .map(std::string::String::as_str)
+            .unwrap_or("未知错误");
         return Err(format!("{error}: {desc}"));
     }
 
-    // 获取 code
-    params.get("code")
+    params
+        .get("code")
         .map(|c| (*c).to_string())
         .ok_or_else(|| "未收到授权码".to_string())
+}
+
+fn build_callback_page(result: &Result<String, String>) -> String {
+    match result {
+        Ok(_) => "<html><body><h1>授权成功</h1><p>您可以关闭此窗口</p></body></html>".to_string(),
+        Err(message) => format!(
+            "<html><body><h1>授权失败</h1><p>{}</p><p>您可以关闭此窗口并重试</p></body></html>",
+            escape_html(message)
+        ),
+    }
+}
+
+fn escape_html(input: &str) -> String {
+    input
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
 }
 
 /// 在后台线程等待 OAuth 回调
@@ -357,5 +381,60 @@ impl AuthProvider for IdcProvider {
 
     fn get_auth_method(&self) -> &'static str {
         "IdC"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{build_callback_page, parse_callback_url, set_pending_login};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use tokio::sync::oneshot;
+
+    #[test]
+    fn parse_callback_url_rejects_missing_state() {
+        let result = parse_callback_url("/oauth/callback?code=auth-code", "expected-state");
+
+        assert_eq!(result, Err("未收到 state".to_string()));
+    }
+
+    #[test]
+    fn parse_callback_url_decodes_authorization_code() {
+        let result = parse_callback_url(
+            "/oauth/callback?code=abc%2Fdef%2Bghi&state=expected-state",
+            "expected-state",
+        );
+
+        assert_eq!(result, Ok("abc/def+ghi".to_string()));
+    }
+
+    #[test]
+    fn build_callback_page_surfaces_failure_message() {
+        let page = build_callback_page(&Err("State 不匹配".to_string()));
+
+        assert!(page.contains("授权失败"));
+        assert!(page.contains("State 不匹配"));
+        assert!(!page.contains("授权成功"));
+    }
+
+    #[test]
+    fn replacing_pending_login_cancels_previous_request() {
+        let (first_tx, mut first_rx) = oneshot::channel::<Result<(String, String), String>>();
+        let first_cancelled = Arc::new(AtomicBool::new(false));
+        set_pending_login(
+            Arc::new(std::sync::Mutex::new(Some(first_tx))),
+            first_cancelled.clone(),
+        );
+
+        let (second_tx, _second_rx) = oneshot::channel::<Result<(String, String), String>>();
+        let second_cancelled = Arc::new(AtomicBool::new(false));
+        set_pending_login(
+            Arc::new(std::sync::Mutex::new(Some(second_tx))),
+            second_cancelled,
+        );
+
+        assert!(first_cancelled.load(Ordering::SeqCst));
+        let first_result = first_rx.try_recv().expect("first waiter should resolve immediately");
+        assert_eq!(first_result, Err("登录已取消".to_string()));
     }
 }

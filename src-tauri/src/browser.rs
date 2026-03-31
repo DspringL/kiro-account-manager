@@ -114,43 +114,54 @@ pub fn detect_browsers() -> Vec<DetectedBrowser> {
 /// `browser_path` 格式: "路径" 参数1 参数2... 或 路径 参数1 参数2...
 /// 例如: "C:\Program Files\Google\Chrome\Application\chrome.exe" --incognito
 fn open_with_custom_browser(browser_path: &str, url: &str) -> Result<(), String> {
-    let browser_path = browser_path.trim();
-    if browser_path.is_empty() {
-        return Err("浏览器路径为空".to_string());
-    }
+    let (exe_path, mut args) = parse_browser_command(browser_path)?;
+    args.push(url.to_string());
 
-    let (exe_path, rest) = if let Some(stripped) = browser_path.strip_prefix('"') {
-        // 路径被引号包裹: "C:\Program Files\...\chrome.exe" --incognito
-        if let Some(end_quote) = stripped.find('"') {
-            let path = &stripped[..end_quote];
-            let remaining = stripped[end_quote + 1..].trim();
-            (path, remaining)
-        } else {
-            // 没有结束引号，整个当作路径
-            (browser_path.trim_matches('"'), "")
-        }
-    } else {
-        // 没有引号，按空格分割（第一部分是路径）
-        if let Some(space_idx) = browser_path.find(' ') {
-            (&browser_path[..space_idx], browser_path[space_idx..].trim())
-        } else {
-            (browser_path, "")
-        }
-    };
-
-    let mut args: Vec<&str> = if rest.is_empty() {
-        vec![]
-    } else {
-        rest.split_whitespace().collect()
-    };
-    args.push(url);
-
-    std::process::Command::new(exe_path)
+    std::process::Command::new(&exe_path)
         .args(&args)
         .spawn()
         .map_err(|e| format!("打开自定义浏览器失败: {e} (路径: {exe_path})"))?;
 
     Ok(())
+}
+
+fn parse_browser_command(browser_path: &str) -> Result<(String, Vec<String>), String> {
+    let browser_path = browser_path.trim();
+    if browser_path.is_empty() {
+        return Err("浏览器路径为空".to_string());
+    }
+
+    if let Some(stripped) = browser_path.strip_prefix('"') {
+        if let Some(end_quote) = stripped.find('"') {
+            let path = stripped[..end_quote].to_string();
+            let remaining = stripped[end_quote + 1..].trim();
+            let args = if remaining.is_empty() {
+                Vec::new()
+            } else {
+                remaining.split_whitespace().map(str::to_string).collect()
+            };
+            return Ok((path, args));
+        }
+
+        return Ok((browser_path.trim_matches('"').to_string(), Vec::new()));
+    }
+
+    let parts: Vec<&str> = browser_path.split_whitespace().collect();
+    if parts.is_empty() {
+        return Err("浏览器路径为空".to_string());
+    }
+
+    let arg_start = parts
+        .iter()
+        .position(|part| part.starts_with('-'))
+        .unwrap_or(parts.len());
+    let exe_path = parts[..arg_start].join(" ");
+    let args = parts[arg_start..]
+        .iter()
+        .map(|part| (*part).to_string())
+        .collect();
+
+    Ok((exe_path, args))
 }
 
 /// 使用系统默认浏览器打开 URL
@@ -178,4 +189,42 @@ fn open_with_default_browser(url: &str) -> Result<(), String> {
 #[tauri::command]
 pub async fn detect_installed_browsers() -> Vec<DetectedBrowser> {
     detect_browsers()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_browser_command;
+
+    #[test]
+    fn parse_browser_command_keeps_unquoted_windows_path_with_spaces() {
+        let (path, args) = parse_browser_command(
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        )
+        .expect("path should parse");
+
+        assert_eq!(path, r"C:\Program Files\Google\Chrome\Application\chrome.exe");
+        assert!(args.is_empty());
+    }
+
+    #[test]
+    fn parse_browser_command_splits_flags_after_unquoted_path() {
+        let (path, args) = parse_browser_command(
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe --incognito --profile-directory=Default",
+        )
+        .expect("path with args should parse");
+
+        assert_eq!(path, r"C:\Program Files\Google\Chrome\Application\chrome.exe");
+        assert_eq!(args, vec!["--incognito", "--profile-directory=Default"]);
+    }
+
+    #[test]
+    fn parse_browser_command_supports_quoted_path_and_flags() {
+        let (path, args) = parse_browser_command(
+            r#""C:\Program Files\Google\Chrome\Application\chrome.exe" --incognito"#,
+        )
+        .expect("quoted path should parse");
+
+        assert_eq!(path, r"C:\Program Files\Google\Chrome\Application\chrome.exe");
+        assert_eq!(args, vec!["--incognito"]);
+    }
 }
