@@ -1,8 +1,8 @@
 use crate::account::{Account, AvailableModelsCacheEntry};
 use crate::commands::machine_guid::get_machine_id;
 use crate::http_client::{
-    build_http_client_with_user_agent, build_kiro_custom_user_agent, resolve_kiro_upstream_region,
-    resolve_q_service_endpoint,
+    apply_kiro_runtime_headers, build_http_client_with_user_agent, build_kiro_custom_user_agent,
+    resolve_kiro_upstream_region, resolve_q_service_endpoint,
 };
 use serde::{Deserialize, Serialize};
 
@@ -85,8 +85,21 @@ fn build_kiro_models_user_agent(machine_id: &str) -> String {
     build_kiro_custom_user_agent(machine_id)
 }
 
-fn is_external_idp_auth_method(auth_method: Option<&str>) -> bool {
-    auth_method.is_some_and(|value| value.trim().eq_ignore_ascii_case("external_idp"))
+fn build_list_available_models_runtime_request(
+    client: &reqwest::Client,
+    url: &str,
+    account: &Account,
+    access_token: &str,
+    user_agent: &str,
+) -> reqwest::RequestBuilder {
+    apply_kiro_runtime_headers(
+        client.get(url),
+        access_token,
+        user_agent,
+        "application/json",
+        account.auth_method.as_deref(),
+        account.provider.as_deref(),
+    )
 }
 
 fn now_unix_timestamp() -> i64 {
@@ -159,14 +172,8 @@ async fn fetch_available_models_page(
         next_token,
     )?;
     let client = build_http_client_with_user_agent(&user_agent)?;
-    let mut request = client
-        .get(url)
-        .header("Authorization", format!("Bearer {access_token}"))
-        .header("Accept", "application/json")
-        .header("x-amz-user-agent", &user_agent);
-    if is_external_idp_auth_method(account.auth_method.as_deref()) {
-        request = request.header("TokenType", "EXTERNAL_IDP");
-    }
+    let request =
+        build_list_available_models_runtime_request(&client, &url, account, access_token, &user_agent);
     let response = request
         .send()
         .await
@@ -267,10 +274,11 @@ fn sort_available_models_for_display(models: &mut [AvailableModel]) {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_list_available_models_url, clear_available_models_cache,
-        ensure_default_model_present, is_available_models_cache_fresh, mark_default_model,
-        read_available_models_cache, sort_available_models_for_display,
-        write_available_models_cache, AvailableModel, ListAvailableModelsResponse,
+        build_list_available_models_runtime_request, build_list_available_models_url,
+        clear_available_models_cache, ensure_default_model_present,
+        is_available_models_cache_fresh, mark_default_model, read_available_models_cache,
+        sort_available_models_for_display, write_available_models_cache, AvailableModel,
+        ListAvailableModelsResponse,
         AVAILABLE_MODELS_CACHE_TTL_SECONDS,
     };
     use crate::account::Account;
@@ -672,5 +680,92 @@ mod tests {
             .expect("cache write should succeed");
 
         assert!(read_available_models_cache(&account, None, true).is_none());
+    }
+
+    #[test]
+    fn build_list_available_models_runtime_request_adds_runtime_headers_for_internal_external_idp() {
+        let client = reqwest::Client::new();
+        let mut account = Account::new("internal@example.com".to_string(), "internal".to_string());
+        account.provider = Some("Internal".to_string());
+        account.auth_method = Some("external_idp".to_string());
+        let request = build_list_available_models_runtime_request(
+            &client,
+            "https://q.us-east-1.amazonaws.com/ListAvailableModels?origin=AI_EDITOR",
+            &account,
+            "token-1",
+            "KiroIDE 0.11.34 machine-123",
+        )
+        .build()
+        .expect("request should build");
+
+        assert_eq!(
+            request
+                .headers()
+                .get(reqwest::header::AUTHORIZATION)
+                .and_then(|value| value.to_str().ok()),
+            Some("Bearer token-1")
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get(reqwest::header::USER_AGENT)
+                .and_then(|value| value.to_str().ok()),
+            Some("KiroIDE 0.11.34 machine-123")
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get("x-amz-user-agent")
+                .and_then(|value| value.to_str().ok()),
+            Some("KiroIDE 0.11.34 machine-123")
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get(reqwest::header::ACCEPT)
+                .and_then(|value| value.to_str().ok()),
+            Some("application/json")
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get("TokenType")
+                .and_then(|value| value.to_str().ok()),
+            Some("EXTERNAL_IDP")
+        );
+        assert_eq!(
+            request
+                .headers()
+                .get("redirect-for-internal")
+                .and_then(|value| value.to_str().ok()),
+            Some("true")
+        );
+        assert!(request.headers().get("x-amzn-codewhisperer-optout").is_none());
+        assert!(request.headers().get("x-amzn-kiro-agent-mode").is_none());
+        assert!(request.headers().get("x-amzn-kiro-profile-arn").is_none());
+    }
+
+    #[test]
+    fn build_list_available_models_runtime_request_omits_internal_redirect_for_non_internal_provider() {
+        let client = reqwest::Client::new();
+        let mut account = Account::new("builder@example.com".to_string(), "builder".to_string());
+        account.provider = Some("BuilderId".to_string());
+        account.auth_method = Some("external_idp".to_string());
+        let request = build_list_available_models_runtime_request(
+            &client,
+            "https://q.us-east-1.amazonaws.com/ListAvailableModels?origin=AI_EDITOR&profileArn=arn",
+            &account,
+            "token-2",
+            "KiroIDE 0.11.34 machine-456",
+        )
+        .build()
+        .expect("request should build");
+
+        assert!(request.headers().get("redirect-for-internal").is_none());
+        assert!(request.headers().get("x-amzn-kiro-profile-arn").is_none());
+        assert_eq!(
+            request.url().query(),
+            Some("origin=AI_EDITOR&profileArn=arn")
+        );
     }
 }
