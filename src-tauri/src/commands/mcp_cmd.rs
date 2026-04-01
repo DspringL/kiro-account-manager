@@ -13,7 +13,11 @@ pub async fn get_mcp_config(project_dir: Option<String>) -> Result<McpConfig, St
 
 /// 保存/更新服务器配置
 #[tauri::command]
-pub async fn save_mcp_server(name: String, config: McpServer, project_dir: Option<String>) -> Result<(), String> {
+pub async fn save_mcp_server(
+    name: String,
+    config: McpServer,
+    project_dir: Option<String>,
+) -> Result<(), String> {
     run_blocking_task(move || {
         // 验证配置
         validate_mcp_server(&config)?;
@@ -40,14 +44,14 @@ fn validate_mcp_server(config: &McpServer) -> Result<(), String> {
             if cmd.command.trim().is_empty() {
                 return Err("command 字段不能为空".to_string());
             }
-            
+
             // 验证 autoApprove 字段（可选）
             for tool in &cmd.auto_approve {
                 if tool.trim().is_empty() {
                     return Err("autoApprove 中不能包含空字符串".to_string());
                 }
             }
-            
+
             Ok(())
         }
         McpServer::Url(url_config) => {
@@ -55,12 +59,12 @@ fn validate_mcp_server(config: &McpServer) -> Result<(), String> {
             if url_config.url.trim().is_empty() {
                 return Err("url 字段不能为空".to_string());
             }
-            
+
             // 简单的 URL 格式验证
             if !url_config.url.starts_with("http://") && !url_config.url.starts_with("https://") {
                 return Err("url 必须以 http:// 或 https:// 开头".to_string());
             }
-            
+
             Ok(())
         }
     }
@@ -86,7 +90,11 @@ pub async fn delete_mcp_server(name: String, project_dir: Option<String>) -> Res
 
 /// 启用/禁用服务器
 #[tauri::command]
-pub async fn toggle_mcp_server(name: String, disabled: bool, project_dir: Option<String>) -> Result<(), String> {
+pub async fn toggle_mcp_server(
+    name: String,
+    disabled: bool,
+    project_dir: Option<String>,
+) -> Result<(), String> {
     run_blocking_task(move || {
         if let Some(pd) = project_dir {
             let path = McpConfig::project_config_path(&pd);
@@ -121,21 +129,21 @@ pub async fn toggle_mcp_server(name: String, disabled: bool, project_dir: Option
 pub async fn get_mcp_tool_stats(project_dir: Option<String>) -> Result<serde_json::Value, String> {
     run_blocking_task(move || {
         let mcp_config = McpConfig::load_merged(project_dir.as_deref())?;
-        
+
         let total_servers = mcp_config.mcp_servers.len();
-        let enabled_servers = mcp_config.mcp_servers.values()
-            .filter(|server| {
-                match server {
-                    McpServer::Command(cmd) => !cmd.disabled,
-                    McpServer::Url(url) => !url.disabled,
-                }
+        let enabled_servers = mcp_config
+            .mcp_servers
+            .values()
+            .filter(|server| match server {
+                McpServer::Command(cmd) => !cmd.disabled,
+                McpServer::Url(url) => !url.disabled,
             })
             .count();
-        
+
         // 估算工具数量：每个启用的服务器平均 5-10 个工具
         // 使用保守估计：每个服务器 7 个工具
         let estimated_tools = enabled_servers * 7;
-        
+
         Ok(serde_json::json!({
             "totalServers": total_servers,
             "enabledServers": enabled_servers,

@@ -2,14 +2,17 @@
 
 #![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递参数
 
-use serde::{Deserialize, Serialize};
 use reqwest::Proxy;
+use serde::{Deserialize, Serialize};
 
-const UPDATE_URL_DEFAULT: &str = "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest.json";
+const UPDATE_URL_DEFAULT: &str =
+    "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest.json";
 #[cfg(target_os = "linux")]
-const UPDATE_URL_DEB: &str = "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest-deb.json";
+const UPDATE_URL_DEB: &str =
+    "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest-deb.json";
 #[cfg(target_os = "linux")]
-const UPDATE_URL_RPM: &str = "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest-rpm.json";
+const UPDATE_URL_RPM: &str =
+    "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest-rpm.json";
 
 /// 检测 Linux 安装方式
 #[cfg(target_os = "linux")]
@@ -22,8 +25,9 @@ fn detect_linux_install_type() -> &'static str {
             if std::path::Path::new("/etc/debian_version").exists() {
                 return "deb";
             }
-            if std::path::Path::new("/etc/redhat-release").exists() 
-                || std::path::Path::new("/etc/fedora-release").exists() {
+            if std::path::Path::new("/etc/redhat-release").exists()
+                || std::path::Path::new("/etc/fedora-release").exists()
+            {
                 return "rpm";
             }
             // 默认 deb
@@ -77,9 +81,12 @@ fn extract_http_proxy_from_json(json: &serde_json::Value) -> Option<String> {
 fn get_proxy_from_kiro_settings() -> Option<String> {
     #[cfg(target_os = "windows")]
     let path = std::env::var("APPDATA").ok().map(|appdata| {
-        std::path::PathBuf::from(appdata).join("Kiro").join("User").join("settings.json")
+        std::path::PathBuf::from(appdata)
+            .join("Kiro")
+            .join("User")
+            .join("settings.json")
     });
-    
+
     #[cfg(target_os = "macos")]
     let path = std::env::var("HOME").ok().map(|home| {
         std::path::PathBuf::from(home)
@@ -89,7 +96,7 @@ fn get_proxy_from_kiro_settings() -> Option<String> {
             .join("User")
             .join("settings.json")
     });
-    
+
     #[cfg(target_os = "linux")]
     let path = std::env::var("HOME").ok().map(|home| {
         std::path::PathBuf::from(home)
@@ -98,10 +105,10 @@ fn get_proxy_from_kiro_settings() -> Option<String> {
             .join("User")
             .join("settings.json")
     });
-    
+
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
     let path: Option<std::path::PathBuf> = None;
-    
+
     path.and_then(|p| {
         if p.exists() {
             std::fs::read_to_string(&p).ok()
@@ -109,30 +116,32 @@ fn get_proxy_from_kiro_settings() -> Option<String> {
             None
         }
     })
-    .and_then(|content| {
-        serde_json::from_str::<serde_json::Value>(&content).ok()
-    })
+    .and_then(|content| serde_json::from_str::<serde_json::Value>(&content).ok())
     .and_then(|json| extract_http_proxy_from_json(&json))
 }
 
 /// 构建 HTTP 客户端（支持代理）
 fn build_http_client() -> Result<reqwest::Client, String> {
-    let mut builder = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(30));
-    
+    let mut builder = reqwest::Client::builder().timeout(std::time::Duration::from_secs(30));
+
     // 尝试从 Kiro 设置获取代理
     if let Some(proxy_url) = get_proxy_from_kiro_settings() {
-        let proxy = Proxy::all(&proxy_url)
-            .map_err(|e| format!("代理配置错误: {e}"))?;
+        let proxy = Proxy::all(&proxy_url).map_err(|e| format!("代理配置错误: {e}"))?;
         builder = builder.proxy(proxy);
     }
-    
-    builder.build().map_err(|e| format!("创建 HTTP 客户端失败: {e}"))
+
+    builder
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {e}"))
 }
 
 /// 获取当前平台的下载 URL
-fn get_download_url_for_platform(platforms: &serde_json::Value, platform_key: &str) -> Option<String> {
-    platforms.get(platform_key)
+fn get_download_url_for_platform(
+    platforms: &serde_json::Value,
+    platform_key: &str,
+) -> Option<String> {
+    platforms
+        .get(platform_key)
         .and_then(|platform| platform.get("url"))
         .and_then(serde_json::Value::as_str)
         .map(std::string::ToString::to_string)
@@ -141,16 +150,16 @@ fn get_download_url_for_platform(platforms: &serde_json::Value, platform_key: &s
 fn get_platform_download_url(platforms: &serde_json::Value) -> Option<String> {
     #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
     let platform_key = "windows-x86_64-nsis";
-    
+
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     let platform_key = "darwin-x86_64";
-    
+
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     let platform_key = "darwin-aarch64";
-    
+
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     let platform_key = "linux-x86_64";
-    
+
     #[cfg(not(any(
         all(target_os = "windows", target_arch = "x86_64"),
         all(target_os = "macos", target_arch = "x86_64"),
@@ -158,39 +167,41 @@ fn get_platform_download_url(platforms: &serde_json::Value) -> Option<String> {
         all(target_os = "linux", target_arch = "x86_64")
     )))]
     let platform_key = "";
-    
+
     get_download_url_for_platform(platforms, platform_key)
 }
 
 #[tauri::command]
 pub async fn check_update() -> Result<UpdateCheckResult, String> {
     let current_version = env!("CARGO_PKG_VERSION").to_string();
-    
+
     let client = build_http_client()?;
     let update_url = get_update_url();
-    
-    let response = client.get(update_url)
+
+    let response = client
+        .get(update_url)
         .send()
         .await
         .map_err(|e| format!("请求更新信息失败: {e}"))?;
-    
+
     if !response.status().is_success() {
         return Err(format!("服务器返回错误: {}", response.status()));
     }
-    
-    let update_info: UpdateInfo = response.json()
+
+    let update_info: UpdateInfo = response
+        .json()
         .await
         .map_err(|e| format!("解析更新信息失败: {e}"))?;
-    
+
     // 比较版本号
     let has_update = compare_versions(&current_version, &update_info.version);
-    
+
     let download_url = if has_update {
         get_platform_download_url(&update_info.platforms)
     } else {
         None
     };
-    
+
     Ok(UpdateCheckResult {
         has_update,
         current_version,
@@ -212,7 +223,7 @@ fn parse_version_parts(version: &str) -> Vec<u32> {
 fn compare_versions(current: &str, latest: &str) -> bool {
     let current_parts = parse_version_parts(current);
     let latest_parts = parse_version_parts(latest);
-    
+
     for i in 0..std::cmp::max(current_parts.len(), latest_parts.len()) {
         let c = current_parts.get(i).copied().unwrap_or(0);
         let l = latest_parts.get(i).copied().unwrap_or(0);
@@ -280,9 +291,6 @@ mod tests {
             get_download_url_for_platform(&platforms, "linux-x86_64"),
             None
         );
-        assert_eq!(
-            get_download_url_for_platform(&platforms, "missing"),
-            None
-        );
+        assert_eq!(get_download_url_for_platform(&platforms, "missing"), None);
     }
 }

@@ -76,7 +76,10 @@ fn calculate_client_id_hash(start_url: &str) -> String {
     hex::encode(hasher.finalize())
 }
 
-fn resolve_builder_client_id_hash(client_id_hash: Option<String>, start_url: Option<&str>) -> String {
+fn resolve_builder_client_id_hash(
+    client_id_hash: Option<String>,
+    start_url: Option<&str>,
+) -> String {
     client_id_hash.unwrap_or_else(|| {
         calculate_client_id_hash(start_url.unwrap_or("https://view.awsapps.com/start"))
     })

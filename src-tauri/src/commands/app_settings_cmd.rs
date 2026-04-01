@@ -7,15 +7,15 @@ use std::path::PathBuf;
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: Option<String>,
-    pub locale: Option<String>,  // 界面语言
+    pub locale: Option<String>, // 界面语言
     pub lock_model: Option<bool>,
     pub locked_model: Option<String>,
     pub auto_refresh: Option<bool>,
     pub auto_refresh_interval: Option<i32>,
-    pub auto_change_machine_id: Option<bool>,  // 切换账号时是否更换机器码（默认 true）
+    pub auto_change_machine_id: Option<bool>, // 切换账号时是否更换机器码（默认 true）
     pub browser_path: Option<String>,
     // 账户机器码绑定功能
-    pub bind_machine_id_to_account: Option<bool>,  // true=绑定模式（每个账号固定机器码），false=随机模式
+    pub bind_machine_id_to_account: Option<bool>, // true=绑定模式（每个账号固定机器码），false=随机模式
     // 隐私模式：脱敏显示邮箱
     pub privacy_mode: Option<bool>,
     // 自动换号设置
@@ -54,10 +54,10 @@ impl Default for AppSettings {
             locked_model: Some("claude-opus-4.5".to_string()),
             auto_refresh: Some(true),
             auto_refresh_interval: Some(50),
-            auto_change_machine_id: Some(true),  // 默认开启
+            auto_change_machine_id: Some(true), // 默认开启
             browser_path: None,
             bind_machine_id_to_account: Some(true),
-            privacy_mode: Some(true),  // 默认开启
+            privacy_mode: Some(true), // 默认开启
             // 自动换号默认值
             auto_switch_enabled: Some(false),
             auto_switch_threshold: Some(1.0),
@@ -126,12 +126,14 @@ impl AppSettings {
 }
 
 fn get_data_dir() -> PathBuf {
-    dirs::data_dir().unwrap_or_else(|| {
-        let home = std::env::var("USERPROFILE")
-            .or_else(|_| std::env::var("HOME"))
-            .unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home)
-    }).join(".kiro-account-manager")
+    dirs::data_dir()
+        .unwrap_or_else(|| {
+            let home = std::env::var("USERPROFILE")
+                .or_else(|_| std::env::var("HOME"))
+                .unwrap_or_else(|_| ".".to_string());
+            PathBuf::from(home)
+        })
+        .join(".kiro-account-manager")
 }
 
 fn get_app_settings_path() -> PathBuf {
@@ -163,19 +165,15 @@ pub fn get_app_settings_inner() -> Result<AppSettings, String> {
         save_settings_to_file(&default_settings)?;
         return Ok(default_settings);
     }
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("读取设置失败: {e}"))?;
-    serde_json::from_str(&content)
-        .map_err(|e| format!("解析设置失败: {e}"))
+    let content = std::fs::read_to_string(&path).map_err(|e| format!("读取设置失败: {e}"))?;
+    serde_json::from_str(&content).map_err(|e| format!("解析设置失败: {e}"))
 }
 
 pub fn save_settings_to_file(settings: &AppSettings) -> Result<(), String> {
     let path = get_app_settings_path();
     ensure_parent_dir(&path)?;
-    let content = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("序列化失败: {e}"))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入失败: {e}"))
+    let content = serde_json::to_string_pretty(settings).map_err(|e| format!("序列化失败: {e}"))?;
+    std::fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))
 }
 
 fn save_app_settings_inner(updates: AppSettings) -> Result<(), String> {
@@ -209,7 +207,10 @@ pub fn get_browser_path() -> Option<String> {
 // ============================================================
 
 #[tauri::command]
-pub async fn bind_machine_id_to_account(_account_id: String, _machine_id: String) -> Result<(), String> {
+pub async fn bind_machine_id_to_account(
+    _account_id: String,
+    _machine_id: String,
+) -> Result<(), String> {
     // 已废弃：机器码现在存储在账号的 machine_id 字段
     Ok(())
 }
@@ -227,11 +228,11 @@ pub async fn get_bound_machine_id(_account_id: String) -> Result<Option<String>,
 }
 
 #[tauri::command]
-pub async fn get_all_bound_machine_ids() -> Result<std::collections::HashMap<String, String>, String> {
+pub async fn get_all_bound_machine_ids() -> Result<std::collections::HashMap<String, String>, String>
+{
     // 已废弃：机器码现在存储在账号的 machine_id 字段
     Ok(std::collections::HashMap::new())
 }
-
 
 // ============================================================
 // 使用量历史记录功能
@@ -240,7 +241,7 @@ pub async fn get_all_bound_machine_ids() -> Result<std::collections::HashMap<Str
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageHistoryEntry {
-    pub date: String,           // YYYY-MM-DD
+    pub date: String, // YYYY-MM-DD
     pub total_quota: i32,
     pub total_used: i32,
     pub account_count: i32,
@@ -261,10 +262,8 @@ fn get_usage_history_inner() -> Result<UsageHistory, String> {
     if !path.exists() {
         return Ok(UsageHistory::default());
     }
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("读取历史记录失败: {e}"))?;
-    serde_json::from_str(&content)
-        .map_err(|e| format!("解析历史记录失败: {e}"))
+    let content = std::fs::read_to_string(&path).map_err(|e| format!("读取历史记录失败: {e}"))?;
+    serde_json::from_str(&content).map_err(|e| format!("解析历史记录失败: {e}"))
 }
 
 fn merge_usage_history_entry(history: &mut UsageHistory, entry: UsageHistoryEntry) {
@@ -292,10 +291,8 @@ fn save_usage_history_entry_inner(entry: UsageHistoryEntry) -> Result<(), String
     let mut history = get_usage_history_inner().unwrap_or_default();
     merge_usage_history_entry(&mut history, entry);
 
-    let content = serde_json::to_string_pretty(&history)
-        .map_err(|e| format!("序列化失败: {e}"))?;
-    std::fs::write(&path, content)
-        .map_err(|e| format!("写入失败: {e}"))?;
+    let content = serde_json::to_string_pretty(&history).map_err(|e| format!("序列化失败: {e}"))?;
+    std::fs::write(&path, content).map_err(|e| format!("写入失败: {e}"))?;
     Ok(())
 }
 
@@ -311,7 +308,7 @@ pub async fn save_usage_history_entry(entry: UsageHistoryEntry) -> Result<(), St
 
 #[cfg(test)]
 mod tests {
-    use super::{AppSettings, UsageHistory, UsageHistoryEntry, merge_usage_history_entry};
+    use super::{merge_usage_history_entry, AppSettings, UsageHistory, UsageHistoryEntry};
 
     #[test]
     fn apply_updates_only_overwrites_fields_provided_as_some() {
@@ -387,7 +384,10 @@ mod tests {
         assert_eq!(current.locked_model.as_deref(), Some("claude-opus-4.5"));
         assert_eq!(current.auto_refresh, Some(true));
         assert_eq!(current.auto_refresh_interval, Some(30));
-        assert_eq!(current.browser_path.as_deref(), Some("D:/portable/browser.exe"));
+        assert_eq!(
+            current.browser_path.as_deref(),
+            Some("D:/portable/browser.exe")
+        );
         assert_eq!(current.privacy_mode, Some(false));
         assert_eq!(current.auto_switch_enabled, Some(true));
         assert_eq!(current.auto_switch_threshold, Some(1.0));
@@ -450,19 +450,34 @@ mod tests {
         assert_eq!(current.locked_model, before.locked_model);
         assert_eq!(current.auto_refresh, before.auto_refresh);
         assert_eq!(current.auto_refresh_interval, before.auto_refresh_interval);
-        assert_eq!(current.auto_change_machine_id, before.auto_change_machine_id);
+        assert_eq!(
+            current.auto_change_machine_id,
+            before.auto_change_machine_id
+        );
         assert_eq!(current.browser_path, before.browser_path);
-        assert_eq!(current.bind_machine_id_to_account, before.bind_machine_id_to_account);
+        assert_eq!(
+            current.bind_machine_id_to_account,
+            before.bind_machine_id_to_account
+        );
         assert_eq!(current.privacy_mode, before.privacy_mode);
         assert_eq!(current.auto_switch_enabled, before.auto_switch_enabled);
         assert_eq!(current.auto_switch_threshold, before.auto_switch_threshold);
         assert_eq!(current.auto_switch_interval, before.auto_switch_interval);
-        assert_eq!(current.enable_codebase_indexing, before.enable_codebase_indexing);
-        assert_eq!(current.enable_tab_autocomplete, before.enable_tab_autocomplete);
+        assert_eq!(
+            current.enable_codebase_indexing,
+            before.enable_codebase_indexing
+        );
+        assert_eq!(
+            current.enable_tab_autocomplete,
+            before.enable_tab_autocomplete
+        );
         assert_eq!(current.usage_summary, before.usage_summary);
         assert_eq!(current.code_references, before.code_references);
         assert_eq!(current.enable_debug_logs, before.enable_debug_logs);
-        assert_eq!(current.notify_action_required, before.notify_action_required);
+        assert_eq!(
+            current.notify_action_required,
+            before.notify_action_required
+        );
         assert_eq!(current.notify_failure, before.notify_failure);
         assert_eq!(current.notify_success, before.notify_success);
         assert_eq!(current.notify_billing, before.notify_billing);
@@ -533,7 +548,13 @@ mod tests {
         );
 
         assert_eq!(history.entries.len(), 30);
-        assert_eq!(history.entries.first().map(|entry| entry.date.as_str()), Some("2026-03-02"));
-        assert_eq!(history.entries.last().map(|entry| entry.date.as_str()), Some("2026-03-31"));
+        assert_eq!(
+            history.entries.first().map(|entry| entry.date.as_str()),
+            Some("2026-03-02")
+        );
+        assert_eq!(
+            history.entries.last().map(|entry| entry.date.as_str()),
+            Some("2026-03-31")
+        );
     }
 }

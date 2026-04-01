@@ -1,7 +1,9 @@
 // 公共工具函数 - 提取重复逻辑
 
 use crate::account::Account;
-use crate::providers::{AuthProvider, IdcProvider, RefreshMetadata, SocialProvider, KiroPortalClient};
+use crate::providers::{
+    AuthProvider, IdcProvider, KiroPortalClient, RefreshMetadata, SocialProvider,
+};
 
 pub async fn run_blocking_task<T, F>(task: F) -> Result<T, String>
 where
@@ -31,9 +33,7 @@ pub struct UsageResult {
 }
 
 /// 根据 provider 刷新 token
-pub async fn refresh_token_by_provider(
-    account: &Account,
-) -> Result<RefreshResult, String> {
+pub async fn refresh_token_by_provider(account: &Account) -> Result<RefreshResult, String> {
     let provider = account.provider.as_deref().unwrap_or("Google");
     let refresh_token = account.refresh_token.as_ref().ok_or("No refresh token")?;
 
@@ -68,7 +68,9 @@ pub async fn refresh_token_by_provider(
             ..Default::default()
         };
         let social_provider = SocialProvider::new(provider);
-        let auth = social_provider.refresh_token(refresh_token, metadata).await?;
+        let auth = social_provider
+            .refresh_token(refresh_token, metadata)
+            .await?;
         Ok(RefreshResult {
             access_token: auth.access_token,
             refresh_token: Some(auth.refresh_token),
@@ -88,17 +90,17 @@ pub async fn get_usage_by_provider(
     // 统一使用 KiroPortalClient 的 GetUserUsageAndLimits 接口
     // provider 即 idp: Google / Github / BuilderId
     let client = KiroPortalClient::new()?;
-    let usage_call = client.get_user_usage_and_limits(access_token, provider).await;
+    let usage_call = client
+        .get_user_usage_and_limits(access_token, provider)
+        .await;
     parse_usage_result(usage_call)
 }
 
 /// 解析 usage 结果，提取封禁状态和认证错误
-fn parse_usage_result(
-    result: Result<serde_json::Value, String>,
-) -> Result<UsageResult, String> {
+fn parse_usage_result(result: Result<serde_json::Value, String>) -> Result<UsageResult, String> {
     match result {
         Ok(usage_data) => Ok(UsageResult {
-            usage_data,  // 直接使用 JSON Value
+            usage_data, // 直接使用 JSON Value
             is_banned: false,
             is_auth_error: false,
         }),
@@ -147,18 +149,18 @@ pub fn calc_status(is_banned: bool, is_auth_error: bool) -> String {
 /// 从 `usage_data` 中简单提取 `email` 和 `user_id`（不依赖结构体）
 pub fn extract_user_info(usage_data: &serde_json::Value) -> (Option<String>, Option<String>) {
     let user_info = usage_data.get("userInfo");
-    
+
     let email = user_info
         .and_then(|u| u.get("email"))
         .and_then(|e| e.as_str())
         .filter(|s| !s.is_empty())
         .map(std::string::ToString::to_string);
-    
+
     let user_id = user_info
         .and_then(|u| u.get("userId"))
         .and_then(|id| id.as_str())
         .map(std::string::ToString::to_string);
-    
+
     (email, user_id)
 }
 
@@ -173,18 +175,16 @@ pub fn find_existing_account_idx(
 ) -> Option<usize> {
     // 只用 user_id 去重
     if let Some(uid) = user_id {
-        return accounts.iter().position(|a| {
-            a.user_id.as_ref() == Some(uid)
-        });
+        return accounts
+            .iter()
+            .position(|a| a.user_id.as_ref() == Some(uid));
     }
-    
+
     // 如果没有 user_id，用 email 兜底
     if let Some(e) = email {
-        return accounts.iter().position(|a| {
-            a.email.as_ref() == Some(e)
-        });
+        return accounts.iter().position(|a| a.email.as_ref() == Some(e));
     }
-    
+
     None
 }
 

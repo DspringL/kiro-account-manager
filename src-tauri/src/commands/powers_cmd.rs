@@ -5,7 +5,12 @@ use crate::powers::{PowerInfo, PowersManager, RecommendedPower, RegistryInfo};
 use tauri::command;
 
 #[command]
-pub async fn install_power(name: String, clone_url: String, path_in_repo: String, branch: String) -> Result<(), String> {
+pub async fn install_power(
+    name: String,
+    clone_url: String,
+    path_in_repo: String,
+    branch: String,
+) -> Result<(), String> {
     run_blocking_task(move || PowersManager::install(&name, &clone_url, &path_in_repo, &branch))
         .await
 }

@@ -2,8 +2,8 @@
 
 #![allow(clippy::needless_pass_by_value)] // Tauri 命令的 String 参数需要按值传递（框架序列化要求）
 
-use crate::state::AppState;
 use crate::account::{Account, AccountGroup, AccountTag, AccountTagLink};
+use crate::state::AppState;
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
 use tauri::State;
@@ -60,7 +60,9 @@ fn replace_account_tag_links(
         .map(|link| link.tag_id.clone())
         .collect();
 
-    account.tag_links.retain(|link| tag_ids.contains(&link.tag_id));
+    account
+        .tag_links
+        .retain(|link| tag_ids.contains(&link.tag_id));
 
     for tag_id in tag_ids {
         if !existing_ids.contains(tag_id) {
@@ -86,12 +88,21 @@ pub fn get_groups(state: State<AppState>) -> Vec<AccountGroup> {
 }
 
 #[tauri::command]
-pub fn add_group(state: State<AppState>, name: String, color: Option<String>) -> Result<AccountGroup, String> {
+pub fn add_group(
+    state: State<AppState>,
+    name: String,
+    color: Option<String>,
+) -> Result<AccountGroup, String> {
     lock_store(&state.group_tag_store, "group_tag_store")?.add_group(name, color)
 }
 
 #[tauri::command]
-pub fn update_group(state: State<AppState>, id: &str, name: Option<String>, color: Option<String>) -> Result<AccountGroup, String> {
+pub fn update_group(
+    state: State<AppState>,
+    id: &str,
+    name: Option<String>,
+    color: Option<String>,
+) -> Result<AccountGroup, String> {
     lock_store(&state.group_tag_store, "group_tag_store")?.update_group(id, name, color)
 }
 
@@ -164,7 +175,12 @@ pub fn add_tag(state: State<AppState>, name: String, color: String) -> Result<Ac
 }
 
 #[tauri::command]
-pub fn update_tag(state: State<AppState>, id: &str, name: Option<String>, color: Option<String>) -> Result<AccountTag, String> {
+pub fn update_tag(
+    state: State<AppState>,
+    id: &str,
+    name: Option<String>,
+    color: Option<String>,
+) -> Result<AccountTag, String> {
     lock_store(&state.group_tag_store, "group_tag_store")?.update_tag(id, name, color)
 }
 
@@ -204,7 +220,11 @@ pub fn delete_tag(state: State<AppState>, id: &str) -> bool {
 // ============================================================
 
 #[tauri::command]
-pub fn set_account_group(state: State<AppState>, account_id: &str, group_id: Option<String>) -> Result<(), String> {
+pub fn set_account_group(
+    state: State<AppState>,
+    account_id: &str,
+    group_id: Option<String>,
+) -> Result<(), String> {
     let mut store = lock_store(&state.store, "store")?;
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         account.group_id = group_id;
@@ -216,13 +236,21 @@ pub fn set_account_group(state: State<AppState>, account_id: &str, group_id: Opt
 }
 
 #[tauri::command]
-pub fn add_tag_to_account(state: State<AppState>, account_id: &str, tag_id: &str) -> Result<(), String> {
+pub fn add_tag_to_account(
+    state: State<AppState>,
+    account_id: &str,
+    tag_id: &str,
+) -> Result<(), String> {
     // 先获取标签名
     let tag_name = {
         let gt_store = lock_store(&state.group_tag_store, "group_tag_store")?;
-        gt_store.get_tags().iter().find(|t| t.id == tag_id).map(|t| t.name.clone())
+        gt_store
+            .get_tags()
+            .iter()
+            .find(|t| t.id == tag_id)
+            .map(|t| t.name.clone())
     };
-    
+
     let mut store = lock_store(&state.store, "store")?;
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         if add_tag_link_if_missing(account, tag_id, tag_name) {
@@ -235,7 +263,11 @@ pub fn add_tag_to_account(state: State<AppState>, account_id: &str, tag_id: &str
 }
 
 #[tauri::command]
-pub fn remove_tag_from_account(state: State<AppState>, account_id: &str, tag_id: &str) -> Result<(), String> {
+pub fn remove_tag_from_account(
+    state: State<AppState>,
+    account_id: &str,
+    tag_id: &str,
+) -> Result<(), String> {
     let mut store = lock_store(&state.store, "store")?;
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         remove_tag_links(account, &[tag_id.to_string()]);
@@ -247,13 +279,21 @@ pub fn remove_tag_from_account(state: State<AppState>, account_id: &str, tag_id:
 }
 
 #[tauri::command]
-pub fn set_account_tags(state: State<AppState>, account_id: &str, tag_ids: Vec<String>) -> Result<(), String> {
+pub fn set_account_tags(
+    state: State<AppState>,
+    account_id: &str,
+    tag_ids: Vec<String>,
+) -> Result<(), String> {
     // 先获取所有标签名
     let tag_names: HashMap<String, String> = {
         let gt_store = lock_store(&state.group_tag_store, "group_tag_store")?;
-        gt_store.get_tags().iter().map(|t| (t.id.clone(), t.name.clone())).collect()
+        gt_store
+            .get_tags()
+            .iter()
+            .map(|t| (t.id.clone(), t.name.clone()))
+            .collect()
     };
-    
+
     let mut store = lock_store(&state.store, "store")?;
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         replace_account_tag_links(account, &tag_ids, &tag_names);
@@ -265,7 +305,11 @@ pub fn set_account_tags(state: State<AppState>, account_id: &str, tag_ids: Vec<S
 }
 
 #[tauri::command]
-pub fn remove_account_tags(state: State<AppState>, account_id: &str, tag_ids: Vec<String>) -> Result<(), String> {
+pub fn remove_account_tags(
+    state: State<AppState>,
+    account_id: &str,
+    tag_ids: Vec<String>,
+) -> Result<(), String> {
     let mut store = lock_store(&state.store, "store")?;
     if let Some(account) = store.accounts.iter_mut().find(|a| a.id == account_id) {
         remove_tag_links(account, &tag_ids);
@@ -279,8 +323,8 @@ pub fn remove_account_tags(state: State<AppState>, account_id: &str, tag_ids: Ve
 #[cfg(test)]
 mod tests {
     use super::{
-        add_tag_link_if_missing, clear_group_references, remove_tag_links,
-        remove_tag_references, replace_account_tag_links,
+        add_tag_link_if_missing, clear_group_references, remove_tag_links, remove_tag_references,
+        replace_account_tag_links,
     };
     use crate::account::{Account, AccountTagLink};
     use std::collections::HashMap;

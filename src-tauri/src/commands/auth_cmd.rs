@@ -2,16 +2,20 @@
 
 #![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递 State
 
-use tauri::{Emitter, State};
-use crate::state::AppState;
 use crate::account::Account;
 use crate::auth::User;
 use crate::auth_social;
+use crate::commands::common::{
+    calc_status, extract_user_info, find_existing_account_idx, get_usage_by_provider,
+};
 use crate::commands::machine_guid::get_machine_id;
 use crate::kiro_auth_client::KiroAuthServiceClient;
-use crate::providers::{AuthMethod, AuthProvider, cancel_pending_idc_login, get_provider_config, create_idc_provider};
-use crate::commands::common::{get_usage_by_provider, extract_user_info, find_existing_account_idx, calc_status};
+use crate::providers::{
+    cancel_pending_idc_login, create_idc_provider, get_provider_config, AuthMethod, AuthProvider,
+};
+use crate::state::AppState;
 use std::sync::{Mutex, MutexGuard};
+use tauri::{Emitter, State};
 
 fn lock_state<'a, T>(mutex: &'a Mutex<T>, label: &str) -> Result<MutexGuard<'a, T>, String> {
     mutex
@@ -50,10 +54,7 @@ fn social_callback_redirect_uri() -> String {
         .replace("/authenticate-success", "/app/callback")
 }
 
-fn prepare_pending_social_login(
-    provider: &str,
-    machineid: String,
-) -> crate::state::PendingLogin {
+fn prepare_pending_social_login(provider: &str, machineid: String) -> crate::state::PendingLogin {
     crate::state::PendingLogin {
         provider: provider.to_string(),
         code_verifier: auth_social::generate_code_verifier_social(),
@@ -111,16 +112,16 @@ pub async fn kiro_login(
     state: State<'_, AppState>,
     provider: String,
     start_url: Option<String>, // 新增：支持自定义 start_url（Enterprise 用）
-    region: Option<String>, // 新增：支持自定义 region（Enterprise 用）
+    region: Option<String>,    // 新增：支持自定义 region（Enterprise 用）
 ) -> Result<String, String> {
     let mut config = get_provider_config(&provider)
         .ok_or_else(|| format!("Unsupported provider: {provider}"))?;
-    
+
     // 如果传入了自定义 start_url，覆盖默认值
     if let Some(url) = start_url {
         config.start_url = Some(url);
     }
-    
+
     // 如果传入了自定义 region，覆盖默认值
     if let Some(reg) = region {
         config.region = reg;
@@ -164,25 +165,30 @@ async fn login_idc(
     let idc_provider = create_idc_provider(config);
     let provider_id = idc_provider.get_provider_id().to_string();
     let auth_method = idc_provider.get_auth_method();
-    
+
     let auth_result = idc_provider.login().await?;
 
     let usage_result = get_usage_by_provider(&provider_id, &auth_result.access_token).await?;
-    
+
     // 封禁账号直接报错
     if usage_result.is_banned {
         return Err("BANNED: 账号已被封禁".to_string());
     }
-    
+
     let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
-    
+
     // Enterprise 账号允许没有 email,使用 userId 作为标识
-    let final_email =
-        resolve_idc_login_email(&provider_id, new_email.clone(), user_id.clone())?;
+    let final_email = resolve_idc_login_email(&provider_id, new_email.clone(), user_id.clone())?;
 
     let mut store = lock_state(&state.store, "store")?;
-    let existing_idx = find_existing_account_idx(&store.accounts, new_email.as_ref(), &provider_id, &auth_result.refresh_token, user_id.as_ref());
-    
+    let existing_idx = find_existing_account_idx(
+        &store.accounts,
+        new_email.as_ref(),
+        &provider_id,
+        &auth_result.refresh_token,
+        user_id.as_ref(),
+    );
+
     let account = if let Some(idx) = existing_idx {
         let existing = &mut store.accounts[idx];
         existing.access_token = Some(auth_result.access_token.clone());
@@ -195,7 +201,7 @@ async fn login_idc(
         existing.client_id = auth_result.client_id;
         existing.client_secret = auth_result.client_secret;
         existing.region = auth_result.region;
-        existing.start_url.clone_from(&auth_result.start_url);  // 保存 start_url
+        existing.start_url.clone_from(&auth_result.start_url); // 保存 start_url
         existing.sso_session_id = auth_result.sso_session_id;
         existing.id_token = auth_result.id_token;
         existing.profile_arn = auth_result.profile_arn;
@@ -214,7 +220,7 @@ async fn login_idc(
         account.client_id = auth_result.client_id;
         account.client_secret = auth_result.client_secret;
         account.region = auth_result.region;
-        account.start_url.clone_from(&auth_result.start_url);  // 保存 start_url
+        account.start_url.clone_from(&auth_result.start_url); // 保存 start_url
         account.sso_session_id = auth_result.sso_session_id;
         account.id_token = auth_result.id_token;
         account.profile_arn = auth_result.profile_arn;
@@ -223,12 +229,18 @@ async fn login_idc(
         store.accounts.insert(0, account.clone());
         account
     };
-    
+
     save_store(&store)?;
     drop(store);
 
     let display_id = account.get_display_id();
-    update_auth_state(&state, account.email.as_ref(), &provider_id, &auth_result.access_token, &auth_result.refresh_token)?;
+    update_auth_state(
+        &state,
+        account.email.as_ref(),
+        &provider_id,
+        &auth_result.access_token,
+        &auth_result.refresh_token,
+    )?;
     println!("\n[{auth_method}] LOGIN SUCCESS: {display_id}");
 
     let _ = app_handle.emit("login-success", account.id.clone());
@@ -245,7 +257,10 @@ fn update_auth_state(
     let user = User {
         id: uuid::Uuid::new_v4().to_string(),
         email: email.cloned(),
-        name: email.and_then(|e| e.split('@').next()).unwrap_or("User").to_string(),
+        name: email
+            .and_then(|e| e.split('@').next())
+            .unwrap_or("User")
+            .to_string(),
         avatar: None,
         provider: provider.to_string(),
     };
@@ -267,28 +282,39 @@ pub async fn handle_kiro_social_callback(
         let lock = lock_state(&state.pending_login, "pending_login")?;
         lock.clone().ok_or("No pending login found")?
     };
-    
+
     if pending.state != callback_state {
         return Err("State mismatch".to_string());
     }
-    
+
     let redirect_uri = social_callback_redirect_uri();
     let token_response = auth_social::exchange_social_code_for_token(
-        &code, &pending.code_verifier, &redirect_uri, &pending.machineid,
-    ).await?;
-    
-    let usage_result = get_usage_by_provider(&pending.provider, &token_response.access_token).await?;
-    
+        &code,
+        &pending.code_verifier,
+        &redirect_uri,
+        &pending.machineid,
+    )
+    .await?;
+
+    let usage_result =
+        get_usage_by_provider(&pending.provider, &token_response.access_token).await?;
+
     if usage_result.is_banned {
         return Err("BANNED: 账号已被封禁".to_string());
     }
-    
+
     let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
     let final_email = require_login_email(new_email.clone())?;
 
     let mut store = lock_state(&state.store, "store")?;
-    let existing_idx = find_existing_account_idx(&store.accounts, new_email.as_ref(), &pending.provider, &token_response.refresh_token, user_id.as_ref());
-    
+    let existing_idx = find_existing_account_idx(
+        &store.accounts,
+        new_email.as_ref(),
+        &pending.provider,
+        &token_response.refresh_token,
+        user_id.as_ref(),
+    );
+
     let account = if let Some(idx) = existing_idx {
         let existing = &mut store.accounts[idx];
         existing.access_token = Some(token_response.access_token.clone());
@@ -299,7 +325,10 @@ pub async fn handle_kiro_social_callback(
         existing.status = calc_status(usage_result.is_banned, usage_result.is_auth_error);
         existing.clone()
     } else {
-        let mut account = Account::new(final_email.clone(), format!("Kiro {} 账号", pending.provider));
+        let mut account = Account::new(
+            final_email.clone(),
+            format!("Kiro {} 账号", pending.provider),
+        );
         account.access_token = Some(token_response.access_token.clone());
         account.refresh_token = Some(token_response.refresh_token.clone());
         account.provider = Some(pending.provider.clone());
@@ -310,12 +339,18 @@ pub async fn handle_kiro_social_callback(
         store.accounts.insert(0, account.clone());
         account
     };
-    
+
     save_store(&store)?;
     drop(store);
-    
+
     let display_id = account.get_display_id();
-    update_auth_state(&state, account.email.as_ref(), &pending.provider, &token_response.access_token, &token_response.refresh_token)?;
+    update_auth_state(
+        &state,
+        account.email.as_ref(),
+        &pending.provider,
+        &token_response.access_token,
+        &token_response.refresh_token,
+    )?;
     let _ = app_handle.emit("login-success", account.id);
     println!("Social callback login completed: {display_id}");
     Ok(())
@@ -350,21 +385,13 @@ mod tests {
     #[test]
     fn resolve_idc_login_email_uses_enterprise_user_id_fallback() {
         assert_eq!(
-            resolve_idc_login_email(
-                "Enterprise",
-                None,
-                Some("enterprise-user".to_string())
-            )
-            .unwrap(),
+            resolve_idc_login_email("Enterprise", None, Some("enterprise-user".to_string()))
+                .unwrap(),
             "enterprise-user".to_string()
         );
         assert_eq!(
-            resolve_idc_login_email(
-                "BuilderId",
-                None,
-                Some("builder-user".to_string())
-            )
-            .unwrap_err(),
+            resolve_idc_login_email("BuilderId", None, Some("builder-user".to_string()))
+                .unwrap_err(),
             "获取邮箱失败，请检查账号状态".to_string()
         );
         assert_eq!(
@@ -383,10 +410,14 @@ mod tests {
             avatar: None,
             provider: "Google".to_string(),
         });
-        *auth.access_token.lock().expect("access_token lock should work") =
-            Some("access-token".to_string());
-        *auth.refresh_token.lock().expect("refresh_token lock should work") =
-            Some("refresh-token".to_string());
+        *auth
+            .access_token
+            .lock()
+            .expect("access_token lock should work") = Some("access-token".to_string());
+        *auth
+            .refresh_token
+            .lock()
+            .expect("refresh_token lock should work") = Some("refresh-token".to_string());
 
         clear_auth_state(&auth);
 

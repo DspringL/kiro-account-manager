@@ -15,7 +15,11 @@ pub async fn get_hook(file_name: String, project_dir: Option<String>) -> Result<
 }
 
 #[command]
-pub async fn save_hook(file_name: String, content: String, project_dir: Option<String>) -> Result<(), String> {
+pub async fn save_hook(
+    file_name: String,
+    content: String,
+    project_dir: Option<String>,
+) -> Result<(), String> {
     run_blocking_task(move || HooksManager::save(&file_name, &content, project_dir.as_deref()))
         .await
 }
@@ -26,7 +30,11 @@ pub async fn delete_hook(file_name: String, project_dir: Option<String>) -> Resu
 }
 
 #[command]
-pub async fn create_hook(file_name: String, content: String, project_dir: Option<String>) -> Result<HookFile, String> {
+pub async fn create_hook(
+    file_name: String,
+    content: String,
+    project_dir: Option<String>,
+) -> Result<HookFile, String> {
     run_blocking_task(move || HooksManager::create(&file_name, &content, project_dir.as_deref()))
         .await
 }

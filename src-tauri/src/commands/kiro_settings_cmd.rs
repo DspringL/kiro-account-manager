@@ -95,7 +95,10 @@ fn get_kiro_settings_path() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         std::env::var("APPDATA").ok().map(|appdata| {
-            PathBuf::from(appdata).join("Kiro").join("User").join("settings.json")
+            PathBuf::from(appdata)
+                .join("Kiro")
+                .join("User")
+                .join("settings.json")
         })
     }
     #[cfg(target_os = "macos")]
@@ -127,8 +130,8 @@ fn get_kiro_settings_path() -> Option<PathBuf> {
 
 fn load_kiro_settings_json(path: &Path) -> Result<serde_json::Value, String> {
     if path.exists() {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("读取设置文件失败: {e}"))?;
+        let content =
+            std::fs::read_to_string(path).map_err(|e| format!("读取设置文件失败: {e}"))?;
         Ok(serde_json::from_str(&content).unwrap_or(serde_json::json!({})))
     } else {
         Ok(serde_json::json!({}))
@@ -136,11 +139,10 @@ fn load_kiro_settings_json(path: &Path) -> Result<serde_json::Value, String> {
 }
 
 fn write_kiro_settings_json(path: &Path, settings: &serde_json::Value) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(settings)
-        .map_err(|e| format!("序列化设置失败: {e}"))?;
+    let content =
+        serde_json::to_string_pretty(settings).map_err(|e| format!("序列化设置失败: {e}"))?;
 
-    std::fs::write(path, content)
-        .map_err(|e| format!("写入设置文件失败: {e}"))
+    std::fs::write(path, content).map_err(|e| format!("写入设置文件失败: {e}"))
 }
 
 async fn run_kiro_blocking<T, F>(task: F) -> Result<T, String>
@@ -182,7 +184,11 @@ fn upsert_string_if_changed(json: &mut serde_json::Value, key: &str, desired: &s
     false
 }
 
-fn upsert_json_if_changed(json: &mut serde_json::Value, key: &str, desired: serde_json::Value) -> bool {
+fn upsert_json_if_changed(
+    json: &mut serde_json::Value,
+    key: &str,
+    desired: serde_json::Value,
+) -> bool {
     if json.get(key) == Some(&desired) {
         return false;
     }
@@ -230,21 +236,16 @@ fn format_custom_trusted_commands(commands: &[String]) -> Option<String> {
     }
 }
 
-fn resolve_trusted_tools(
-    app_tools: Option<Vec<String>>,
-    json: &serde_json::Value,
-) -> Vec<String> {
+fn resolve_trusted_tools(app_tools: Option<Vec<String>>, json: &serde_json::Value) -> Vec<String> {
     app_tools.unwrap_or_else(|| {
         get_optional_string_array(json, "kiroAgent.trustedTools").unwrap_or_default()
     })
 }
 
-fn resolve_configure_mcp(
-    app_value: Option<String>,
-    json: &serde_json::Value,
-) -> String {
-    app_value
-        .unwrap_or_else(|| get_string_value(json, "kiroAgent.configureMCP").unwrap_or_else(|| "Enabled".to_string()))
+fn resolve_configure_mcp(app_value: Option<String>, json: &serde_json::Value) -> String {
+    app_value.unwrap_or_else(|| {
+        get_string_value(json, "kiroAgent.configureMCP").unwrap_or_else(|| "Enabled".to_string())
+    })
 }
 
 fn sync_optional_trusted_tools_if_changed(
@@ -271,8 +272,7 @@ fn sync_optional_configure_mcp_if_changed(
     };
 
     if app_value
-        == get_string_value(json, "kiroAgent.configureMCP")
-            .unwrap_or_else(|| "Enabled".to_string())
+        == get_string_value(json, "kiroAgent.configureMCP").unwrap_or_else(|| "Enabled".to_string())
     {
         return false;
     }
@@ -281,47 +281,53 @@ fn sync_optional_configure_mcp_if_changed(
 }
 
 fn get_kiro_settings_inner() -> Result<KiroSettings, String> {
-    let path = get_kiro_settings_path()
-        .ok_or("无法获取 Kiro 设置路径")?;
-    
+    let path = get_kiro_settings_path().ok_or("无法获取 Kiro 设置路径")?;
+
     if !path.exists() {
         return Ok(KiroSettings::default());
     }
-    
+
     // 读取 app-settings.json（首次启动会使用默认值）
     let app_settings = super::app_settings_cmd::get_app_settings_inner().unwrap_or_default();
-    
-    let content = std::fs::read_to_string(&path)
-        .map_err(|e| format!("读取设置文件失败: {e}"))?;
 
-    let mut json: serde_json::Value = serde_json::from_str(&content)
-        .map_err(|e| format!("解析设置文件失败: {e}"))?;
-    
+    let content = std::fs::read_to_string(&path).map_err(|e| format!("读取设置文件失败: {e}"))?;
+
+    let mut json: serde_json::Value =
+        serde_json::from_str(&content).map_err(|e| format!("解析设置文件失败: {e}"))?;
+
     let mut ide_modified = false;
-    
+
     // 核心逻辑：以 app-settings.json 为准，强制同步到 Kiro IDE
     // 首次启动时，app_settings 使用默认值，会将默认值写入 IDE
-    
+
     // enableCodebaseIndexing
     let codebase_indexing = app_settings.enable_codebase_indexing.unwrap_or(true);
-    ide_modified |= upsert_bool_if_changed(&mut json, "kiroAgent.enableCodebaseIndexing", codebase_indexing);
-    
+    ide_modified |= upsert_bool_if_changed(
+        &mut json,
+        "kiroAgent.enableCodebaseIndexing",
+        codebase_indexing,
+    );
+
     // enableTabAutocomplete
     let tab_autocomplete = app_settings.enable_tab_autocomplete.unwrap_or(true);
-    ide_modified |= upsert_bool_if_changed(&mut json, "kiroAgent.enableTabAutocomplete", tab_autocomplete);
-    
+    ide_modified |= upsert_bool_if_changed(
+        &mut json,
+        "kiroAgent.enableTabAutocomplete",
+        tab_autocomplete,
+    );
+
     // usageSummary
     let usage_summary = app_settings.usage_summary.unwrap_or(true);
     ide_modified |= upsert_bool_if_changed(&mut json, "kiroAgent.usageSummary", usage_summary);
-    
+
     // codeReferences
     let code_references = app_settings.code_references.unwrap_or(true);
     ide_modified |= upsert_bool_if_changed(&mut json, "kiroAgent.codeReferences", code_references);
-    
+
     // enableDebugLogs
     let debug_logs = app_settings.enable_debug_logs.unwrap_or(false);
     ide_modified |= upsert_bool_if_changed(&mut json, "kiroAgent.enableDebugLogs", debug_logs);
-    
+
     // notifyActionRequired
     let notify_action = app_settings.notify_action_required.unwrap_or(true);
     ide_modified |= upsert_bool_if_changed(
@@ -329,21 +335,28 @@ fn get_kiro_settings_inner() -> Result<KiroSettings, String> {
         "kiroAgent.notifications.agent.actionRequired",
         notify_action,
     );
-    
+
     // notifyFailure
     let notify_failure = app_settings.notify_failure.unwrap_or(true);
-    ide_modified |=
-        upsert_bool_if_changed(&mut json, "kiroAgent.notifications.agent.failure", notify_failure);
-    
+    ide_modified |= upsert_bool_if_changed(
+        &mut json,
+        "kiroAgent.notifications.agent.failure",
+        notify_failure,
+    );
+
     // notifySuccess
     let notify_success = app_settings.notify_success.unwrap_or(true);
-    ide_modified |=
-        upsert_bool_if_changed(&mut json, "kiroAgent.notifications.agent.success", notify_success);
-    
+    ide_modified |= upsert_bool_if_changed(
+        &mut json,
+        "kiroAgent.notifications.agent.success",
+        notify_success,
+    );
+
     // notifyBilling
     let notify_billing = app_settings.notify_billing.unwrap_or(true);
-    ide_modified |= upsert_bool_if_changed(&mut json, "kiroAgent.notifications.billing", notify_billing);
-    
+    ide_modified |=
+        upsert_bool_if_changed(&mut json, "kiroAgent.notifications.billing", notify_billing);
+
     // trustedTools
     ide_modified |=
         sync_optional_trusted_tools_if_changed(&mut json, app_settings.trusted_tools.clone());
@@ -421,37 +434,47 @@ fn get_kiro_settings_inner() -> Result<KiroSettings, String> {
 }
 
 fn set_kiro_proxy_inner(proxy: String) -> Result<(), String> {
-    let path = get_kiro_settings_path()
-        .ok_or("无法获取 Kiro 设置路径")?;
+    let path = get_kiro_settings_path().ok_or("无法获取 Kiro 设置路径")?;
 
     let mut settings = load_kiro_settings_json(&path)?;
-    
+
     if let Some(obj) = settings.as_object_mut() {
         if proxy.is_empty() {
             // 清除代理时，必须把 proxySupport 设为 off，否则 Kiro 会尝试连接系统代理
             obj.remove("http.proxy");
-            obj.insert("http.proxySupport".to_string(), serde_json::Value::String("off".to_string()));
+            obj.insert(
+                "http.proxySupport".to_string(),
+                serde_json::Value::String("off".to_string()),
+            );
         } else {
             // 设置代理时，proxySupport 必须为 on，同时提供代理地址
             obj.insert("http.proxy".to_string(), serde_json::Value::String(proxy));
-            obj.insert("http.proxyStrictSSL".to_string(), serde_json::Value::Bool(false));
-            obj.insert("http.proxySupport".to_string(), serde_json::Value::String("on".to_string()));
+            obj.insert(
+                "http.proxyStrictSSL".to_string(),
+                serde_json::Value::Bool(false),
+            );
+            obj.insert(
+                "http.proxySupport".to_string(),
+                serde_json::Value::String("on".to_string()),
+            );
         }
     }
-    
+
     write_kiro_settings_json(&path, &settings)
 }
 
 fn set_kiro_model_inner(model: String) -> Result<(), String> {
-    let path = get_kiro_settings_path()
-        .ok_or("无法获取 Kiro 设置路径")?;
+    let path = get_kiro_settings_path().ok_or("无法获取 Kiro 设置路径")?;
 
     let mut settings = load_kiro_settings_json(&path)?;
-    
+
     if let Some(obj) = settings.as_object_mut() {
-        obj.insert("kiroAgent.modelSelection".to_string(), serde_json::Value::String(model));
+        obj.insert(
+            "kiroAgent.modelSelection".to_string(),
+            serde_json::Value::String(model),
+        );
     }
-    
+
     write_kiro_settings_json(&path, &settings)
 }
 
@@ -471,7 +494,10 @@ pub async fn set_kiro_model(model: String) -> Result<(), String> {
 }
 
 fn set_kiro_codebase_indexing_inner(enabled: bool) -> Result<(), String> {
-    set_kiro_generic_inner("kiroAgent.enableCodebaseIndexing".to_string(), serde_json::json!(enabled))
+    set_kiro_generic_inner(
+        "kiroAgent.enableCodebaseIndexing".to_string(),
+        serde_json::json!(enabled),
+    )
 }
 
 #[tauri::command]
@@ -479,12 +505,14 @@ pub async fn set_kiro_codebase_indexing(enabled: bool) -> Result<(), String> {
     run_kiro_blocking(move || set_kiro_codebase_indexing_inner(enabled)).await
 }
 
-fn set_kiro_trusted_commands_inner(mode: String, custom_commands: Option<String>) -> Result<(), String> {
-    let path = get_kiro_settings_path()
-        .ok_or("无法获取 Kiro 设置路径")?;
+fn set_kiro_trusted_commands_inner(
+    mode: String,
+    custom_commands: Option<String>,
+) -> Result<(), String> {
+    let path = get_kiro_settings_path().ok_or("无法获取 Kiro 设置路径")?;
 
     let mut settings = load_kiro_settings_json(&path)?;
-    
+
     if let Some(obj) = settings.as_object_mut() {
         let commands = match mode.as_str() {
             "all" => serde_json::json!(["*"]),
@@ -494,37 +522,44 @@ fn set_kiro_trusted_commands_inner(mode: String, custom_commands: Option<String>
                     if custom.trim().is_empty() {
                         serde_json::json!(DEFAULT_SAFE_TRUSTED_COMMANDS)
                     } else {
-                        let cmds: Vec<&str> = custom.lines()
+                        let cmds: Vec<&str> = custom
+                            .lines()
                             .map(str::trim)
                             .filter(|s| !s.is_empty())
                             .collect();
                         if cmds.contains(&"*") {
-                            return Err("common 模式不允许使用 *，如需全部信任请切换到“全部信任”".to_string());
+                            return Err("common 模式不允许使用 *，如需全部信任请切换到“全部信任”"
+                                .to_string());
                         }
                         serde_json::json!(cmds)
                     }
                 } else {
                     serde_json::json!(DEFAULT_SAFE_TRUSTED_COMMANDS)
                 }
-            },
+            }
             "none" => serde_json::json!([]),
             _ => return Err(format!("不支持的 trusted commands 模式: {mode}")),
         };
         obj.insert("kiroAgent.trustedCommands".to_string(), commands);
     }
-    
+
     write_kiro_settings_json(&path, &settings)
 }
 
 #[tauri::command]
-pub async fn set_kiro_trusted_commands(mode: String, custom_commands: Option<String>) -> Result<(), String> {
+pub async fn set_kiro_trusted_commands(
+    mode: String,
+    custom_commands: Option<String>,
+) -> Result<(), String> {
     run_kiro_blocking(move || set_kiro_trusted_commands_inner(mode, custom_commands)).await
 }
 
-
 // 设置 Agent 自主模式
 fn set_kiro_agent_autonomy_inner(autonomy: String) -> Result<(), String> {
-    set_kiro_generic_inner("kiroAgent.agentAutonomy".to_string(), serde_json::json!(autonomy))
+    set_kiro_generic_inner(
+        "kiroAgent.agentAutonomy".to_string(),
+        serde_json::json!(autonomy),
+    )
 }
 
 #[tauri::command]
@@ -534,7 +569,10 @@ pub async fn set_kiro_agent_autonomy(autonomy: String) -> Result<(), String> {
 
 // 设置 Tab 自动补全
 fn set_kiro_tab_autocomplete_inner(enabled: bool) -> Result<(), String> {
-    set_kiro_generic_inner("kiroAgent.enableTabAutocomplete".to_string(), serde_json::json!(enabled))
+    set_kiro_generic_inner(
+        "kiroAgent.enableTabAutocomplete".to_string(),
+        serde_json::json!(enabled),
+    )
 }
 
 #[tauri::command]
@@ -544,7 +582,10 @@ pub async fn set_kiro_tab_autocomplete(enabled: bool) -> Result<(), String> {
 
 // 设置使用统计
 fn set_kiro_usage_summary_inner(enabled: bool) -> Result<(), String> {
-    set_kiro_generic_inner("kiroAgent.usageSummary".to_string(), serde_json::json!(enabled))
+    set_kiro_generic_inner(
+        "kiroAgent.usageSummary".to_string(),
+        serde_json::json!(enabled),
+    )
 }
 
 #[tauri::command]
@@ -554,7 +595,10 @@ pub async fn set_kiro_usage_summary(enabled: bool) -> Result<(), String> {
 
 // 设置代码引用
 fn set_kiro_code_references_inner(enabled: bool) -> Result<(), String> {
-    set_kiro_generic_inner("kiroAgent.codeReferences".to_string(), serde_json::json!(enabled))
+    set_kiro_generic_inner(
+        "kiroAgent.codeReferences".to_string(),
+        serde_json::json!(enabled),
+    )
 }
 
 #[tauri::command]
@@ -564,7 +608,10 @@ pub async fn set_kiro_code_references(enabled: bool) -> Result<(), String> {
 
 // 设置调试日志
 fn set_kiro_debug_logs_inner(enabled: bool) -> Result<(), String> {
-    set_kiro_generic_inner("kiroAgent.enableDebugLogs".to_string(), serde_json::json!(enabled))
+    set_kiro_generic_inner(
+        "kiroAgent.enableDebugLogs".to_string(),
+        serde_json::json!(enabled),
+    )
 }
 
 #[tauri::command]
@@ -587,8 +634,7 @@ pub async fn set_kiro_notification(key: String, enabled: bool) -> Result<(), Str
 /// 通用写入 Kiro IDE settings.json（支持 bool / string / string[] 类型）
 /// 同时同步到 app-settings.json
 fn set_kiro_generic_inner(key: String, value: serde_json::Value) -> Result<(), String> {
-    let path = get_kiro_settings_path()
-        .ok_or("无法获取 Kiro 设置路径")?;
+    let path = get_kiro_settings_path().ok_or("无法获取 Kiro 设置路径")?;
 
     let mut settings = load_kiro_settings_json(&path)?;
 
@@ -609,9 +655,11 @@ fn sync_to_app_settings(key: &str, value: &serde_json::Value) {
     let mut app = super::app_settings_cmd::get_app_settings_inner().unwrap_or_default();
     match key {
         "kiroAgent.trustedTools" => {
-            app.trusted_tools = value.as_array().map(|arr|
-                arr.iter().filter_map(|v| v.as_str().map(String::from)).collect()
-            );
+            app.trusted_tools = value.as_array().map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            });
         }
         "kiroAgent.codeReferences.referenceTracker" => {
             app.reference_tracker = value.as_bool();
@@ -667,7 +715,10 @@ fn sync_to_app_settings(key: &str, value: &serde_json::Value) {
 #[tauri::command]
 pub async fn set_kiro_trusted_tools(tools: Vec<String>) -> Result<(), String> {
     run_kiro_blocking(move || {
-        set_kiro_generic_inner("kiroAgent.trustedTools".to_string(), serde_json::json!(tools))
+        set_kiro_generic_inner(
+            "kiroAgent.trustedTools".to_string(),
+            serde_json::json!(tools),
+        )
     })
     .await
 }
@@ -676,7 +727,10 @@ pub async fn set_kiro_trusted_tools(tools: Vec<String>) -> Result<(), String> {
 #[tauri::command]
 pub async fn set_kiro_reference_tracker(enabled: bool) -> Result<(), String> {
     run_kiro_blocking(move || {
-        set_kiro_generic_inner("kiroAgent.codeReferences.referenceTracker".to_string(), serde_json::json!(enabled))
+        set_kiro_generic_inner(
+            "kiroAgent.codeReferences.referenceTracker".to_string(),
+            serde_json::json!(enabled),
+        )
     })
     .await
 }
@@ -685,7 +739,10 @@ pub async fn set_kiro_reference_tracker(enabled: bool) -> Result<(), String> {
 #[tauri::command]
 pub async fn set_kiro_configure_mcp(mode: String) -> Result<(), String> {
     run_kiro_blocking(move || {
-        set_kiro_generic_inner("kiroAgent.configureMCP".to_string(), serde_json::json!(mode))
+        set_kiro_generic_inner(
+            "kiroAgent.configureMCP".to_string(),
+            serde_json::json!(mode),
+        )
     })
     .await
 }
@@ -703,10 +760,7 @@ pub async fn set_kiro_telemetry(key: String, enabled: bool) -> Result<(), String
     if !allowed.contains(&key.as_str()) {
         return Err(format!("不允许的遥测 key: {key}"));
     }
-    run_kiro_blocking(move || {
-        set_kiro_generic_inner(key, serde_json::json!(enabled))
-    })
-    .await
+    run_kiro_blocking(move || set_kiro_generic_inner(key, serde_json::json!(enabled))).await
 }
 
 #[cfg(test)]
@@ -892,7 +946,10 @@ mod tests {
             Some(&serde_json::json!(["app-tool"]))
         );
 
-        assert!(!sync_optional_trusted_tools_if_changed(&mut missing, Some(vec![])));
+        assert!(!sync_optional_trusted_tools_if_changed(
+            &mut missing,
+            Some(vec![])
+        ));
         assert_eq!(missing.get("kiroAgent.trustedTools"), None);
     }
 
@@ -909,7 +966,8 @@ mod tests {
             None
         ));
         assert_eq!(
-            unchanged.get("kiroAgent.configureMCP")
+            unchanged
+                .get("kiroAgent.configureMCP")
                 .and_then(serde_json::Value::as_str),
             Some("Enabled")
         );
@@ -919,7 +977,8 @@ mod tests {
             Some("Disabled".to_string())
         ));
         assert_eq!(
-            changed.get("kiroAgent.configureMCP")
+            changed
+                .get("kiroAgent.configureMCP")
                 .and_then(serde_json::Value::as_str),
             Some("Disabled")
         );

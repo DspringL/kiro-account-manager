@@ -44,7 +44,7 @@ pub fn get_provider_config(provider: &str) -> Option<ProviderConfig> {
             provider_id: "Enterprise".to_string(),
             auth_method: AuthMethod::Idc,
             region: "us-east-1".to_string(),
-            start_url: Some("https://view.awsapps.com/start".to_string()),  // 默认使用 BuilderId URL，用户可以自定义
+            start_url: Some("https://view.awsapps.com/start".to_string()), // 默认使用 BuilderId URL，用户可以自定义
         }),
         _ => None,
     }
@@ -57,5 +57,9 @@ pub fn get_supported_providers() -> Vec<&'static str> {
 
 /// 创建 `IdC` Provider
 pub fn create_idc_provider(config: &ProviderConfig) -> IdcProvider {
-    IdcProvider::new(&config.provider_id, &config.region, config.start_url.clone())
+    IdcProvider::new(
+        &config.provider_id,
+        &config.region,
+        config.start_url.clone(),
+    )
 }
