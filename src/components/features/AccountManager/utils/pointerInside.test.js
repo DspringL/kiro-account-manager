@@ -54,3 +54,22 @@ test('isPointerInsideContainer returns false when pointer is outside container b
 
   assert.equal(isPointerInsideContainer(event, container), false)
 })
+
+test('isPointerInsideContainer returns true when pointer is inside any provided container bounds', () => {
+  const trigger = {
+    contains: () => false,
+    getBoundingClientRect: () => ({ left: 0, right: 100, top: 0, bottom: 40 }),
+  }
+  const panel = {
+    contains: () => false,
+    getBoundingClientRect: () => ({ left: 0, right: 100, top: 48, bottom: 220 }),
+  }
+
+  const event = {
+    target: 'outside',
+    clientX: 95,
+    clientY: 120,
+  }
+
+  assert.equal(isPointerInsideContainer(event, [trigger, panel]), true)
+})

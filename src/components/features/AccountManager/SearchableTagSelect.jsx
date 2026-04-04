@@ -25,18 +25,19 @@ function SearchableTagSelect({
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const containerRef = useRef(null)
+  const panelRef = useRef(null)
   const inputRef = useRef(null)
 
   // 点击外部关闭
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (containerRef.current && !isPointerInsideContainer(e, containerRef.current)) {
+      if (containerRef.current && !isPointerInsideContainer(e, [containerRef.current, panelRef.current])) {
         setOpen(false)
         setSearch('')
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
   // 打开时聚焦输入框
@@ -97,8 +98,11 @@ function SearchableTagSelect({
 
       {/* 下拉面板 */}
       {open && (
-        <div className={`absolute left-0 right-0 top-full mt-2 ${colors.card} border ${colors.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}>
-          <div className="max-h-56 overflow-y-auto">
+        <div
+          ref={panelRef}
+          className={`absolute left-0 right-0 top-full mt-2 ${colors.card} border ${colors.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}
+        >
+            <div className="max-h-56 overflow-y-auto">
             {/* 全部选项 */}
             {showAllOption && (
               <button

@@ -334,7 +334,8 @@ function AccountListView({
                   tagMap={tagMap}
                   groupMap={groupMap}
                   colors={colors}
-
+                  isLightTheme={isLightTheme}
+                  t={t}
                   maskEmail={maskEmail}
                   onSelectOne={onSelectOne}
                   onSwitch={onSwitch}

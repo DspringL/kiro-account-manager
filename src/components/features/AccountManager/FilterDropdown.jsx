@@ -144,15 +144,16 @@ function FilterDropdown({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
+  const panelRef = useRef(null)
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !isPointerInsideContainer(e, dropdownRef.current)) {
+      if (dropdownRef.current && !isPointerInsideContainer(e, [dropdownRef.current, panelRef.current])) {
         setOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
   const activeCount = countActiveFilters({ filters, selectedGroup, selectedTag })
@@ -206,6 +207,7 @@ function FilterDropdown({
 
       {open && (
         <div
+          ref={panelRef}
           className={`
             absolute right-0 top-full mt-3 w-[420px] max-w-[calc(100vw-48px)]
             ${colors.card} border ${colors.cardBorder}
@@ -217,7 +219,7 @@ function FilterDropdown({
             boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.25)',
           }}
         >
-          <div className={`px-4 py-4 border-b ${colors.cardBorder} space-y-3`}>
+            <div className={`px-4 py-4 border-b ${colors.cardBorder} space-y-3`}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
                 <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} shadow-lg ${accent.shadow}`}>
@@ -249,9 +251,12 @@ function FilterDropdown({
                 )}
                 <button
                   onClick={() => setOpen(false)}
-                  className={`cursor-pointer rounded-lg border ${colors.cardBorder} px-2.5 py-1.5 text-xs ${colors.textMuted} ${colors.cardHover} transition-all duration-200 focus:outline-none focus:ring-2 ${accent.ring}`}
+                  type="button"
+                  aria-label="关闭筛选面板"
+                  title="关闭筛选面板"
+                  className={`cursor-pointer inline-flex h-9 w-9 items-center justify-center rounded-xl border ${colors.cardBorder} ${colors.textMuted} ${colors.cardHover} transition-all duration-200 hover:scale-[1.02] active:scale-95 focus:outline-none focus:ring-2 ${accent.ring}`}
                 >
-                  关闭
+                  <X size={15} strokeWidth={2.5} />
                 </button>
               </div>
             </div>
@@ -372,10 +377,7 @@ function FilterDropdown({
             </SectionCard>
           </div>
 
-          <div className={`flex items-center justify-between gap-3 border-t ${colors.cardBorder} px-4 py-3 ${colors.card}`}>
-            <span className={`text-xs ${colors.textMuted}`}>
-              {activeCount > 0 ? `当前已启用 ${activeCount} 个筛选条件` : '未启用筛选条件'}
-            </span>
+          <div className={`flex items-center justify-end gap-2 border-t ${colors.cardBorder} px-4 py-3 ${colors.card}`}>
             <div className="flex items-center gap-2">
               {activeCount > 0 && (
                 <button

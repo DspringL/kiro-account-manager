@@ -1,19 +1,18 @@
-export function isPointerInsideContainer(event, container) {
-  if (!event || !container) return false
+export function isPointerInsideContainer(event, containers) {
+  const containerList = Array.isArray(containers) ? containers.filter(Boolean) : [containers].filter(Boolean)
+  if (!event || containerList.length === 0) return false
 
-  if (typeof container.contains === 'function' && container.contains(event.target)) {
-    return true
-  }
-
-  if (typeof event.composedPath === 'function') {
-    const path = event.composedPath()
-    if (Array.isArray(path) && path.includes(container)) {
+  for (const container of containerList) {
+    if (typeof container.contains === 'function' && container.contains(event.target)) {
       return true
     }
   }
 
-  if (typeof container.getBoundingClientRect !== 'function') {
-    return false
+  if (typeof event.composedPath === 'function') {
+    const path = event.composedPath()
+    if (Array.isArray(path) && containerList.some(container => path.includes(container))) {
+      return true
+    }
   }
 
   const { clientX, clientY } = event
@@ -21,11 +20,17 @@ export function isPointerInsideContainer(event, container) {
     return false
   }
 
-  const rect = container.getBoundingClientRect()
-  return (
-    clientX >= rect.left &&
-    clientX <= rect.right &&
-    clientY >= rect.top &&
-    clientY <= rect.bottom
-  )
+  return containerList.some((container) => {
+    if (typeof container.getBoundingClientRect !== 'function') {
+      return false
+    }
+
+    const rect = container.getBoundingClientRect()
+    return (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    )
+  })
 }

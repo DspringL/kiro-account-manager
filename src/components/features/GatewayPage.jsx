@@ -20,6 +20,21 @@ import {
 } from './gatewayPageState'
 import { useGatewayPolling } from './useGatewayPolling'
 
+function ThemedAlert({ colors, title, children, ...props }) {
+  return (
+    <Alert
+      {...props}
+      title={<span className={colors.text}>{title}</span>}
+    >
+      {typeof children === 'string' ? (
+        <Text size="sm" className={colors.textMuted}>
+          {children}
+        </Text>
+      ) : children}
+    </Alert>
+  )
+}
+
 function GatewayPage() {
   const { colors } = useApp()
   const [config, setConfig] = useState(DEFAULT_GATEWAY_CONFIG)
@@ -141,6 +156,25 @@ function GatewayPage() {
       </Stack>
     )
   }
+
+  const inputClassNames = useMemo(() => ({
+    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
+    label: colors.text,
+    description: colors.textMuted,
+    error: 'text-red-400',
+    section: colors.textMuted,
+  }), [colors])
+
+  const selectClassNames = useMemo(() => ({
+    ...inputClassNames,
+    dropdown: `${colors.card} border ${colors.cardBorder}`,
+    option: colors.text,
+  }), [colors, inputClassNames])
+
+  const switchClassNames = useMemo(() => ({
+    label: colors.text,
+    description: colors.textMuted,
+  }), [colors])
 
   const pushError = (msg) => {
     const normalized = String(msg?.message || msg || '').trim()
@@ -427,9 +461,16 @@ function GatewayPage() {
               </Card>
             </div>
 
-            <Alert color={actionSummary.tone} variant="light" title={actionSummary.title}>
-              {actionSummary.description}
-            </Alert>
+            <ThemedAlert
+              color={actionSummary.tone}
+              variant="light"
+              colors={colors}
+              title={actionSummary.title}
+            >
+              <Text size="sm" className={colors.textMuted}>
+                {actionSummary.description}
+              </Text>
+            </ThemedAlert>
           </Stack>
         </Card>
 
@@ -590,9 +631,9 @@ function GatewayPage() {
                     </Stack>
                   </Card>
 
-                  <Alert color="blue" variant="light" title="页面边界">
+                  <ThemedAlert color="blue" variant="light" title="页面边界" colors={colors}>
                     网关页只负责入口控制、接入和观测。账号增删改、分组治理继续放在账号管理页面，避免在这里再造一套后台。
-                  </Alert>
+                  </ThemedAlert>
                 </Stack>
               </Card>
             </div>
@@ -626,6 +667,7 @@ function GatewayPage() {
                     value={config.host}
                     onChange={(e) => setField('host', e.currentTarget.value || '127.0.0.1')}
                     error={fieldErrors.host}
+                    classNames={inputClassNames}
                   />
 
                   <NumberInput
@@ -635,6 +677,7 @@ function GatewayPage() {
                     max={65535}
                     onChange={(v) => setField('port', Number(v) || 8765)}
                     error={fieldErrors.port}
+                    classNames={inputClassNames}
                   />
 
                   <Stack gap={6}>
@@ -645,6 +688,7 @@ function GatewayPage() {
                       value={config.apiKey}
                       onChange={(e) => setField('apiKey', e.currentTarget.value)}
                       error={fieldErrors.apiKey}
+                      classNames={inputClassNames}
                     />
                     <Group justify="flex-end">
                       <Tooltip label="生成一个 sk- 格式的 API Key">
@@ -666,6 +710,7 @@ function GatewayPage() {
                     value={config.region}
                     onChange={(v) => setField('region', v || 'us-east-1')}
                     error={fieldErrors.region}
+                    classNames={selectClassNames}
                   />
                 </Stack>
               </Card>
@@ -701,6 +746,7 @@ function GatewayPage() {
                     description="仅影响下次启动应用时是否自动启动，不会立即修改当前运行状态。"
                     checked={!!config.enabled}
                     onChange={(e) => setField('enabled', e.currentTarget.checked)}
+                    classNames={switchClassNames}
                   />
 
                   <Switch
@@ -711,6 +757,7 @@ function GatewayPage() {
                       const nextLocalOnly = e.currentTarget.checked
                       setConfig(prev => applyGatewayLocalOnlyChange(prev, nextLocalOnly, createGeneratedApiKey))
                     }}
+                    classNames={switchClassNames}
                   />
 
                   <Textarea
@@ -723,6 +770,7 @@ function GatewayPage() {
                     onChange={(e) => setField('allowedIpsText', e.currentTarget.value)}
                     disabled={!!config.localOnly}
                     error={fieldErrors.allowedIpsText}
+                    classNames={inputClassNames}
                   />
 
                   <Select
@@ -736,11 +784,12 @@ function GatewayPage() {
                     ]}
                     value={config.logLevel}
                     onChange={(v) => setField('logLevel', v || 'debug')}
+                    classNames={selectClassNames}
                   />
 
-                  <Alert color="orange" variant="light" title="风险提示">
+                  <ThemedAlert color="orange" variant="light" title="风险提示" colors={colors}>
                     该网关会直接使用本地或托管账号的 Kiro 凭证访问上游。不要把客户端 API Key、错误日志或网关端口暴露给不受信任环境。
-                  </Alert>
+                  </ThemedAlert>
                 </Stack>
               </Card>
 
@@ -761,6 +810,7 @@ function GatewayPage() {
                     value={config.accountMode}
                     onChange={(v) => setField('accountMode', v || 'single')}
                     error={fieldErrors.accountMode}
+                    classNames={selectClassNames}
                   />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -788,6 +838,7 @@ function GatewayPage() {
                         value={config.accountId}
                         onChange={(v) => setField('accountId', v)}
                         error={fieldErrors.accountId}
+                        classNames={selectClassNames}
                       />
                     </Card>
                   ) : null}
@@ -802,6 +853,7 @@ function GatewayPage() {
                         value={config.groupId}
                         onChange={(v) => setField('groupId', v)}
                         error={fieldErrors.groupId}
+                        classNames={selectClassNames}
                       />
                     </Card>
                   ) : null}
@@ -819,6 +871,7 @@ function GatewayPage() {
                           ]}
                           value={config.strategy}
                           onChange={(v) => setField('strategy', v || 'round_robin')}
+                          classNames={selectClassNames}
                         />
 
                         <NumberInput
@@ -828,6 +881,7 @@ function GatewayPage() {
                           min={1}
                           max={100}
                           onChange={(v) => setField('threshold', Number(v) || 90)}
+                          classNames={inputClassNames}
                         />
                       </Stack>
                     </Card>
@@ -836,20 +890,36 @@ function GatewayPage() {
               </Card>
 
               {hasFieldErrors ? (
-                <Alert color="red" variant="light" title="保存前需修正">
-                  {Object.values(fieldErrors).join('；')}
-                </Alert>
+                <ThemedAlert color="red" variant="light" title="保存前需修正" colors={colors}>
+                  <Text size="sm" className={colors.textMuted}>
+                    {Object.values(fieldErrors).join('；')}
+                  </Text>
+                </ThemedAlert>
               ) : null}
             </Stack>
           </Card>
           {hasFieldErrors ? (
-            <Alert color="red" variant="light" title="保存前需修正">
-              {Object.values(fieldErrors).join('；')}
-            </Alert>
+            <ThemedAlert
+              color="red"
+              variant="light"
+              colors={colors}
+              title="保存前需修正"
+            >
+              <Text size="sm" className={colors.textMuted}>
+                {Object.values(fieldErrors).join('；')}
+              </Text>
+            </ThemedAlert>
           ) : (
-            <Alert color={actionSummary.tone} variant="light" title={actionSummary.title}>
-              {actionSummary.description}
-            </Alert>
+            <ThemedAlert
+              color={actionSummary.tone}
+              variant="light"
+              colors={colors}
+              title={actionSummary.title}
+            >
+              <Text size="sm" className={colors.textMuted}>
+                {actionSummary.description}
+              </Text>
+            </ThemedAlert>
           )}
             </div>
           </Tabs.Panel>
@@ -929,9 +999,9 @@ function GatewayPage() {
                 </Stack>
               </Card>
 
-              <Alert color="blue" variant="light" title="接入提醒">
+              <ThemedAlert color="blue" variant="light" title="接入提醒" colors={colors}>
                 客户端连本地网关只需要两件事：接入地址和客户端 API Key。运行状态、日志目录、错误排查统一放到“观测”页，不再在这里重复堆叠。
-              </Alert>
+              </ThemedAlert>
             </div>
           </Tabs.Panel>
 
@@ -984,9 +1054,9 @@ function GatewayPage() {
                     </Card>
                   </div>
 
-                  <Alert color={errorHistory.length ? 'orange' : 'teal'} variant="light" title="运行摘要">
+                  <ThemedAlert color={errorHistory.length ? 'orange' : 'teal'} variant="light" title="运行摘要" colors={colors}>
                     {`错误历史 ${statusSummary.errorCount}，当前${status.running ? '已启动' : '未启动'}，${hasUnsavedChanges ? '页面存在未保存变更。' : '页面配置已与已保存状态同步。'}`}
-                  </Alert>
+                  </ThemedAlert>
                 </Stack>
               </Card>
 
@@ -1098,6 +1168,7 @@ function GatewayPage() {
                       ]}
                       value={requestLogOutcome}
                       onChange={(value) => setRequestLogOutcome(value || 'all')}
+                      classNames={selectClassNames}
                     />
                     <TextInput
                       label="关键词搜索"
@@ -1105,6 +1176,7 @@ function GatewayPage() {
                       value={requestLogQuery}
                       onChange={(event) => setRequestLogQuery(event.currentTarget.value)}
                       leftSection={<Search size={14} />}
+                      classNames={inputClassNames}
                     />
                   </div>
 
