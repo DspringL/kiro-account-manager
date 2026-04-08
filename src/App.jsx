@@ -141,17 +141,14 @@ function App() {
       console.error('Auth check failed:', e)
     } finally {
       setLoading(false)
+      // App 加载完成后移除启动画面
+      setTimeout(() => {
+        import('./utils/bootSplash.js').then(({ dismissBootSplash }) => {
+          dismissBootSplash()
+        })
+      }, 100)
     }
   }
-  
-  // App 加载完成后移除启动画面（独立的 useEffect，避免 Hooks 顺序问题）
-  useEffect(() => {
-    if (!loading) {
-      import('./utils/bootSplash.js').then(({ dismissBootSplash }) => {
-        dismissBootSplash()
-      })
-    }
-  }, [loading])
 
   const handleLogin = () => {
     checkAuth()
