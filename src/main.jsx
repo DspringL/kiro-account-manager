@@ -49,17 +49,15 @@ if (import.meta.env.PROD) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <I18nProvider>
-      <AppSettingsProvider>
-        <ThemeProvider>
-          <DialogProvider>
-            <App />
-          </DialogProvider>
-        </ThemeProvider>
-      </AppSettingsProvider>
-    </I18nProvider>
-  </React.StrictMode>,
+  <I18nProvider>
+    <AppSettingsProvider>
+      <ThemeProvider>
+        <DialogProvider>
+          <App />
+        </DialogProvider>
+      </ThemeProvider>
+    </AppSettingsProvider>
+  </I18nProvider>,
 )
 
 
