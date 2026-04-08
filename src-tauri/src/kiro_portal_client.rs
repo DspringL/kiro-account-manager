@@ -77,6 +77,7 @@ impl KiroPortalClient {
             .map_err(|e| format!("请求失败（可能是并发请求过多被限流）: {}，请稍后重试", e))?;
 
         let status = response.status();
+        let status_code = status.as_u16();
         let bytes = response
             .bytes()
             .await
@@ -90,17 +91,17 @@ impl KiroPortalClient {
             };
 
             // 429 → 请求过多，被限流
-            if status.as_u16() == 429 {
-                return Err("请求过多，已被限流，请稍后重试".to_string());
+            if status_code == 429 {
+                return Err(format!("HTTP {}: 请求过多，已被限流，请稍后重试", status_code));
             }
 
             // 401 → token 过期，需要刷新（不打印日志，这是正常流程）
-            if status.as_u16() == 401 {
-                return Err(format!("AUTH_ERROR: {error_msg}"));
+            if status_code == 401 {
+                return Err(format!("AUTH_ERROR: HTTP {} - {}", status_code, error_msg));
             }
 
             // 423 Locked + AccountSuspendedException → 封禁（不打印日志）
-            if status.as_u16() == 423 {
+            if status_code == 423 {
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&error_msg) {
                     let type_field = parsed.get("__type").and_then(|t| t.as_str()).unwrap_or("");
                     if type_field.contains("AccountSuspendedException") {
@@ -114,7 +115,7 @@ impl KiroPortalClient {
             }
 
             // 403 处理
-            if status.as_u16() == 403 {
+            if status_code == 403 {
                 // 解析 JSON 检查 reason 字段
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&error_msg) {
                     let reason = parsed.get("reason").and_then(|r| r.as_str()).unwrap_or("");
@@ -129,15 +130,27 @@ impl KiroPortalClient {
                     }
                 }
                 // 403 + 其他情况 → token 无效，需要刷新
-                return Err(format!("AUTH_ERROR: {error_msg}"));
+                return Err(format!("AUTH_ERROR: HTTP {} - {}", status_code, error_msg));
             }
 
             return Err(format!(
-                "GetUserUsageAndLimits failed ({status}): {error_msg}"
+                "GetUserUsageAndLimits failed - HTTP {}: {}",
+                status_code, error_msg
             ));
         }
 
         // 直接解码为 JSON Value，不经过结构体
-        cbor_decode::<serde_json::Value>(&bytes)
+        let decoded = cbor_decode::<serde_json::Value>(&bytes)?;
+        
+        // 如果解码成功但数据为 null，添加调试信息
+        if decoded.is_null() {
+            return Err(format!(
+                "API 返回成功（HTTP {}）但数据为 null。原始响应：{:?}",
+                status_code,
+                String::from_utf8_lossy(&bytes)
+            ));
+        }
+        
+        Ok(decoded)
     }
 }
