@@ -240,7 +240,7 @@
 - 一键启动 / 关闭
 - 自动同步代理和模型设置
 
-### 🌐 Kiro API 网关
+### 🌐 Kiro API 网关（未定型，暂时需要手动编译）
 
 - 提供本地 Kiro API 兼容网关，支持 Anthropic `POST /v1/messages`
 - 支持 OpenAI `POST /v1/responses`（不提供 Chat Completions 兼容入口）
