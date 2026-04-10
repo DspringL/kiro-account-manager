@@ -27,8 +27,7 @@ src-tauri/target/
 *.log
 
 # Docs - 抓包文件
-docs/api/KiroWebPortalService/OAuth-*/
-
+docs/*
 # Docs - 模板文件（包含敏感信息）
 docs/templates/
 
@@ -50,7 +49,7 @@ scripts/register/debug/
 enterprise-import.json
 src-tauri/clippy_warnings.txt
 1.json
-nul
+docs/
 
 # Worktrees
 .worktrees/
