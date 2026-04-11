@@ -26,6 +26,28 @@
 
 > **📢 语言支持**：从当前版本开始，本项目**仅支持简体中文界面**，已移除英文和俄语翻译。这样可以简化维护，专注于功能开发。
 
+## 🏗️ 项目概览
+
+Kiro Account Manager 是一个基于 **Tauri 2.x** 的桌面应用，用于集中管理 **Kiro IDE** 账号与本地配置。
+
+**技术栈**：
+- 前端：React 18 + Vite + Mantine UI + TailwindCSS 4
+- 后端：Rust + Tauri 2.x
+- 通信：前端通过 `invoke()` 调用 Tauri commands
+- 运行平台：Windows / macOS / Linux
+
+**当前源码包含的核心模块**：
+- 账号管理：导入、导出、刷新、验证、分组、标签、远程删除
+- 登录认证：Google / GitHub Social OAuth，AWS IAM Identity Center（BuilderId / Enterprise）
+- Kiro 集成：切换账号、同步模型 / 代理 / MCP / Steering / Skills / Hooks / Custom Agents / Powers
+- 自动化能力：Token 自动刷新、余额不足自动换号、机器 ID 绑定与重置
+- 桌面端能力：Deep Link OAuth 回调、单实例、系统托盘、自动更新
+- 网关能力：内置 Kiro API Gateway，支持 Anthropic Messages、OpenAI Responses 与流式转发
+
+**数据存储位置**：
+- 应用数据：`~/.kiro-account-manager/`
+- Kiro 配置：`~/.kiro/`
+
 ---
 
 ## 💬 交流反馈
@@ -50,7 +72,7 @@
 | 🐧 **Linux** | x86_64 | AppImage | [KiroAccountManager_1.8.3_amd64.AppImage](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_amd64.AppImage) |
 | 🐧 **Linux** | x86_64 | DEB 包 | [KiroAccountManager_1.8.3_amd64.deb](https://github.com/hj01857655/kiro-account-manager/releases/download/v1.8.3/KiroAccountManager_1.8.3_amd64.deb) |
 
-> **macOS 样式说明**：若出现样式显示异常，请基于 `public` 分支源码自行调整（我没有 macOS 设备，无法复现与调试）。
+> **macOS 样式说明**：若出现样式显示异常，请基于当前仓库源码自行调整（我没有 macOS 设备，无法复现与调试）。
 
 **系统要求**：
 - **Windows**: Windows 10/11 (64-bit)，需要 [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) (Win11 已内置)
@@ -281,7 +303,7 @@
 
 ### 🌐 Kiro API 网关
 
-> **⚠️ 注意**：网关功能在 v1.8.3 之后开发，尚未正式发布。如需使用，请从 `public` 分支自行编译（见下方"自行编译"章节）。
+> **✅ 当前源码已包含网关页面与后端实现**。如需体验最新能力，请优先参考当前仓库代码与 Releases 页面，而不是旧分支说明。
 
 **协议支持**
 - Anthropic `POST /v1/messages`
@@ -353,16 +375,16 @@ A: v1.8.3+ 支持同版本覆盖升级，直接继续安装即可。如果仍有
 
 ## 🌿 分支说明
 
-- `public`：最新同步源码（默认分支，包含未发布的新功能）
-- `dev`：开发分支
-- `v1.5.1`：旧版本保留分支
-- `multilang`：多语言版本源码
+- `public`：公开源码分支，通常包含最新同步内容
+- `dev`：当前开发分支
+
+> 具体默认分支与发布节奏请以 GitHub 仓库页面为准。
 
 ---
 
 ## 📝 源码说明
 
-本仓库源码尽量持续同步更新，默认分支为 `public`；如仅需安装包，请前往 Releases。
+本仓库源码会持续同步更新；如仅需安装包，请前往 Releases。
 
 **⚠️ 本项目永久免费！如果有人向你收费，你被骗了！**
 
@@ -380,31 +402,33 @@ A: v1.8.3+ 支持同版本覆盖升级，直接继续安装即可。如果仍有
 
 **编译步骤**：
 ```bash
-# 1. 克隆仓库（默认 public 分支）
+# 1. 克隆仓库
 git clone https://github.com/hj01857655/kiro-account-manager.git
 cd kiro-account-manager
 
 # 2. 安装依赖
 npm install
 
-# 3. 开发模式运行（推荐：分开启动，更快）
-# 终端 1：启动 Vite 开发服务器（保持运行）
+# 3. 开发模式运行
+# 方式一：一键启动前端 + Tauri
+npm run tauri dev
+
+# 方式二：分开启动（调试前端/后端时更灵活）
+# 终端 1
 npm run dev
 
-# 终端 2：启动 Tauri 应用（可以快速重启）
+# 终端 2
 npm run dev:tauri
-
-# 或者：一键启动（较慢，每次都重启 Vite）
-npm run tauri dev
 
 # 4. 构建发行版
 npm run tauri build
 ```
 
 **开发提示**：
-- 分开启动可以避免每次重启 Tauri 时都重启 Vite（节省 15-20 秒）
-- Vite 服务器保持运行，只需重启 Rust 应用（2-3 秒）
-- 开发模式下点击关闭按钮会直接退出，生产模式会隐藏到托盘
+- `npm run tauri dev` 是仓库说明里的主开发命令
+- `npm run dev` + `npm run dev:tauri` 适合分别调试前端和桌面壳
+- 主窗口默认延迟显示，避免启动阶段白屏
+- 生产模式下支持系统托盘；关闭窗口后可能隐藏到托盘而不是直接退出
 
 构建产物位置：
 - Windows: `src-tauri/target/release/bundle/msi/`
@@ -421,6 +445,28 @@ npm run tauri build
   <img src="src/assets/donate/wechat.jpg" alt="微信" width="200">
   <img src="src/assets/donate/alipay.jpg" alt="支付宝" width="200">
 </p>
+
+---
+
+## 🗂️ 代码结构速览
+
+```text
+src/                  React 前端
+  components/         页面、弹窗、布局组件
+  contexts/           主题、设置、隐私、对话框等全局上下文
+  hooks/              自动刷新、自动换号等业务 Hook
+  api/                Tauri invoke 封装
+  utils/              业务工具函数
+
+src-tauri/src/        Rust + Tauri 后端
+  commands/           所有 Tauri commands
+  providers/          Social / IdC 认证提供者
+  gateway/            Kiro API Gateway
+  state.rs            全局应用状态
+  kiro.rs             Kiro 本地配置与账号切换
+  deep_link_handler.rs OAuth 回调与 deep link 处理
+  tray_behavior.rs    系统托盘行为
+```
 
 ---
 
@@ -442,4 +488,4 @@ npm run tauri build
 
 <p align="center">Made with ❤️ by hj01857655</p>
 
-<p align="center"><sub>最后更新：2026-04-05 | 版本：v1.8.3（发布于 2026-02-27）</sub></p>
+<p align="center"><sub>最后更新：2026-04-10 | 版本：v1.8.3</sub></p>

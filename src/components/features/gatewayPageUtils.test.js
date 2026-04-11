@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { formatGatewayAccountOptionLabel } from './gatewayPageUtils.js'
+import { buildGatewayBaseUrl, buildGatewayConnectHost, createGatewayFieldErrors, formatGatewayAccountOptionLabel } from './gatewayPageUtils.js'
 
 test('formatGatewayAccountOptionLabel prefers email over verbose label for current account display', () => {
   const label = formatGatewayAccountOptionLabel({
@@ -31,4 +31,30 @@ test('formatGatewayAccountOptionLabel falls back to userId only when email is mi
     }),
     '未知账号'
   )
+})
+
+test('createGatewayFieldErrors rejects unsupported host values', () => {
+  const errors = createGatewayFieldErrors({
+    host: 'bad host',
+    port: 8765,
+    apiKey: 'sk-test',
+    region: 'us-east-1',
+    accountMode: 'single',
+    accountId: 'account-1',
+    groupId: null,
+    allowedIpsText: '',
+  })
+
+  assert.equal(errors.host, '监听地址必须是 localhost、IPv4 或 IPv6 地址')
+})
+
+test('buildGatewayConnectHost maps wildcard binds to a usable client host', () => {
+  assert.equal(buildGatewayConnectHost('0.0.0.0', true), '127.0.0.1')
+  assert.equal(buildGatewayConnectHost('0.0.0.0', false), 'localhost')
+  assert.equal(buildGatewayConnectHost('::', false), 'localhost')
+})
+
+test('buildGatewayBaseUrl brackets ipv6 addresses for clients', () => {
+  assert.equal(buildGatewayBaseUrl('::1', 8765, true), 'http://[::1]:8765')
+  assert.equal(buildGatewayBaseUrl('0.0.0.0', 8765, false), 'http://localhost:8765')
 })

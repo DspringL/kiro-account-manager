@@ -34,6 +34,19 @@ const isValidIpv6Address = (value) => {
   }
 }
 
+const isValidGatewayHost = (value) => {
+  const host = String(value || '').trim()
+  if (!host) {
+    return false
+  }
+
+  if (host === 'localhost' || host === '0.0.0.0' || host === '::' || host === '::1') {
+    return true
+  }
+
+  return isValidIpv4Address(host) || isValidIpv6Address(host)
+}
+
 const isValidAllowlistEntry = (value) => {
   const entry = String(value || '').trim()
   if (!entry) {
@@ -62,6 +75,26 @@ const isValidAllowlistEntry = (value) => {
   }
 
   return false
+}
+
+export const buildGatewayConnectHost = (host, localOnly) => {
+  const value = String(host || '').trim()
+  if (!value) {
+    return '127.0.0.1'
+  }
+
+  if (value === '0.0.0.0' || value === '::') {
+    return localOnly ? '127.0.0.1' : 'localhost'
+  }
+
+  return value
+}
+
+export const buildGatewayBaseUrl = (host, port, localOnly) => {
+  const connectHost = buildGatewayConnectHost(host, localOnly)
+  const needsBrackets = connectHost.includes(':') && !connectHost.startsWith('[')
+  const normalizedHost = needsBrackets ? `[${connectHost}]` : connectHost
+  return `http://${normalizedHost}:${Number(port) || 8765}`
 }
 
 export const applyGatewayLocalOnlyChange = (config, nextLocalOnly, createApiKey) => {
@@ -96,6 +129,8 @@ export const createGatewayFieldErrors = (config) => {
 
   if (!host) {
     errors.host = '监听地址不能为空'
+  } else if (!isValidGatewayHost(host)) {
+    errors.host = '监听地址必须是 localhost、IPv4 或 IPv6 地址'
   }
 
   if (!Number.isInteger(port) || port < 1 || port > 65535) {

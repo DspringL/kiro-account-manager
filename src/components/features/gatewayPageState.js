@@ -23,6 +23,7 @@ export const DEFAULT_GATEWAY_STATUS = {
   port: 8765,
   requestCount: 0,
   lastError: null,
+  runtimeConfig: null,
 }
 
 export const buildGatewayConfigSnapshot = (config) => JSON.stringify({
@@ -82,6 +83,7 @@ export const buildGatewayStatusState = (gatewayStatus, gatewayConfig, fallbackCo
   port: gatewayStatus?.port || gatewayConfig?.port || fallbackConfig.port,
   requestCount: gatewayStatus?.requestCount || 0,
   lastError: gatewayStatus?.lastError || null,
+  runtimeConfig: gatewayStatus?.runtimeConfig ? hydrateGatewayConfig(gatewayStatus.runtimeConfig) : null,
 })
 
 export const buildGatewayPayload = (config) => ({

@@ -64,6 +64,7 @@ pub fn normalize_anthropic_request(request: &AnthropicMessagesRequest) -> Normal
         stop: request.stop_sequences.clone(),
         tools,
         tool_choice: request.tool_choice.clone(),
+        previous_response_id: None,
     }
 }
 
@@ -131,6 +132,12 @@ pub fn normalize_responses_request(payload: &Value) -> Result<NormalizedRequest,
         }),
         tools: convert_responses_tools(payload.get("tools")),
         tool_choice: payload.get("tool_choice").cloned(),
+        previous_response_id: payload
+            .get("previous_response_id")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string),
     })
 }
 
@@ -257,7 +264,10 @@ pub async fn build_kiro_payload(
     profile_arn: Option<String>,
 ) -> Result<KiroPayload, String> {
     let model_id = get_internal_model_id(&request.model)?;
-    let conversation_id = Uuid::new_v4().to_string();
+    let conversation_id = request
+        .previous_response_id
+        .clone()
+        .unwrap_or_else(|| Uuid::new_v4().to_string());
     let inference_config = build_inference_config(request);
     let (processed_tools, tool_docs) = process_tools_with_long_descriptions(&request.tools);
     let tool_docs_for_current = tool_docs.clone();
@@ -320,6 +330,7 @@ pub async fn build_kiro_payload(
                             images: images_option(images),
                             user_input_message_context: build_user_context(
                                 None,
+                                None,
                                 extract_tool_results(message.content.as_ref()),
                             ),
                             inference_config: inference_config.clone(),
@@ -339,6 +350,7 @@ pub async fn build_kiro_payload(
                             origin: "AI_EDITOR".to_string(),
                             images: None,
                             user_input_message_context: build_user_context(
+                                None,
                                 None,
                                 extract_tool_results_from_tool_message(message),
                             ),
@@ -397,6 +409,7 @@ pub async fn build_kiro_payload(
                     images: images_option(current_images),
                     user_input_message_context: build_user_context(
                         convert_tools(&processed_tools),
+                        normalize_tool_choice(&request.tool_choice, &processed_tools)?,
                         current_tool_results,
                     ),
                     inference_config,
@@ -828,14 +841,16 @@ fn merge_adjacent_messages(messages: &[&NormalizedMessage]) -> Vec<NormalizedMes
 
 fn build_user_context(
     tools: Option<Vec<KiroTool>>,
+    tool_choice: Option<Value>,
     tool_results: Vec<KiroToolResult>,
 ) -> Option<UserInputMessageContext> {
-    if tools.is_none() && tool_results.is_empty() {
+    if tools.is_none() && tool_choice.is_none() && tool_results.is_empty() {
         return None;
     }
 
     Some(UserInputMessageContext {
         tools,
+        tool_choice,
         tool_results: if tool_results.is_empty() {
             None
         } else {
@@ -860,6 +875,61 @@ fn extract_text_content(content: Option<&Value>) -> String {
             extract_text_blocks(value, &["text", "input_text", "output_text"])
         }
         Some(other) => other.to_string(),
+    }
+}
+
+pub fn normalized_user_message_from_text(text: &str) -> NormalizedMessage {
+    NormalizedMessage {
+        role: "user".to_string(),
+        content: Some(Value::String(text.to_string())),
+        tool_calls: None,
+        tool_call_id: None,
+        metadata: None,
+    }
+}
+
+pub fn normalized_tool_message_from_output(tool_call_id: &str, output: &str) -> NormalizedMessage {
+    NormalizedMessage {
+        role: "tool".to_string(),
+        content: Some(Value::String(output.to_string())),
+        tool_calls: None,
+        tool_call_id: Some(tool_call_id.to_string()),
+        metadata: None,
+    }
+}
+
+pub fn history_assistant_message_from_response_content(
+    content: &str,
+    tool_calls: &[(String, String, String)],
+) -> HistoryAssistantMessage {
+    let tool_uses = if tool_calls.is_empty() {
+        None
+    } else {
+        Some(
+            tool_calls
+                .iter()
+                .map(|(id, name, arguments)| KiroToolUse {
+                    name: name.clone(),
+                    input: serde_json::from_str(arguments).unwrap_or_else(|_| json!({})),
+                    tool_use_id: id.clone(),
+                })
+                .collect(),
+        )
+    };
+
+    HistoryAssistantMessage {
+        content: if content.trim().is_empty() {
+            "I understand.".to_string()
+        } else {
+            content.to_string()
+        },
+        tool_uses,
+        reasoning_content: None,
+        references: None,
+        supplementary_web_links: None,
+        followup_prompt: None,
+        message_id: None,
+        cache_point: None,
     }
 }
 
@@ -1311,6 +1381,60 @@ fn extract_tool_uses(message: &NormalizedMessage) -> Option<Vec<KiroToolUse>> {
     }
 }
 
+fn normalize_tool_choice(
+    tool_choice: &Option<Value>,
+    tools: &Option<Vec<Tool>>,
+) -> Result<Option<Value>, String> {
+    let Some(choice) = tool_choice.as_ref() else {
+        return Ok(None);
+    };
+
+    let choice_type = match choice {
+        Value::String(raw) => raw.trim(),
+        Value::Object(_) => choice
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .ok_or_else(|| "tool_choice.type 无效".to_string())?,
+        _ => return Err("tool_choice 格式无效".to_string()),
+    };
+
+    match choice_type {
+        "auto" => Ok(Some(json!({ "type": "auto" }))),
+        "none" => Ok(Some(json!({ "type": "none" }))),
+        "required" => {
+            if tools.as_ref().is_none_or(|items| items.is_empty()) {
+                return Err("tool_choice=required 时必须同时提供 tools".to_string());
+            }
+            Ok(Some(json!({ "type": "required" })))
+        }
+        "function" => {
+            let name = choice
+                .get("name")
+                .or_else(|| choice.pointer("/function/name"))
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| "tool_choice.function.name 不能为空".to_string())?;
+
+            let tool_exists = tools
+                .as_ref()
+                .map(|items| items.iter().any(|tool| tool.function.name == name))
+                .unwrap_or(false);
+            if !tool_exists {
+                return Err(format!("tool_choice 指定的工具不存在: {name}"));
+            }
+
+            Ok(Some(json!({
+                "type": "function",
+                "name": name
+            })))
+        }
+        other => Err(format!("暂不支持的 tool_choice.type: {other}")),
+    }
+}
+
+
 fn convert_tools(tools: &Option<Vec<Tool>>) -> Option<Vec<KiroTool>> {
     tools.as_ref().map(|items| {
         items
@@ -1697,6 +1821,7 @@ mod tests {
                 web_search: None,
             }]),
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(
@@ -1764,6 +1889,7 @@ mod tests {
             stop: None,
             tools: None,
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(&Client::new(), &request, None)
@@ -1798,6 +1924,7 @@ mod tests {
             stop: None,
             tools: None,
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(&Client::new(), &request, None)
@@ -1996,6 +2123,123 @@ mod tests {
         );
     }
 
+
+    #[tokio::test]
+    async fn build_kiro_payload_preserves_responses_tool_choice() {
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-5-20250929".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!("hello")),
+                tool_calls: None,
+                tool_call_id: None,
+                metadata: None,
+            }],
+            stream: false,
+            max_tokens: Some(1024),
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: Some(vec![Tool {
+                tool_type: "function".to_string(),
+                function: crate::gateway::models::ToolFunction {
+                    name: "search_docs".to_string(),
+                    description: Some("搜索文档".to_string()),
+                    parameters: Some(json!({
+                        "type": "object",
+                        "properties": { "q": { "type": "string" } }
+                    })),
+                },
+                web_search: None,
+            }]),
+            tool_choice: Some(json!({ "type": "function", "name": "search_docs" })),
+            previous_response_id: None,
+        };
+
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
+
+        assert_eq!(
+            payload
+                .conversation_state
+                .current_message
+                .user_input_message
+                .user_input_message_context
+                .as_ref()
+                .and_then(|context| context.tool_choice.as_ref())
+                .cloned(),
+            Some(json!({ "type": "function", "name": "search_docs" }))
+        );
+    }
+
+    #[tokio::test]
+    async fn build_kiro_payload_reuses_previous_response_id_as_conversation_id() {
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-5-20250929".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!("继续")),
+                tool_calls: None,
+                tool_call_id: None,
+                metadata: None,
+            }],
+            stream: false,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: None,
+            tool_choice: None,
+            previous_response_id: Some("resp_prev_123".to_string()),
+        };
+
+        let payload = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect("payload should build");
+
+        assert_eq!(payload.conversation_state.conversation_id, "resp_prev_123");
+    }
+
+    #[tokio::test]
+    async fn build_kiro_payload_rejects_unknown_tool_choice_function() {
+        let request = NormalizedRequest {
+            model: "claude-sonnet-4-5-20250929".to_string(),
+            messages: vec![NormalizedMessage {
+                role: "user".to_string(),
+                content: Some(json!("hello")),
+                tool_calls: None,
+                tool_call_id: None,
+                metadata: None,
+            }],
+            stream: false,
+            max_tokens: Some(1024),
+            temperature: None,
+            top_p: None,
+            stop: None,
+            tools: Some(vec![Tool {
+                tool_type: "function".to_string(),
+                function: crate::gateway::models::ToolFunction {
+                    name: "search_docs".to_string(),
+                    description: Some("搜索文档".to_string()),
+                    parameters: Some(json!({
+                        "type": "object",
+                        "properties": { "q": { "type": "string" } }
+                    })),
+                },
+                web_search: None,
+            }]),
+            tool_choice: Some(json!({ "type": "function", "name": "missing_tool" })),
+            previous_response_id: None,
+        };
+
+        let error = build_kiro_payload(&Client::new(), &request, None)
+            .await
+            .expect_err("unknown tool choice should fail");
+
+        assert!(error.contains("tool_choice 指定的工具不存在"));
+    }
+
     #[tokio::test]
     async fn build_kiro_payload_extracts_base64_images() {
         let request = NormalizedRequest {
@@ -2027,6 +2271,7 @@ mod tests {
             stop: None,
             tools: None,
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(&Client::new(), &request, None)
@@ -2115,6 +2360,7 @@ mod tests {
             stop: None,
             tools: None,
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(&Client::new(), &request, None)
@@ -2160,6 +2406,7 @@ mod tests {
             stop: None,
             tools: None,
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(&Client::new(), &request, None)
@@ -2239,6 +2486,7 @@ mod tests {
             stop: None,
             tools: None,
             tool_choice: None,
+            previous_response_id: None,
         };
 
         let payload = build_kiro_payload(&Client::new(), &request, None)
