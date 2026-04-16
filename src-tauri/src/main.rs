@@ -23,10 +23,12 @@ mod hooks;
 mod powers;
 mod process;
 mod providers;
+mod services;
 mod skills;
 mod state;
 mod steering;
 mod tray_behavior;
+mod types;
 
 use account::{AccountStore, GroupTagStore};
 use auth::AuthState;
