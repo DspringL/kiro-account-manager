@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "KiroAccountManager",
-  "version": "1.8.3",
-  "identifier": "com.kiro.account-manager",
+  "productName": "KiroAccountManager-Dev",
+  "version": "1.8.3-dev",
+  "identifier": "com.kiro.account-manager.dev",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1421",
     "frontendDist": "../dist"
   },
   "app": {
@@ -16,7 +16,7 @@
         "fullscreen": false,
         "height": 820,
         "resizable": true,
-        "title": "Kiro Account Manager",
+        "title": "Kiro Account Manager (Dev)",
         "width": 1400,
         "minWidth": 1200,
         "minHeight": 700,
@@ -46,7 +46,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["kiro-account-manager"]
+        "schemes": ["kiro-account-manager-dev"]
       }
     },
     "updater": {

@@ -18,8 +18,9 @@ export default function AutoRegister() {
   const [tempMailPassword, setTempMailPassword] = useState(
     localStorage.getItem('tempMailPassword') || ''
   )
-  const [proxyUrl, setProxyUrl] = useState(
-    localStorage.getItem('autoRegisterProxyUrl') || ''
+  // AWS 账号密码（可选）
+  const [accountPassword, setAccountPassword] = useState(
+    localStorage.getItem('accountPassword') || ''
   )
 
   // 注册状态
@@ -31,6 +32,42 @@ export default function AutoRegister() {
   // Camoufox 状态
   const [camoufoxInstalled, setCamoufoxInstalled] = useState(null)
   const [checkingCamoufox, setCheckingCamoufox] = useState(false)
+  const [installingCamoufox, setInstallingCamoufox] = useState(false)
+
+  // 添加日志（需要先定义，因为其他函数会用到）
+  const addLog = useCallback((message) => {
+    setLogs((prev) => [...prev, message])
+  }, [])
+
+  // 清空日志
+  const clearLogs = useCallback(() => {
+    setLogs([])
+  }, [])
+
+  // 安装 Camoufox
+  const installCamoufox = useCallback(async () => {
+    setInstallingCamoufox(true)
+    addLog('开始安装 Camoufox...')
+    
+    try {
+      // 监听安装日志
+      const unlisten = await listen('camoufox-install-log', (event) => {
+        addLog(event.payload)
+      })
+      
+      const result = await invoke('install_camoufox')
+      addLog(result)
+      setCamoufoxInstalled(true)
+      showSuccess('Camoufox 安装成功')
+      
+      unlisten()
+    } catch (error) {
+      addLog(`✗ 安装失败: ${error}`)
+      showError(`安装 Camoufox 失败: ${error}`)
+    } finally {
+      setInstallingCamoufox(false)
+    }
+  }, [addLog])
 
   // 检查 Camoufox 是否已安装
   const checkCamoufox = useCallback(async () => {
@@ -49,7 +86,7 @@ export default function AutoRegister() {
     } finally {
       setCheckingCamoufox(false)
     }
-  }, [])
+  }, [addLog])
 
   // 监听实时日志
   useEffect(() => {
@@ -61,29 +98,21 @@ export default function AutoRegister() {
     return () => {
       unlisten.then((fn) => fn())
     }
-  }, [])
+  }, [addLog])
 
   // 自动滚动到日志底部
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  // 添加日志
-  const addLog = useCallback((message) => {
-    setLogs((prev) => [...prev, message])
-  }, [])
-
-  // 清空日志
-  const clearLogs = useCallback(() => {
-    setLogs([])
-  }, [])
-
   // 保存配置
   const saveConfig = useCallback(() => {
     localStorage.setItem('tempMailApiUrl', tempMailApiUrl)
     localStorage.setItem('tempMailPassword', tempMailPassword)
-    localStorage.setItem('autoRegisterProxyUrl', proxyUrl)
-  }, [tempMailApiUrl, tempMailPassword, proxyUrl])
+    if (accountPassword) {
+      localStorage.setItem('accountPassword', accountPassword)
+    }
+  }, [tempMailApiUrl, tempMailPassword, accountPassword])
 
   // 单次注册
   const registerOnce = async () => {
@@ -92,7 +121,7 @@ export default function AutoRegister() {
         params: {
           temp_mail_api_url: tempMailApiUrl,
           temp_mail_password: tempMailPassword,
-          proxy_url: proxyUrl || null,
+          account_password: accountPassword || null,  // 可选的 AWS 账号密码
         },
       })
 
@@ -183,17 +212,36 @@ export default function AutoRegister() {
               className={`px-4 py-2 rounded-lg ${colors.card} border ${colors.cardBorder} ${colors.cardHover} flex items-center gap-2`}
             >
               <Settings size={16} />
-              检查 Camoufox
+              检查环境
             </button>
           ) : camoufoxInstalled ? (
             <div className="px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-2 text-green-500">
               <CheckCircle size={16} />
-              Camoufox 已安装
+              环境正常
             </div>
           ) : (
-            <div className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-500">
-              <XCircle size={16} />
-              Camoufox 未安装
+            <div className="flex gap-2">
+              <div className="px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-red-500">
+                <XCircle size={16} />
+                环境异常
+              </div>
+              {installingCamoufox ? (
+                <button
+                  disabled
+                  className="px-4 py-2 rounded-lg bg-blue-500 text-white flex items-center gap-2"
+                >
+                  <Loader2 size={16} className="animate-spin" />
+                  安装中...
+                </button>
+              ) : (
+                <button
+                  onClick={installCamoufox}
+                  className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 flex items-center gap-2"
+                >
+                  <Settings size={16} />
+                  一键修复
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -232,12 +280,15 @@ export default function AutoRegister() {
           </div>
 
           <div className="space-y-2">
-            <label className={`text-sm font-medium ${colors.text}`}>代理地址 (可选)</label>
+            <label className={`text-sm font-medium ${colors.text}`}>
+              AWS 账号密码 (可选)
+              <span className={`text-xs ${colors.textMuted} ml-2`}>留空使用默认密码</span>
+            </label>
             <input
-              type="text"
-              value={proxyUrl}
-              onChange={(e) => setProxyUrl(e.target.value)}
-              placeholder="http://127.0.0.1:7890"
+              type="password"
+              value={accountPassword}
+              onChange={(e) => setAccountPassword(e.target.value)}
+              placeholder="留空使用默认密码 Alisi1976230!"
               disabled={isRegistering}
               className={`w-full px-3 py-2 border rounded-lg ${colors.input} ${colors.inputFocus} ${colors.text}`}
             />
@@ -345,12 +396,14 @@ export default function AutoRegister() {
         </div>
         <div className={`text-sm ${colors.textMuted} space-y-2`}>
           <p>1. 填写临时邮箱 API 地址和 Admin 密码（配置后自动保存）</p>
-          <p>2. 设置注册数量，点击"开始注册"</p>
-          <p>3. 程序自动完成：创建临时邮箱 → AWS 注册 → 获取验证码 → 导入账号 → 清理邮箱</p>
-          <p>4. 注册成功的账号会自动添加到账号管理器</p>
+          <p>2. （可选）设置 AWS 账号密码，留空使用默认密码</p>
+          <p>3. 设置注册数量，点击"开始注册"</p>
+          <p>4. 程序自动完成：创建临时邮箱 → AWS 注册 → 获取验证码 → 导入账号 → 清理邮箱</p>
+          <p>5. 注册成功的账号会自动添加到账号管理器</p>
+          <p>6. 代理设置使用 Kiro IDE 设置中的代理配置</p>
           <p className="text-yellow-500 flex items-center gap-1 pt-2">
             <AlertCircle size={16} />
-            首次使用需安装 Camoufox: <code className="bg-muted px-1 rounded">cd src-tauri/scripts && ./setup.sh</code>
+            首次使用需检查环境，如果环境异常可点击"一键修复"自动安装 Camoufox
           </p>
         </div>
       </div>

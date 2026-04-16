@@ -58,7 +58,7 @@ async def wait_and_click(page, selector: str, description: str, timeout: int = 3
         return False
 
 
-async def register_aws(email: str, verification_code: str, proxy_url: str = None):
+async def register_aws(email: str, verification_code: str, proxy_url: str = None, account_password: str = None):
     """使用 Camoufox 注册 AWS Builder ID"""
     
     if not CAMOUFOX_AVAILABLE:
@@ -67,7 +67,9 @@ async def register_aws(email: str, verification_code: str, proxy_url: str = None
             "error": "Camoufox 未安装"
         }
     
-    password = "admin123456aA!"
+    # 使用自定义密码或默认密码
+    password = account_password if account_password else "Alisi1976230!"
+    log(f'使用密码: {password}')
     
     # 生成随机姓名
     import random
@@ -164,10 +166,17 @@ async def register_aws(email: str, verification_code: str, proxy_url: str = None
                 log('\n步骤4: 等待验证码输入框...', email)
                 code_selector = 'input[placeholder="6 位数"]'
                 try:
-                    await page.wait_for_selector(code_selector, timeout=30000)
+                    await page.wait_for_selector(code_selector, timeout=60000)
                     log('✓ 验证码输入框已出现', email)
-                except:
-                    return {"success": False, "error": "未找到验证码输入框"}
+                except Exception as e:
+                    log(f'⚠ 未找到验证码输入框: {e}', email)
+                    # 尝试其他选择器
+                    try:
+                        await page.wait_for_selector('input[type="text"]', timeout=10000)
+                        log('✓ 找到文本输入框，尝试使用', email)
+                        code_selector = 'input[type="text"]'
+                    except:
+                        return {"success": False, "error": "未找到验证码输入框"}
                 await asyncio.sleep(1)
                 
                 # 输入验证码
@@ -181,11 +190,34 @@ async def register_aws(email: str, verification_code: str, proxy_url: str = None
                 
                 # 输入密码
                 log('\n步骤5: 输入密码...', email)
-                if not await wait_and_fill(page, 'input[placeholder="Enter password"]', password, '密码输入框'):
+                password_selector = 'input[placeholder="Enter password"]'
+                try:
+                    await page.wait_for_selector(password_selector, timeout=30000)
+                except:
+                    # 尝试其他选择器
+                    try:
+                        await page.wait_for_selector('input[type="password"]', timeout=10000)
+                        password_selector = 'input[type="password"]'
+                    except:
+                        return {"success": False, "error": "未找到密码输入框"}
+                
+                if not await wait_and_fill(page, password_selector, password, '密码输入框'):
                     return {"success": False, "error": "未找到密码输入框"}
                 await asyncio.sleep(0.5)
                 
-                if not await wait_and_fill(page, 'input[placeholder="Re-enter password"]', password, '确认密码输入框'):
+                confirm_password_selector = 'input[placeholder="Re-enter password"]'
+                try:
+                    await page.wait_for_selector(confirm_password_selector, timeout=10000)
+                except:
+                    # 尝试其他选择器
+                    try:
+                        inputs = await page.query_selector_all('input[type="password"]')
+                        if len(inputs) >= 2:
+                            confirm_password_selector = 'input[type="password"]:nth-of-type(2)'
+                    except:
+                        pass
+                
+                if not await wait_and_fill(page, confirm_password_selector, password, '确认密码输入框'):
                     return {"success": False, "error": "未找到确认密码输入框"}
                 await asyncio.sleep(1)
                 
@@ -278,6 +310,7 @@ async def main():
     email = input_data.get("email")
     verification_code = input_data.get("verification_code")
     proxy_url = input_data.get("proxy_url")
+    account_password = input_data.get("account_password")  # 可选的 AWS 账号密码
     
     if not email or not verification_code:
         print(json.dumps({
@@ -286,7 +319,7 @@ async def main():
         }), flush=True)
         sys.exit(1)
     
-    result = await register_aws(email, verification_code, proxy_url)
+    result = await register_aws(email, verification_code, proxy_url, account_password)
     
     # 输出最终结果
     print(json.dumps({

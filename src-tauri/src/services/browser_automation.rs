@@ -42,18 +42,21 @@ impl BrowserAutomation {
     /// - email: 邮箱地址
     /// - verification_code: 验证码
     /// - proxy_url: 可选的代理地址
+    /// - account_password: 可选的 AWS 账号密码（留空使用默认密码）
     /// - app_handle: Tauri 应用句柄，用于发送实时日志
     pub async fn register_with_tempmail(
         &self,
         email: &str,
         verification_code: &str,
         proxy_url: Option<&str>,
+        account_password: Option<&str>,
         app_handle: Option<&tauri::AppHandle>,
     ) -> Result<Value, String> {
         let input = json!({
             "email": email,
             "verification_code": verification_code,
-            "proxy_url": proxy_url
+            "proxy_url": proxy_url,
+            "account_password": account_password
         });
 
         let mut child = Command::new(&self.python_path)

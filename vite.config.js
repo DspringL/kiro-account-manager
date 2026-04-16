@@ -13,7 +13,7 @@ export default defineConfig({
   },
   clearScreen: false,
   server: {
-    port: 1420,
+    port: 1421,  // 使用不同的端口避免与已安装版本冲突
     strictPort: true,
     // 优化开发服务器性能
     hmr: {
