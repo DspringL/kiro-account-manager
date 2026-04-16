@@ -1,4 +1,4 @@
-use crate::services::{browser_automation::BrowserAutomation, tempmail_api::TempMailApi};
+use crate::services::{browser_automation::BrowserAutomation, tempmail_api::TempMailApi, sso_token_converter};
 use crate::types::register::{RegisterResult, TempMailConfig};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
@@ -120,10 +120,6 @@ pub async fn auto_register_with_tempmail(
                 .get("sso_token")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
-            let refresh_token = result
-                .get("refresh_token")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
             let name = result
                 .get("name")
                 .and_then(|v| v.as_str())
@@ -134,6 +130,24 @@ pub async fn auto_register_with_tempmail(
                 .map(|s| s.to_string());
 
             emit_log("\n========== 注册成功! ==========".to_string());
+
+            // 7. 尝试将 SSO Token 转换为 refresh_token
+            let mut refresh_token = None;
+            if let Some(ref token) = sso_token {
+                emit_log("\n步骤7: 转换 SSO Token 为 refresh_token...".to_string());
+                match sso_token_converter::convert_sso_token_with_fallback(token).await {
+                    Ok(convert_result) => {
+                        emit_log(format!("✓ 成功获取 refresh_token!"));
+                        refresh_token = Some(convert_result.refresh_token);
+                    }
+                    Err(e) => {
+                        emit_log(format!("⚠ 转换失败: {}", e));
+                        emit_log("将使用 SSO Token 作为 refresh_token 尝试导入".to_string());
+                        // 如果转换失败,使用 SSO Token 作为 fallback
+                        refresh_token = sso_token.clone();
+                    }
+                }
+            }
 
             return Ok(RegisterResult {
                 success: true,
