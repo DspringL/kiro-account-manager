@@ -120,6 +120,10 @@ pub async fn auto_register_with_tempmail(
                 .get("sso_token")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string());
+            let refresh_token = result
+                .get("refresh_token")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
             let name = result
                 .get("name")
                 .and_then(|v| v.as_str())
@@ -134,6 +138,7 @@ pub async fn auto_register_with_tempmail(
             return Ok(RegisterResult {
                 success: true,
                 sso_token,
+                refresh_token,
                 name,
                 email,
                 error: None,

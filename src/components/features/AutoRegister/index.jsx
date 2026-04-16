@@ -99,12 +99,14 @@ export default function AutoRegister() {
       if (result.success) {
         setStats((prev) => ({ ...prev, success: prev.success + 1 }))
         
-        // 使用 SSO Token 导入账号
-        if (result.sso_token) {
+        // 使用 refresh_token 导入账号
+        if (result.refresh_token) {
           try {
-            await invoke('import_from_sso_token', {
-              bearerToken: result.sso_token,
-              region: 'us-east-1',
+            await invoke('add_account_by_social', {
+              refreshToken: result.refresh_token,
+              provider: 'BuilderId',
+              machineId: null,
+              accessToken: null,
             })
             showSuccess(`账号 ${result.email} 注册成功并已导入`)
           } catch (error) {
