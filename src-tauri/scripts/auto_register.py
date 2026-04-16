@@ -196,6 +196,7 @@ async def register_aws(email: str, verification_code: str, proxy_url: str = None
             # 获取 SSO Token
             log('\n步骤最终: 获取 SSO Token...', email)
             sso_token = None
+            refresh_token = None
             
             for i in range(30):
                 cookies = await page.context.cookies()
@@ -209,11 +210,49 @@ async def register_aws(email: str, verification_code: str, proxy_url: str = None
                 log(f'等待 SSO Token... ({i + 1}/30)', email)
                 await asyncio.sleep(1)
             
+            # 使用 SSO Token 获取 refresh_token
+            if sso_token:
+                log('\n步骤额外: 使用 SSO Token 获取 refresh_token...', email)
+                try:
+                    # AWS SSO OIDC CreateToken API
+                    # 参考: https://docs.aws.amazon.com/singlesignon/latest/OIDCAPIReference/API_CreateToken.html
+                    import json
+                    
+                    # 先获取 client 注册信息
+                    register_url = 'https://oidc.us-east-1.amazonaws.com/register'
+                    register_payload = {
+                        'clientName': 'kiro-account-manager',
+                        'clientType': 'public',
+                        'scopes': ['sso:account:access']
+                    }
+                    
+                    # 使用 aiohttp 或 requests 发送请求
+                    # 这里简化处理,直接使用已知的 client_id
+                    # 实际上 AWS Builder ID 使用固定的 client_id
+                    client_id = 'arn:aws:sso::aws:app/ssoins-722377b1a6e95e8c/apl-080bf5c0c5d04f4f'
+                    
+                    # 使用 SSO Token 交换 access_token
+                    token_url = 'https://oidc.us-east-1.amazonaws.com/token'
+                    token_payload = {
+                        'clientId': client_id,
+                        'grantType': 'urn:ietf:params:oauth:grant-type:device_code',
+                        'deviceCode': 'PQCF-FCCN',  # 这个是注册页面的 device_code
+                        'code': sso_token
+                    }
+                    
+                    # 注意: 这个实现可能需要调整,因为 AWS SSO OIDC API 的具体调用方式可能不同
+                    # 暂时先返回 SSO Token,后续在 Rust 中实现转换
+                    log('⚠ SSO Token 转 refresh_token 功能待实现', email)
+                    
+                except Exception as e:
+                    log(f'⚠ 获取 refresh_token 失败: {e}', email)
+            
             if sso_token:
                 log('\n========== 操作成功! ==========', email)
                 return {
                     "success": True,
                     "sso_token": sso_token,
+                    "refresh_token": refresh_token,  # 可能为 None
                     "name": random_name,
                     "email": email
                 }

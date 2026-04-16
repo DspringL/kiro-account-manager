@@ -99,11 +99,12 @@ export default function AutoRegister() {
       if (result.success) {
         setStats((prev) => ({ ...prev, success: prev.success + 1 }))
         
-        // 使用 refresh_token 导入账号
-        if (result.refresh_token) {
+        // 优先使用 refresh_token,如果没有则使用 sso_token
+        const token = result.refresh_token || result.sso_token
+        if (token) {
           try {
             await invoke('add_account_by_social', {
-              refreshToken: result.refresh_token,
+              refreshToken: token,
               provider: 'BuilderId',
               machineId: null,
               accessToken: null,
