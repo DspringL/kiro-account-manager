@@ -459,19 +459,29 @@ pub struct AccountStore {
 impl AccountStore {
     pub fn new() -> Self {
         let file_path = Self::get_storage_path();
-        let accounts = Self::load_from_file(&file_path);
-        let mut store = Self {
-            accounts,
+        // 延迟加载：初始化时不加载账号，等到第一次使用时再加载
+        let store = Self {
+            accounts: Vec::new(),
             file_path,
         };
-
-        if store.normalize_in_place() {
-            if let Err(error) = store.try_save_to_file() {
-                eprintln!("[AccountStore] 规范化账号文件回写失败: {error}");
+        store
+    }
+    
+    /// 确保账号已加载（延迟加载）
+    fn ensure_loaded(&mut self) {
+        if self.accounts.is_empty() {
+            let accounts = Self::load_from_file(&self.file_path);
+            if !accounts.is_empty() {
+                eprintln!("[AccountStore] 延迟加载 {} 个账号", accounts.len());
+                self.accounts = accounts;
+                
+                if self.normalize_in_place() {
+                    if let Err(error) = self.try_save_to_file() {
+                        eprintln!("[AccountStore] 规范化账号文件回写失败: {error}");
+                    }
+                }
             }
         }
-
-        store
     }
 
     fn get_storage_path() -> PathBuf {
@@ -488,7 +498,7 @@ impl AccountStore {
         if let Ok(content) = std::fs::read_to_string(path) {
             match serde_json::from_str::<Vec<Account>>(&content) {
                 Ok(accounts) => {
-                    eprintln!("[AccountStore] 成功加载 {} 个账号", accounts.len());
+                    // 移除启动时的日志，只在延迟加载时打印
                     accounts
                 }
                 Err(e) => {
@@ -498,7 +508,7 @@ impl AccountStore {
                 }
             }
         } else {
-            eprintln!("[AccountStore] 无法读取文件: {}", path.display());
+            // 文件不存在时不打印日志
             Vec::new()
         }
     }
@@ -530,7 +540,8 @@ impl AccountStore {
         }
     }
 
-    pub fn get_all(&self) -> Vec<Account> {
+    pub fn get_all(&mut self) -> Vec<Account> {
+        self.ensure_loaded();
         self.accounts.clone()
     }
 
@@ -547,6 +558,7 @@ impl AccountStore {
     }
 
     pub fn delete(&mut self, id: &str) -> Result<bool, String> {
+        self.ensure_loaded();
         let len_before = self.accounts.len();
         self.accounts.retain(|a| a.id != id);
         let deleted = self.accounts.len() < len_before;
@@ -557,6 +569,7 @@ impl AccountStore {
     }
 
     pub fn delete_many(&mut self, ids: &[String]) -> Result<usize, String> {
+        self.ensure_loaded();
         let len_before = self.accounts.len();
         self.accounts.retain(|a| !ids.contains(&a.id));
         let deleted = len_before - self.accounts.len();
@@ -567,6 +580,7 @@ impl AccountStore {
     }
 
     pub fn import_from_json(&mut self, json: &str) -> Result<usize, String> {
+        self.ensure_loaded();
         match serde_json::from_str::<Vec<Account>>(json) {
             Ok(imported) => {
                 let mut added = 0;

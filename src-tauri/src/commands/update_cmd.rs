@@ -78,7 +78,7 @@ fn extract_http_proxy_from_json(json: &serde_json::Value) -> Option<String> {
 }
 
 /// 获取 Kiro IDE 设置中的代理
-fn get_proxy_from_kiro_settings() -> Option<String> {
+pub fn get_proxy_from_kiro_settings() -> Option<String> {
     #[cfg(target_os = "windows")]
     let path = std::env::var("APPDATA").ok().map(|appdata| {
         std::path::PathBuf::from(appdata)

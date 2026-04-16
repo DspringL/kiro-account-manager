@@ -53,7 +53,7 @@ use commands::auth_cmd::{
     cancel_kiro_login, get_current_user, get_supported_providers, handle_kiro_social_callback,
     kiro_login, logout,
 };
-use commands::auto_register_cmd::{auto_register_with_tempmail, check_camoufox_installed};
+use commands::auto_register_cmd::{auto_register_with_tempmail, check_camoufox_installed, install_camoufox};
 use commands::gateway_cmd::{
     clear_gateway_request_logs, get_gateway_config, get_gateway_log_dir, get_gateway_request_logs,
     get_gateway_status, open_gateway_log_dir, save_gateway_config, start_gateway, stop_gateway,
@@ -416,6 +416,7 @@ fn main() {
             check_update,
             // 自动注册命令
             check_camoufox_installed,
+            install_camoufox,
             auto_register_with_tempmail,
             // Steering 管理命令
             get_steering_files,

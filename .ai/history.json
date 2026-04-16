@@ -1,0 +1,43 @@
+[
+  {
+    "id": "ui-improvements-2026-04-17",
+    "question": "完成自动注册功能的前端 UI 改进",
+    "plan": "1. 移除代理地址输入框（使用 Kiro IDE 设置中的代理）\n2. 添加 AWS 账号密码输入框（可选，默认使用 Alisi1976230!）\n3. 更新 Camoufox 状态显示，添加一键修复按钮\n4. 更新使用说明文字\n5. 修改后端代码以支持新的参数结构\n6. 修改 Python 脚本以支持自定义密码",
+    "created_at": "2026-04-17T10:00:00",
+    "completed_at": "2026-04-17T10:30:00",
+    "ref_file_list": [
+      "kiro-account-manager/AUTOREGISTER_UI_CHANGES.md",
+      "kiro-account-manager/src/components/features/AutoRegister/index.jsx",
+      "kiro-account-manager/src-tauri/src/commands/auto_register_cmd.rs",
+      "kiro-account-manager/src-tauri/src/services/browser_automation.rs",
+      "kiro-account-manager/src-tauri/scripts/auto_register.py"
+    ],
+    "change_list": [
+      {
+        "file": "kiro-account-manager/src/components/features/AutoRegister/index.jsx",
+        "change": "1. 移除代理地址输入框\n2. 添加 AWS 账号密码输入框（可选）\n3. 更新 Camoufox 检查按钮为"检查环境"，添加"一键修复"按钮\n4. 更新使用说明文字",
+        "status": "modify"
+      },
+      {
+        "file": "kiro-account-manager/src-tauri/src/commands/auto_register_cmd.rs",
+        "change": "1. 修改 AutoRegisterParams 结构，移除 proxy_url，添加 account_password（可选）\n2. 从 Kiro IDE 设置中读取代理配置\n3. 将 account_password 传递给 Python 脚本\n4. 修改 check_camoufox_installed 和 install_camoufox 使用 std::process::Command",
+        "status": "modify"
+      },
+      {
+        "file": "kiro-account-manager/src-tauri/src/services/browser_automation.rs",
+        "change": "1. 添加 account_password 参数到 register_with_tempmail 方法\n2. 将 account_password 传递给 Python 脚本",
+        "status": "modify"
+      },
+      {
+        "file": "kiro-account-manager/src-tauri/scripts/auto_register.py",
+        "change": "1. 添加 account_password 参数支持\n2. 使用自定义密码或默认密码 Alisi1976230!\n3. 移除硬编码的密码",
+        "status": "modify"
+      },
+      {
+        "file": "kiro-account-manager/src-tauri/scripts/auto_register_tempmail.py",
+        "change": "修正密码使用逻辑，确保使用函数参数中的 password 变量",
+        "status": "modify"
+      }
+    ]
+  }
+]

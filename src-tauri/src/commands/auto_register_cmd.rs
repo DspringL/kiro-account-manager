@@ -1,20 +1,78 @@
 use crate::services::{browser_automation::BrowserAutomation, tempmail_api::TempMailApi, sso_token_converter};
 use crate::types::register::{RegisterResult, TempMailConfig};
+use crate::commands::update_cmd::get_proxy_from_kiro_settings;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AutoRegisterParams {
     pub temp_mail_api_url: String,
-    pub temp_mail_password: String,
-    pub proxy_url: Option<String>,
+    pub temp_mail_password: String,  // Admin 密码必填
+    #[serde(default)]
+    pub account_password: Option<String>,  // AWS 账号密码可选，默认使用 Alisi1976230!
 }
 
 /// 检查 Camoufox 是否已安装
 #[tauri::command]
 pub async fn check_camoufox_installed() -> Result<bool, String> {
-    let automation = BrowserAutomation::new();
-    automation.check_camoufox_installed().await
+    // 检查 Python 是否可用
+    let python_check = std::process::Command::new("python3")
+        .arg("--version")
+        .output();
+
+    if python_check.is_err() {
+        return Ok(false);
+    }
+
+    // 检查 camoufox 模块是否已安装
+    let camoufox_check = std::process::Command::new("python3")
+        .arg("-c")
+        .arg("import camoufox")
+        .output();
+
+    Ok(camoufox_check.is_ok() && camoufox_check.unwrap().status.success())
+}
+
+/// 安装 Camoufox
+#[tauri::command]
+pub async fn install_camoufox(app_handle: tauri::AppHandle) -> Result<String, String> {
+    // 发送日志
+    let _ = app_handle.emit("camoufox-install-log", "开始安装 Camoufox...");
+
+    // 安装 camoufox
+    let _ = app_handle.emit("camoufox-install-log", "步骤 1/2: 安装 camoufox 包...");
+    let install_output = std::process::Command::new("pip3")
+        .arg("install")
+        .arg("camoufox")
+        .arg("requests")
+        .output()
+        .map_err(|e| format!("执行 pip3 install 失败: {e}"))?;
+
+    if !install_output.status.success() {
+        let stderr = String::from_utf8_lossy(&install_output.stderr);
+        return Err(format!("安装 camoufox 失败: {stderr}"));
+    }
+
+    let _ = app_handle.emit("camoufox-install-log", "✓ camoufox 包安装成功");
+
+    // 下载 Camoufox 浏览器
+    let _ = app_handle.emit("camoufox-install-log", "步骤 2/2: 下载 Camoufox 浏览器...");
+    let fetch_output = std::process::Command::new("python3")
+        .arg("-m")
+        .arg("camoufox")
+        .arg("fetch")
+        .output()
+        .map_err(|e| format!("执行 camoufox fetch 失败: {e}"))?;
+
+    if !fetch_output.status.success() {
+        let stderr = String::from_utf8_lossy(&fetch_output.stderr);
+        return Err(format!("下载 Camoufox 浏览器失败: {stderr}"));
+    }
+
+    let _ = app_handle.emit("camoufox-install-log", "✓ Camoufox 浏览器下载成功");
+    let _ = app_handle.emit("camoufox-install-log", "✓ Camoufox 安装完成！");
+
+    Ok("Camoufox 安装成功".to_string())
 }
 
 /// 使用临时邮箱自动注册 AWS Builder ID
@@ -86,14 +144,27 @@ pub async fn auto_register_with_tempmail(
         }
     };
 
-    // 4. 调用 Python 脚本完成注册
-    emit_log("\n步骤4: 使用验证码完成注册...".to_string());
+    // 4. 获取代理设置（从 Kiro IDE 设置中读取）
+    let proxy_url = match get_proxy_from_kiro_settings() {
+        Some(proxy) => {
+            emit_log(format!("✓ 使用代理: {}", proxy));
+            Some(proxy)
+        }
+        None => {
+            emit_log("未配置代理，将不使用代理".to_string());
+            None
+        }
+    };
+
+    // 5. 调用 Python 脚本完成注册
+    emit_log("\n步骤5: 使用验证码完成注册...".to_string());
 
     let result = match automation
         .register_with_tempmail(
             &email,
             &verification_code,
-            params.proxy_url.as_deref(),
+            proxy_url.as_deref(),
+            params.account_password.as_deref(),  // 传递 AWS 账号密码（可选）
             Some(&app_handle),
         )
         .await
@@ -107,7 +178,7 @@ pub async fn auto_register_with_tempmail(
     };
 
     // 5. 清理临时邮箱
-    emit_log("\n步骤5: 清理临时邮箱...".to_string());
+    emit_log("\n步骤6: 清理临时邮箱...".to_string());
     match tempmail.delete_address(address_id).await {
         Ok(_) => emit_log("✓ 临时邮箱已清理".to_string()),
         Err(e) => emit_log(format!("⚠ 清理临时邮箱失败: {}", e)),
