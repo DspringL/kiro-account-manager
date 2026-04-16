@@ -1,0 +1,788 @@
+@import "tailwindcss";
+@import "@mantine/core/styles.css";
+
+@theme {
+  --color-primary: #4361ee;
+  --color-sidebar: #4361ee;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* 只重置 body 和 html 的 margin/padding */
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+/* 重置常见元素的 margin/padding */
+h1, h2, h3, h4, h5, h6, p, ul, ol, li, figure, blockquote, dl, dd {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* 默认背景色（兜底），避免 macOS 黑屏 */
+  background-color: #f5f5f5;
+  text-rendering: optimizeLegibility;
+}
+
+body.dark {
+  background-color: #0f0f1a;
+  color: #e5e5e5;
+}
+
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: #4a4a5a;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+body.dark ::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+.token-label {
+  font-size: 11px;
+  color: #4361ee;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+/* 主题过渡动画 */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ===== 进场动画 ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-stagger {
+  animation: staggerFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.5s ease-out forwards;
+}
+
+/* 从右滑入 */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+
+/* 弹性缩放 - 带回弹效果 */
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+/* 模糊渐入 */
+@keyframes blurIn {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.1);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+.animate-blur-in {
+  animation: blurIn 0.5s ease-out forwards;
+}
+
+/* 旋转渐入 */
+@keyframes rotateIn {
+  from {
+    opacity: 0;
+    transform: rotate(-180deg) scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+}
+
+.animate-rotate-in {
+  animation: rotateIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 弹性上浮 */
+@keyframes popUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-pop-up {
+  animation: popUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 从下渐入（更大幅度） */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+/* 优雅缩放（适合Logo） */
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-10deg);
+  }
+  60% {
+    transform: scale(1.1) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+.animate-zoom-in {
+  animation: zoomIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 交错动画 - 适合列表项 */
+.stagger-item:nth-child(1) { animation-delay: 0.1s; }
+.stagger-item:nth-child(2) { animation-delay: 0.15s; }
+.stagger-item:nth-child(3) { animation-delay: 0.2s; }
+.stagger-item:nth-child(4) { animation-delay: 0.25s; }
+.stagger-item:nth-child(5) { animation-delay: 0.3s; }
+
+/* 延迟动画 */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* ===== 骨架屏动画 ===== */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0.05) 25%, 
+    rgba(255,255,255,0.15) 50%, 
+    rgba(255,255,255,0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+body:not(.dark) .skeleton {
+  background: linear-gradient(90deg, 
+    rgba(0,0,0,0.06) 25%, 
+    rgba(0,0,0,0.12) 50%, 
+    rgba(0,0,0,0.06) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* ===== 发光悬停效果 ===== */
+.card-glow {
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, rgba(99, 102, 241, 0.3) 50%, transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+.card-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -12px rgba(99, 102, 241, 0.25);
+}
+
+body:not(.dark) .card-glow:hover {
+  box-shadow: 0 12px 40px -12px rgba(99, 102, 241, 0.2);
+}
+
+/* ===== 浮动动画 ===== */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ===== 脉冲光圈效果 ===== */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.pulse-ring {
+  position: relative;
+}
+
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid currentColor;
+  animation: pulse-ring 2s infinite;
+}
+
+/* ===== 数字滚动效果 ===== */
+.stat-number {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.stat-number:hover {
+  transform: scale(1.1);
+}
+
+/* ===== 背景装饰 ===== */
+.bg-glow {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+.bg-glow-1 {
+  width: 400px;
+  height: 400px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  top: -100px;
+  right: -100px;
+}
+
+.bg-glow-2 {
+  width: 300px;
+  height: 300px;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  bottom: -50px;
+  left: -50px;
+}
+
+body:not(.dark) .bg-glow {
+  opacity: 0.08;
+}
+
+/* ===== 按钮增强 ===== */
+.btn-icon {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.btn-icon:hover {
+  transform: scale(1.05);
+}
+
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
+.btn-icon.spinning svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Hover 缩放效果 ===== */
+.hover-scale {
+  transition: transform 0.2s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.1);
+}
+
+.hover-scale:active {
+  transform: scale(0.95);
+}
+
+/* ===== Mantine MultiSelect 文字颜色修复 ===== */
+/* MultiSelect 输入字段文字颜色（最高优先级）*/
+body .mantine-MultiSelect-inputField,
+body .mantine-PillsInputField-field,
+body input.mantine-MultiSelect-inputField,
+body input.mantine-PillsInputField-field {
+  color: #1f2937 !important;
+}
+
+body.dark .mantine-MultiSelect-inputField,
+body.dark .mantine-PillsInputField-field,
+body.dark input.mantine-MultiSelect-inputField,
+body.dark input.mantine-PillsInputField-field {
+  color: #f8fafc !important;
+}
+
+/* 全局输入 placeholder 统一 */
+body input::placeholder,
+body textarea::placeholder,
+body .mantine-Input-input::placeholder,
+body .mantine-Textarea-input::placeholder,
+body .mantine-Select-input::placeholder,
+body .mantine-MultiSelect-inputField::placeholder,
+body .mantine-PillsInputField-field::placeholder,
+body .mantine-NumberInput-input::placeholder {
+  color: #9ca3af !important;
+  opacity: 1 !important;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder,
+body.dark .mantine-Input-input::placeholder,
+body.dark .mantine-Textarea-input::placeholder,
+body.dark .mantine-Select-input::placeholder,
+body.dark .mantine-MultiSelect-inputField::placeholder,
+body.dark .mantine-PillsInputField-field::placeholder,
+body.dark .mantine-NumberInput-input::placeholder {
+  color: #c8d4ea !important;
+  opacity: 1 !important;
+}
+
+/* MultiSelect 下拉选项文字颜色（使用 data 属性选择器）*/
+[data-combobox-option] {
+  color: #1f2937 !important;
+  transition: background-color 0.12s ease;
+}
+
+[data-combobox-option]:hover {
+  background-color: rgba(59, 130, 246, 0.10) !important;
+}
+
+[data-combobox-option][data-combobox-selected],
+[data-combobox-option][data-selected="true"] {
+  background-color: rgba(59, 130, 246, 0.16) !important;
+}
+
+body.dark [data-combobox-option] {
+  color: #f8fafc !important;
+}
+
+body.dark [data-combobox-option]:hover {
+  background-color: rgba(99, 102, 241, 0.26) !important;
+}
+
+body.dark [data-combobox-option][data-combobox-selected],
+body.dark [data-combobox-option][data-selected="true"] {
+  background-color: rgba(99, 102, 241, 0.38) !important;
+}
+
+/* ===== Mantine Switch 状态统一（避免内联样式 data-* 选择器 warning）===== */
+.mantine-Switch-track {
+  transition: background-color 150ms ease, border-color 150ms ease !important;
+}
+
+/* 关闭态 */
+body:not(.dark) .mantine-Switch-track {
+  background-color: var(--mantine-color-gray-2) !important;
+  border-color: var(--mantine-color-gray-3) !important;
+}
+
+body.dark .mantine-Switch-track {
+  background-color: var(--mantine-color-dark-6) !important;
+  border-color: var(--mantine-color-dark-4) !important;
+}
+
+/* 关闭态 hover */
+body:not(.dark) .mantine-Switch-track:hover {
+  background-color: var(--mantine-color-gray-3) !important;
+  border-color: var(--mantine-color-gray-4) !important;
+}
+
+body.dark .mantine-Switch-track:hover {
+  background-color: var(--mantine-color-dark-5) !important;
+  border-color: var(--mantine-color-dark-3) !important;
+}
+
+/* 开启态 */
+body:not(.dark) .mantine-Switch-track[data-checked],
+body:not(.dark) .mantine-Switch-track[data-indeterminate],
+.mantine-Switch-input:checked + .mantine-Switch-track,
+.mantine-Switch-input[data-checked] + .mantine-Switch-track {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+}
+
+/* 开启态 hover */
+body:not(.dark) .mantine-Switch-track[data-checked]:hover,
+body:not(.dark) .mantine-Switch-track[data-indeterminate]:hover,
+.mantine-Switch-input:checked + .mantine-Switch-track:hover,
+.mantine-Switch-input[data-checked] + .mantine-Switch-track:hover {
+  background-color: var(--mantine-primary-color-filled-hover) !important;
+  border-color: var(--mantine-primary-color-filled-hover) !important;
+}
+
+/* 深色主题开启态（与浅色区分，提升可辨识度） */
+body.dark .mantine-Switch-track[data-checked],
+body.dark .mantine-Switch-track[data-indeterminate] {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+}
+
+body.dark .mantine-Switch-track[data-checked]:hover,
+body.dark .mantine-Switch-track[data-indeterminate]:hover {
+  background-color: var(--mantine-primary-color-filled-hover) !important;
+  border-color: var(--mantine-primary-color-filled-hover) !important;
+}
+
+/* ===== Theme adaptation hardening (4 themes) ===== */
+body[data-theme='light'] {
+  --app-placeholder-color: #94a3b8;
+  --app-combobox-hover-bg: rgba(59, 130, 246, 0.12);
+  --app-combobox-selected-bg: rgba(59, 130, 246, 0.20);
+  --app-switch-off-bg: var(--mantine-color-gray-2);
+  --app-switch-off-border: var(--mantine-color-gray-3);
+  --app-switch-off-hover-bg: var(--mantine-color-gray-3);
+  --app-switch-off-hover-border: var(--mantine-color-gray-4);
+}
+
+body[data-theme='dark'] {
+  --app-placeholder-color: #d8e3ff;
+  --app-combobox-hover-bg: rgba(99, 102, 241, 0.30);
+  --app-combobox-selected-bg: rgba(99, 102, 241, 0.42);
+  --app-switch-off-bg: var(--mantine-color-dark-6);
+  --app-switch-off-border: var(--mantine-color-dark-4);
+  --app-switch-off-hover-bg: var(--mantine-color-dark-5);
+  --app-switch-off-hover-border: var(--mantine-color-dark-3);
+}
+
+body[data-theme='purple'] {
+  --app-placeholder-color: #b9a6ff;
+  --app-combobox-hover-bg: rgba(147, 51, 234, 0.14);
+  --app-combobox-selected-bg: rgba(147, 51, 234, 0.24);
+  --app-switch-off-bg: #ede9fe;
+  --app-switch-off-border: #ddd6fe;
+  --app-switch-off-hover-bg: #ddd6fe;
+  --app-switch-off-hover-border: #c4b5fd;
+}
+
+body[data-theme='green'] {
+  --app-placeholder-color: #49d6a1;
+  --app-combobox-hover-bg: rgba(16, 185, 129, 0.14);
+  --app-combobox-selected-bg: rgba(16, 185, 129, 0.24);
+  --app-switch-off-bg: #dcfce7;
+  --app-switch-off-border: #bbf7d0;
+  --app-switch-off-hover-bg: #bbf7d0;
+  --app-switch-off-hover-border: #86efac;
+}
+
+body {
+  --app-placeholder-color: #94a3b8;
+  --app-combobox-hover-bg: rgba(59, 130, 246, 0.12);
+  --app-combobox-selected-bg: rgba(59, 130, 246, 0.20);
+  --app-switch-off-bg: var(--mantine-color-gray-2);
+  --app-switch-off-border: var(--mantine-color-gray-3);
+  --app-switch-off-hover-bg: var(--mantine-color-gray-3);
+  --app-switch-off-hover-border: var(--mantine-color-gray-4);
+}
+
+body input::placeholder,
+body textarea::placeholder,
+body .mantine-Input-input::placeholder,
+body .mantine-Textarea-input::placeholder,
+body .mantine-Select-input::placeholder,
+body .mantine-MultiSelect-inputField::placeholder,
+body .mantine-PillsInputField-field::placeholder,
+body .mantine-NumberInput-input::placeholder {
+  color: var(--app-placeholder-color) !important;
+  opacity: 1 !important;
+}
+
+[data-combobox-option],
+.mantine-Combobox-option,
+.mantine-Select-option,
+.mantine-MultiSelect-option {
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+[data-combobox-option]:hover,
+.mantine-Combobox-option:hover,
+.mantine-Select-option:hover,
+.mantine-MultiSelect-option:hover,
+[data-combobox-option][data-combobox-hovered] {
+  background-color: var(--app-combobox-hover-bg) !important;
+}
+
+[data-combobox-option][data-combobox-selected],
+[data-combobox-option][data-selected='true'],
+[data-combobox-option][aria-selected='true'],
+.mantine-Combobox-option[data-combobox-selected],
+.mantine-Combobox-option[data-selected='true'],
+.mantine-Combobox-option[aria-selected='true'] {
+  background-color: var(--app-combobox-selected-bg) !important;
+}
+
+body .mantine-Switch-input:not(:checked) + .mantine-Switch-track {
+  background-color: var(--app-switch-off-bg) !important;
+  border-color: var(--app-switch-off-border) !important;
+}
+
+body .mantine-Switch-input:not(:checked) + .mantine-Switch-track:hover {
+  background-color: var(--app-switch-off-hover-bg) !important;
+  border-color: var(--app-switch-off-hover-border) !important;
+}
+
+body .mantine-Switch-track[data-checked],
+body .mantine-Switch-track[data-indeterminate],
+body .mantine-Switch-input:checked + .mantine-Switch-track {
+  background-color: var(--mantine-primary-color-filled) !important;
+  border-color: var(--mantine-primary-color-filled) !important;
+}
+
+body .mantine-Switch-track[data-checked]:hover,
+body .mantine-Switch-track[data-indeterminate]:hover,
+body .mantine-Switch-input:checked + .mantine-Switch-track:hover {
+  background-color: var(--mantine-primary-color-filled-hover) !important;
+  border-color: var(--mantine-primary-color-filled-hover) !important;
+}
+
+/* 显式主题覆盖，确保压过旧规则 */
+body[data-theme='light'] input::placeholder,
+body[data-theme='light'] textarea::placeholder,
+body[data-theme='light'] .mantine-Input-input::placeholder,
+body[data-theme='light'] .mantine-Textarea-input::placeholder,
+body[data-theme='light'] .mantine-Select-input::placeholder,
+body[data-theme='light'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='light'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='light'] .mantine-NumberInput-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body[data-theme='dark'] input::placeholder,
+body[data-theme='dark'] textarea::placeholder,
+body[data-theme='dark'] .mantine-Input-input::placeholder,
+body[data-theme='dark'] .mantine-Textarea-input::placeholder,
+body[data-theme='dark'] .mantine-Select-input::placeholder,
+body[data-theme='dark'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='dark'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='dark'] .mantine-NumberInput-input::placeholder {
+  color: #d8e3ff !important;
+}
+
+body[data-theme='purple'] input::placeholder,
+body[data-theme='purple'] textarea::placeholder,
+body[data-theme='purple'] .mantine-Input-input::placeholder,
+body[data-theme='purple'] .mantine-Textarea-input::placeholder,
+body[data-theme='purple'] .mantine-Select-input::placeholder,
+body[data-theme='purple'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='purple'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='purple'] .mantine-NumberInput-input::placeholder {
+  color: #b9a6ff !important;
+}
+
+body[data-theme='green'] input::placeholder,
+body[data-theme='green'] textarea::placeholder,
+body[data-theme='green'] .mantine-Input-input::placeholder,
+body[data-theme='green'] .mantine-Textarea-input::placeholder,
+body[data-theme='green'] .mantine-Select-input::placeholder,
+body[data-theme='green'] .mantine-MultiSelect-inputField::placeholder,
+body[data-theme='green'] .mantine-PillsInputField-field::placeholder,
+body[data-theme='green'] .mantine-NumberInput-input::placeholder {
+  color: #49d6a1 !important;
+}
+
+body[data-theme='light'] [data-combobox-option]:hover,
+body[data-theme='light'] .mantine-Combobox-option:hover,
+body[data-theme='light'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+body[data-theme='light'] [data-combobox-option][data-combobox-selected],
+body[data-theme='light'] [data-combobox-option][data-selected='true'],
+body[data-theme='light'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(59, 130, 246, 0.20) !important;
+}
+
+body[data-theme='dark'] [data-combobox-option]:hover,
+body[data-theme='dark'] .mantine-Combobox-option:hover,
+body[data-theme='dark'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(99, 102, 241, 0.30) !important;
+}
+
+body[data-theme='dark'] [data-combobox-option][data-combobox-selected],
+body[data-theme='dark'] [data-combobox-option][data-selected='true'],
+body[data-theme='dark'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(99, 102, 241, 0.42) !important;
+}
+
+body[data-theme='purple'] [data-combobox-option]:hover,
+body[data-theme='purple'] .mantine-Combobox-option:hover,
+body[data-theme='purple'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(147, 51, 234, 0.14) !important;
+}
+
+body[data-theme='purple'] [data-combobox-option][data-combobox-selected],
+body[data-theme='purple'] [data-combobox-option][data-selected='true'],
+body[data-theme='purple'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(147, 51, 234, 0.24) !important;
+}
+
+body[data-theme='green'] [data-combobox-option]:hover,
+body[data-theme='green'] .mantine-Combobox-option:hover,
+body[data-theme='green'] [data-combobox-option][data-combobox-hovered] {
+  background-color: rgba(16, 185, 129, 0.14) !important;
+}
+
+body[data-theme='green'] [data-combobox-option][data-combobox-selected],
+body[data-theme='green'] [data-combobox-option][data-selected='true'],
+body[data-theme='green'] [data-combobox-option][aria-selected='true'] {
+  background-color: rgba(16, 185, 129, 0.24) !important;
+}

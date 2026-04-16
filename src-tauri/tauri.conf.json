@@ -1,0 +1,104 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KiroAccountManager",
+  "version": "1.8.3",
+  "identifier": "com.kiro.account-manager",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 820,
+        "resizable": true,
+        "title": "Kiro Account Manager",
+        "width": 1400,
+        "minWidth": 1200,
+        "minHeight": 700,
+        "visible": false,
+        "center": true,
+        "decorations": true,
+        "shadow": true,
+        "additionalBrowserArgs": "--disable-features=GCM"
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": ["'self'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"],
+        "frame-ancestors": ["'none'"],
+        "object-src": ["'none'"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "asset:", "http://asset.localhost", "https:", "data:"],
+        "font-src": ["'self'", "data:"],
+        "connect-src": ["'self'", "ipc:", "http://ipc.localhost", "https://kiro-website-six.vercel.app"]
+      },
+      "devCsp": null
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["kiro-account-manager"]
+      }
+    },
+    "updater": {
+      "endpoints": [
+        "https://github.com/hj01857655/kiro-account-manager/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZFNzJDNURDNEIyRkExOEYKUldTUG9TOUwzTVZ5YmdaZVg1RHY5ZUdzZUx3Z3NacXBVYWNiQU9HOGRsbDFzeFU3TjZ0MVBnWHkK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "category": "DeveloperTool",
+    "copyright": "© 2025 hj01857655",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": ["msi", "app", "dmg", "deb", "rpm", "appimage"],
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
+      "wix": {
+        "language": "zh-CN",
+        "template": "wix/main.wxs"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libappindicator3-1"],
+        "section": "utils"
+      },
+      "rpm": {
+        "depends": ["webkit2gtk4.1", "libappindicator-gtk3"]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "shortDescription": "Kiro 账号管理工具",
+    "longDescription": "管理 Kiro IDE 账号，支持多账号切换和配额监控"
+  }
+}

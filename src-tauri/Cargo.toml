@@ -1,0 +1,75 @@
+[package]
+name = "kiro-account-manager"
+version = "1.8.3"
+description = "Kiro Account Manager - 管理 Kiro IDE 账号，支持多账号切换和配额监控"
+authors = ["hj01857655"]
+license = "CC-BY-NC-SA-4.0"
+repository = "https://github.com/hj01857655/kiro-account-manager"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2.10"
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2.6"
+tauri-plugin-fs = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-http = "2"
+tauri-plugin-log = "2"
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "fs"] }
+axum = "0.8"
+tokio-stream = "0.1"
+futures-util = "0.3"
+uuid = { version = "1.6", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", features = ["json", "cookies", "stream"] }
+url = "2.5"
+open = "5.0"
+tiny_http = "0.12"
+rand = "0.8"
+sha2 = "0.10"
+sha1 = "0.10"
+base64 = "0.22"
+urlencoding = "2.1"
+ciborium = "0.2"
+serde_cbor = "0.11"
+regex = "1.10"
+hex = "0.4"
+encoding_rs = "0.8"
+async-trait = "0.1"
+dirs = "5"
+ipnet = "2"
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+# 开发配置：增量编译加速 + 避免编译器崩溃
+[profile.dev]
+incremental = true
+opt-level = 0        # 禁用优化，避免编译器崩溃
+codegen-units = 256  # 增加并行编译单元
+
+# 发布配置：优化二进制体积
+[profile.release]
+codegen-units = 8    # 平衡本地打包速度与产物体积
+lto = "thin"         # 保留链接时优化，但避免 fat LTO 的高耗时
+opt-level = "s"      # 优先减小体积，同时避免 z 级别优化带来的额外编译成本
+panic = "abort"      # 禁用 panic 处理器，提升性能
+strip = true         # 移除符号信息，减小体积

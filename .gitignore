@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+target/
+
+# IDE
+.idea/
+.vscode/
+.kiro/
+.claude/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tauri
+src-tauri/target/
+.tauri-updater-key
+.tauri-updater-key.pub
+.tauri-updater-password
+
+# Logs
+*.log
+
+docs/
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment variables
+.env
+
+# Downloaded files
+scripts/
+src-tauri/clippy_warnings.txt
+1.json
+docs/
+
+# Worktrees
+.worktrees/
+
+# Temporary local source mirrors
+.tmp/
+
+.breezell/
