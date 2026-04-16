@@ -72,7 +72,7 @@ pub async fn auto_register_with_tempmail(
     emit_log("\n步骤3: 等待验证码邮件...".to_string());
 
     let verification_code = match tempmail
-        .wait_for_verification_code(&mail_info.jwt, 120, 5000, Some(&emit_log))
+        .wait_for_verification_code(&mail_info.jwt, 120, 5000, Some(emit_log.clone()))
         .await
     {
         Ok(code) => {

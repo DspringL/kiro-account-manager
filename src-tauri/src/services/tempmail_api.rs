@@ -184,24 +184,27 @@ impl TempMailApi {
     }
 
     /// 轮询等待验证码
-    pub async fn wait_for_verification_code(
+    pub async fn wait_for_verification_code<F>(
         &self,
         jwt: &str,
         max_wait_seconds: u64,
         poll_interval_ms: u64,
-        log_callback: Option<&dyn Fn(String)>,
-    ) -> Result<String, String> {
+        log_callback: Option<F>,
+    ) -> Result<String, String>
+    where
+        F: Fn(String) + Send + Sync,
+    {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(max_wait_seconds);
         let mut checked_ids = HashSet::new();
 
-        if let Some(log) = log_callback {
+        if let Some(ref log) = log_callback {
             log(format!("等待验证码邮件（最长 {} 秒）...", max_wait_seconds));
         }
 
         while tokio::time::Instant::now() < deadline {
             match self.get_messages(jwt, 20, 0).await {
                 Ok(messages) => {
-                    if let Some(log) = log_callback {
+                    if let Some(ref log) = log_callback {
                         log(format!("收件箱共 {} 封邮件", messages.len()));
                     }
 
@@ -213,36 +216,36 @@ impl TempMailApi {
 
                         // 检查是否是 AWS 发件人
                         if !Self::is_aws_sender(&mail.source) {
-                            if let Some(log) = log_callback {
+                            if let Some(ref log) = log_callback {
                                 log(format!("跳过非 AWS 邮件: {}", mail.source));
                             }
                             continue;
                         }
 
-                        if let Some(log) = log_callback {
+                        if let Some(ref log) = log_callback {
                             log(format!("检查 AWS 邮件: from=\"{}\"", mail.source));
                         }
 
                         // 从 raw 中提取文本并查找验证码
                         let text = Self::extract_text_from_eml(&mail.raw);
                         if let Some(code) = Self::extract_code(&text) {
-                            if let Some(log) = log_callback {
+                            if let Some(ref log) = log_callback {
                                 log(format!("========== 找到验证码: {} ==========", code));
                             }
                             return Ok(code);
                         }
 
-                        if let Some(log) = log_callback {
+                        if let Some(ref log) = log_callback {
                             log("未能从此邮件提取验证码".to_string());
                         }
                     }
 
-                    if let Some(log) = log_callback {
+                    if let Some(ref log) = log_callback {
                         log(format!("未找到验证码，{} 秒后重试...", poll_interval_ms / 1000));
                     }
                 }
                 Err(e) => {
-                    if let Some(log) = log_callback {
+                    if let Some(ref log) = log_callback {
                         log(format!("轮询邮件出错: {}", e));
                     }
                 }

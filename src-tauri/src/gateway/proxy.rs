@@ -13,7 +13,7 @@ use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
     net::{IpAddr, SocketAddr},
-    time::Instant,
+    time::{Duration, Instant},
 };
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -3548,6 +3548,7 @@ mod tests {
             "resp_test",
             "msg_test",
             123,
+            None,
         );
 
         assert_eq!(

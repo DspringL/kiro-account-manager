@@ -31,6 +31,8 @@ const BUILDER_ID_CLIENT_ID: &str = "arn:aws:sso::aws:app/ssoins-722377b1a6e95e8c
 pub async fn convert_sso_token_to_refresh_token(
     sso_token: &str,
 ) -> Result<SsoTokenConvertResult, String> {
+    log::debug!("开始转换 SSO Token (长度: {})", sso_token.len());
+    
     // AWS SSO OIDC Token 端点
     let token_url = "https://oidc.us-east-1.amazonaws.com/token";
 
@@ -41,6 +43,10 @@ pub async fn convert_sso_token_to_refresh_token(
     params.insert("subjectToken", sso_token);
     params.insert("subjectTokenType", "urn:ietf:params:oauth:token-type:access_token");
 
+    log::debug!("请求 URL: {}", token_url);
+    log::debug!("Client ID: {}", BUILDER_ID_CLIENT_ID);
+    log::debug!("Grant Type: token-exchange");
+
     // 发送请求
     let client = reqwest::Client::new();
     let response = client
@@ -50,7 +56,10 @@ pub async fn convert_sso_token_to_refresh_token(
         .json(&params)
         .send()
         .await
-        .map_err(|e| format!("请求失败: {}", e))?;
+        .map_err(|e| {
+            log::error!("请求失败: {}", e);
+            format!("请求失败: {}", e)
+        })?;
 
     let status = response.status();
     let body = response
@@ -58,17 +67,29 @@ pub async fn convert_sso_token_to_refresh_token(
         .await
         .map_err(|e| format!("读取响应失败: {}", e))?;
 
+    log::debug!("响应状态: {}", status);
+    log::debug!("响应内容: {}", body);
+
     if !status.is_success() {
+        log::error!("API 返回错误 ({}): {}", status, body);
         return Err(format!("API 返回错误 ({}): {}", status, body));
     }
 
     // 解析响应
     let token_response: TokenResponse =
-        serde_json::from_str(&body).map_err(|e| format!("解析响应失败: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| {
+            log::error!("解析响应失败: {}", e);
+            format!("解析响应失败: {}", e)
+        })?;
 
     let refresh_token = token_response
         .refresh_token
-        .ok_or_else(|| "响应中没有 refresh_token".to_string())?;
+        .ok_or_else(|| {
+            log::warn!("响应中没有 refresh_token");
+            "响应中没有 refresh_token".to_string()
+        })?;
+
+    log::info!("成功转换 SSO Token 为 refresh_token");
 
     Ok(SsoTokenConvertResult {
         access_token: token_response.access_token,
@@ -86,24 +107,35 @@ pub async fn convert_sso_token_to_refresh_token(
 pub async fn convert_sso_token_with_fallback(
     sso_token: &str,
 ) -> Result<SsoTokenConvertResult, String> {
+    log::info!("尝试转换 SSO Token (使用 fallback 机制)");
+    
     // 方法 1: token-exchange
+    log::debug!("尝试方法 1: token-exchange");
     match convert_sso_token_to_refresh_token(sso_token).await {
-        Ok(result) => return Ok(result),
+        Ok(result) => {
+            log::info!("方法 1 成功!");
+            return Ok(result);
+        }
         Err(e) => {
-            log::debug!("方法 1 (token-exchange) 失败: {}", e);
+            log::warn!("方法 1 (token-exchange) 失败: {}", e);
         }
     }
 
     // 方法 2: 尝试使用 SSO Token 直接作为 access_token
     // 某些情况下 SSO Token 本身就可以用作 access_token
+    log::debug!("尝试方法 2: 直接使用 SSO Token");
     match try_use_sso_as_access_token(sso_token).await {
-        Ok(result) => return Ok(result),
+        Ok(result) => {
+            log::info!("方法 2 成功!");
+            return Ok(result);
+        }
         Err(e) => {
-            log::debug!("方法 2 (直接使用) 失败: {}", e);
+            log::warn!("方法 2 (直接使用) 失败: {}", e);
         }
     }
 
-    Err("所有转换方法都失败了".to_string())
+    log::error!("所有转换方法都失败了");
+    Err("所有转换方法都失败了，请查看日志了解详情".to_string())
 }
 
 /// 尝试直接使用 SSO Token 作为 access_token

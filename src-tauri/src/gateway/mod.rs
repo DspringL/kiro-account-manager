@@ -544,7 +544,7 @@ pub async fn get_gateway_status(
         let last_error_text = last_error.lock().await.clone();
         Ok(GatewayStatus {
             running,
-            host: config.host,
+            host: config.host.clone(),
             port: config.port,
             request_count,
             last_error: last_error_text,
