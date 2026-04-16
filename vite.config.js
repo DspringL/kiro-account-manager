@@ -15,6 +15,41 @@ export default defineConfig({
   server: {
     port: 1421,  // 使用不同的端口避免与已安装版本冲突
     strictPort: true,
+    // 监听文件变化配置
+    watch: {
+      // 忽略不需要监听的文件和目录
+      ignored: [
+        '**/node_modules/**',
+        '**/dist/**',
+        '**/target/**',
+        '**/.git/**',
+        '**/.ai/**',
+        '**/src-tauri/target/**',
+        '**/src-tauri/scripts/__pycache__/**',
+        '**/src-tauri/scripts/venv/**',
+        // 忽略测试文件
+        '**/*test*.py',
+        '**/*test*.sh',
+        '**/*test*.json',
+        // 忽略文档和说明文件（根目录）
+        '**/README*.md',
+        '**/CHANGELOG*.md',
+        '**/LICENSE*',
+        '**/AGENTS.md',
+        '**/CLAUDE.md',
+        // 忽略配置文件
+        '**/.versionrc.js',
+        '**/.gitignore',
+        '**/.gitattributes',
+        // 忽略 Python 相关
+        '**/*.pyc',
+        '**/__pycache__/**',
+        '**/venv/**',
+        // 忽略构建产物
+        '**/Cargo.lock',
+        '**/package-lock.json',
+      ],
+    },
     // 优化开发服务器性能
     hmr: {
       overlay: false, // 禁用错误覆盖层，减少渲染开销
