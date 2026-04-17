@@ -1,12 +1,12 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Activity, Play, RotateCcw, Square, RefreshCw, Copy, Check, FolderOpen, Shield, Server, AlertTriangle, Search } from 'lucide-react'
-import { Alert, Badge, Button, Card, Group, Stack, Tabs, Text, Radio, TextInput, NumberInput, Tooltip, Select, Switch } from '@mantine/core'
+import { Alert, Badge, Button, Card, Group, Stack, Tabs, Text, Radio, TextInput, NumberInput, Tooltip, Select, Switch, Textarea,Code} from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import GatewayAdvanced from './GatewayAdvanced'
 import GatewayIntegration from './GatewayIntegration'
 import GatewayObservability from './GatewayObservability'
 import GatewayOverview from './GatewayOverview'
-import { applyGatewayLocalOnlyChange, buildClientSamples, buildGatewayActionSummary, buildGatewayBaseUrl, buildGatewayConnectHost, buildGatewayIntegrationSummary, buildGatewayMetricsSummary, buildGatewayRequestLogSummary, buildGatewayRoutingSummary, buildGatewaySecuritySummary, buildGatewayStatusSummary, createGatewayFieldErrors, filterGatewayRequestLogs, formatGatewayAccountOptionLabel, formatGatewayTimestamp, mergeErrorHistory } from './gatewayPageUtils'
+import { applyGatewayLocalOnlyChange, buildClientSamples, buildGatewayActionSummary, buildGatewayBaseUrl, buildGatewayConnectHost, buildGatewayIntegrationSummary, buildGatewayMetricsSummary, buildGatewayRequestLogSummary, buildGatewayRoutingSummary, buildGatewaySecuritySummary, buildGatewayStatusSummary, createGatewayFieldErrors, filterGatewayRequestLogs, formatGatewayAccountOptionLabel, formatGatewayTimestamp, getGatewayRequestOutcomeColor, mergeErrorHistory } from './gatewayPageUtils'
 import {
   buildGatewayConfigSnapshot,
   buildGatewayRuntimeSnapshot,
