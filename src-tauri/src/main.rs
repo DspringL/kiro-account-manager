@@ -85,7 +85,9 @@ use commands::steering_cmd::{
 };
 use commands::update_cmd::check_update;
 
-use kiro::ide::{get_kiro_local_token, read_kiro_accounts, switch_kiro_account};
+use kiro::ide::{
+    check_ide_installation, get_kiro_local_token, read_kiro_accounts, switch_kiro_account,
+};
 use kiro::process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
 
 /// 配置日志插件
@@ -338,6 +340,7 @@ fn main() {
             reveal_main_window,
 
             get_kiro_local_token,
+            check_ide_installation,
             switch_kiro_account,
             read_kiro_accounts,
             // 进程管理命令

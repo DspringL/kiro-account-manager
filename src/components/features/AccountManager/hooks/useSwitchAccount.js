@@ -21,7 +21,8 @@ export function useSwitchAccount(onLocalTokenChange) {
   // 检测 CLI 安装状态
   useEffect(() => {
     invoke('check_cli_installation').then(info => {
-      setCliInstalled(info.installed)
+      const installed = info?.cli_installed ?? info?.cliInstalled ?? info?.installed
+      setCliInstalled(Boolean(installed))
     }).catch(() => setCliInstalled(false))
   }, [])
 
@@ -67,7 +68,8 @@ export function useSwitchAccount(onLocalTokenChange) {
       // 如果选择 CLI，先检测 CLI 2.0 安装状态
       if (switchTarget === 'cli') {
         const cliInfo = await invoke('check_cli_installation')
-        if (!cliInfo.installed) {
+        const installed = cliInfo?.cli_installed ?? cliInfo?.cliInstalled ?? cliInfo?.installed
+        if (!installed) {
           setSwitchDialog({
             type: 'error',
             title: t('switch.cliNotInstalled'),

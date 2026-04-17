@@ -419,7 +419,6 @@ pub struct CliInstallationInfo {
     pub cli_path: Option<String>,
     pub db_path: Option<String>,
     pub db_exists: bool,
-    pub kiro_ide_detected: bool,
 }
 
 /// 检测 CLI 2.0 是否安装
@@ -432,7 +431,6 @@ pub fn check_cli_installation() -> CliInstallationInfo {
         cli_path,
         db_path,
         db_exists,
-        kiro_ide_detected: false, // TODO: 实现 IDE 检测
     }
 }
 
