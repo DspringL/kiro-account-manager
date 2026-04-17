@@ -1,6 +1,6 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Activity, Play, RotateCcw, Square } from 'lucide-react'
-import { Alert, Badge, Button, Card, Group, Stack, Tabs, Text } from '@mantine/core'
+import { Alert, Badge, Button, Card, Code, Group, NumberInput, Select, Stack, Switch, Tabs, Text, Textarea, TextInput, Tooltip } from '@mantine/core'
 import { useApp } from '../../hooks/useApp'
 import GatewayAdvancedTab from './gateway/GatewayAdvancedTab'
 import GatewayIntegrationTab from './gateway/GatewayIntegrationTab'
