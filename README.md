@@ -462,6 +462,16 @@ npm run tauri build
 ```text
 src/                  React 前端
   components/         页面、弹窗、布局组件
+    features/         功能模块（统一使用 index.jsx）
+      About/          关于页面
+      AccountManager/ 账号管理
+      Gateway/        Kiro API Gateway（含工具文件）
+      Home/           首页
+      KiroConfig/     Kiro 配置（MCP、Agents、Skills 等）
+      Login/          登录页面
+      Settings/       系统设置（含工具文件）
+    shared/           共享组件
+    layout/           布局组件
   contexts/           主题、设置、隐私、对话框等全局上下文
   hooks/              自动刷新、自动换号等业务 Hook
   api/                Tauri invoke 封装
