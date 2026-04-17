@@ -39,7 +39,6 @@ __pycache__/
 scripts/
 src-tauri/clippy_warnings.txt
 1.json
-docs/
 
 # Worktrees
 .worktrees/
