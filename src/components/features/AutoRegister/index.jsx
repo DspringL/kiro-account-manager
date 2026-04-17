@@ -349,7 +349,7 @@ export default function AutoRegister() {
       )}
 
       {/* 日志区域 */}
-      <div className={`flex-1 ${colors.card} border ${colors.cardBorder} rounded-xl p-6 flex flex-col min-h-0`}>
+      <div className={`flex-1 ${colors.card} border ${colors.cardBorder} rounded-xl p-6 flex flex-col min-h-[300px]`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Terminal size={20} className={accent.text} />
@@ -388,13 +388,13 @@ export default function AutoRegister() {
         </div>
       </div>
 
-      {/* 使用说明 */}
-      <div className={`${colors.card} border ${colors.cardBorder} rounded-xl p-6`}>
-        <div className="flex items-center gap-2 mb-4">
-          <AlertCircle size={20} className={accent.text} />
-          <h2 className={`text-lg font-semibold ${colors.text}`}>使用说明</h2>
-        </div>
-        <div className={`text-sm ${colors.textMuted} space-y-2`}>
+      {/* 使用说明（折叠） */}
+      <details className={`${colors.card} border ${colors.cardBorder} rounded-xl`}>
+        <summary className={`flex items-center gap-2 p-4 cursor-pointer select-none`}>
+          <AlertCircle size={18} className={accent.text} />
+          <span className={`text-sm font-semibold ${colors.text}`}>使用说明</span>
+        </summary>
+        <div className={`px-6 pb-5 text-sm ${colors.textMuted} space-y-2`}>
           <p>1. 填写临时邮箱 API 地址和 Admin 密码（配置后自动保存）</p>
           <p>2. （可选）设置 AWS 账号密码，留空使用默认密码</p>
           <p>3. 设置注册数量，点击"开始注册"</p>
@@ -406,7 +406,7 @@ export default function AutoRegister() {
             首次使用需检查环境，如果环境异常可点击"一键修复"自动安装 Camoufox
           </p>
         </div>
-      </div>
+      </details>
     </div>
   )
 }
