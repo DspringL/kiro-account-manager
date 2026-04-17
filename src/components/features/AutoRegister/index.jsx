@@ -25,6 +25,7 @@ export default function AutoRegister() {
 
   // 注册状态
   const [isRegistering, setIsRegistering] = useState(false)
+  const isRegisteringRef = useRef(false)  // 用 ref 跟踪运行状态，避免闭包陷阱
   const [registerCount, setRegisterCount] = useState(1)
   const [logs, setLogs] = useState([])
   const [stats, setStats] = useState({ success: 0, failed: 0, total: 0 })
@@ -114,45 +115,6 @@ export default function AutoRegister() {
     }
   }, [tempMailApiUrl, tempMailPassword, accountPassword])
 
-  // 单次注册
-  const registerOnce = async () => {
-    try {
-      const result = await invoke('auto_register_with_tempmail', {
-        params: {
-          temp_mail_api_url: tempMailApiUrl,
-          temp_mail_password: tempMailPassword,
-          account_password: accountPassword || null,  // 可选的 AWS 账号密码
-        },
-      })
-
-      if (result.success) {
-        setStats((prev) => ({ ...prev, success: prev.success + 1 }))
-        
-        // 优先使用 refresh_token,如果没有则使用 sso_token
-        const token = result.refresh_token || result.sso_token
-        if (token) {
-          try {
-            await invoke('add_account_by_social', {
-              refreshToken: token,
-              provider: 'BuilderId',
-              machineId: null,
-              accessToken: null,
-            })
-            showSuccess(`账号 ${result.email} 注册成功并已导入`)
-          } catch (error) {
-            showError(`导入账号失败: ${error}`)
-          }
-        }
-      } else {
-        setStats((prev) => ({ ...prev, failed: prev.failed + 1 }))
-        showError(`注册失败: ${result.error}`)
-      }
-    } catch (error) {
-      setStats((prev) => ({ ...prev, failed: prev.failed + 1 }))
-      showError(`注册出错: ${error}`)
-    }
-  }
-
   // 开始批量注册
   const startRegistration = async () => {
     if (!tempMailApiUrl || !tempMailPassword) {
@@ -166,23 +128,76 @@ export default function AutoRegister() {
     }
 
     saveConfig()
+    isRegisteringRef.current = true
     setIsRegistering(true)
+
+    let successCount = 0
+    let failedCount = 0
+
     setStats({ success: 0, failed: 0, total: registerCount })
     clearLogs()
     addLog(`========== 开始批量注册 (数量: ${registerCount}) ==========`)
 
     for (let i = 0; i < registerCount; i++) {
-      if (!isRegistering) break
+      if (!isRegisteringRef.current) {
+        addLog('已停止注册')
+        break
+      }
+
       addLog(`\n[${i + 1}/${registerCount}] 开始注册...`)
-      await registerOnce()
+
+      try {
+        const result = await invoke('auto_register_with_tempmail', {
+          params: {
+            temp_mail_api_url: tempMailApiUrl,
+            temp_mail_password: tempMailPassword,
+            account_password: accountPassword || null,
+          },
+        })
+
+        if (result.success) {
+          successCount++
+          setStats(prev => ({ ...prev, success: successCount }))
+          addLog(`✓ 注册成功: ${result.email || ''}`)
+
+          const token = result.refresh_token || result.sso_token
+          if (token) {
+            try {
+              await invoke('add_account_by_social', {
+                refreshToken: token,
+                provider: 'BuilderId',
+                machineId: null,
+                accessToken: null,
+              })
+              addLog(`✓ 账号已导入: ${result.email}`)
+              showSuccess(`账号 ${result.email} 注册成功并已导入`)
+            } catch (err) {
+              addLog(`⚠ 导入账号失败: ${err}`)
+              showError(`导入账号失败: ${err}`)
+            }
+          }
+        } else {
+          failedCount++
+          setStats(prev => ({ ...prev, failed: failedCount }))
+          addLog(`✗ 注册失败: ${result.error || '未知错误'}`)
+          showError(`注册失败: ${result.error}`)
+        }
+      } catch (err) {
+        failedCount++
+        setStats(prev => ({ ...prev, failed: failedCount }))
+        addLog(`✗ 注册出错: ${err}`)
+        showError(`注册出错: ${err}`)
+      }
     }
 
+    isRegisteringRef.current = false
     setIsRegistering(false)
-    addLog(`\n========== 注册完成: 成功 ${stats.success}，失败 ${stats.failed} ==========`)
+    addLog(`\n========== 注册完成: 成功 ${successCount}，失败 ${failedCount} ==========`)
   }
 
   // 停止注册
   const stopRegistration = () => {
+    isRegisteringRef.current = false
     setIsRegistering(false)
     addLog('正在停止注册...')
   }
