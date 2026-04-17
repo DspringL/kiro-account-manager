@@ -1,6 +1,6 @@
 import { Activity, AlertTriangle, FolderOpen, Radio, RefreshCw, Search, Shield } from 'lucide-react'
 import { Alert, Badge, Button, Card, Code, Group, Select, Stack, Text, TextInput } from '@mantine/core'
-import { formatGatewayRequestDuration, getGatewayRequestOutcomeColor } from '../gatewayPageUtils'
+import { formatGatewayRequestDuration, getGatewayRequestOutcomeColor } from './gatewayPageUtils'
 
 function GatewayObservability({
   colors,
