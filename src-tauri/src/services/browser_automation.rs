@@ -11,14 +11,11 @@ pub struct BrowserAutomation {
 
 impl BrowserAutomation {
     pub fn new() -> Self {
-        // 获取脚本路径
         let script_path = if cfg!(debug_assertions) {
             "src-tauri/scripts/auto_register.py".to_string()
         } else {
-            // 生产环境从资源目录读取
             "scripts/auto_register.py".to_string()
         };
-
         Self {
             python_path: "python3".to_string(),
             script_path,
@@ -32,29 +29,28 @@ impl BrowserAutomation {
             .arg("from camoufox.async_api import AsyncCamoufox")
             .output()
             .map_err(|e| format!("检查 Camoufox 失败: {}", e))?;
-
         Ok(output.status.success())
     }
 
-    /// 使用临时邮箱注册 AWS Builder ID
-    /// 
+    /// 完整注册流程：传入临时邮箱 API 配置，Python 脚本内部完成所有步骤
+    ///
     /// # 参数
-    /// - email: 邮箱地址
-    /// - verification_code: 验证码
-    /// - proxy_url: 可选的代理地址
-    /// - account_password: 可选的 AWS 账号密码（留空使用默认密码）
+    /// - api_url: 临时邮箱 API 地址
+    /// - admin_password: 临时邮箱 Admin 密码
+    /// - proxy_url: 可选代理地址
+    /// - account_password: 可选 AWS 账号密码
     /// - app_handle: Tauri 应用句柄，用于发送实时日志
-    pub async fn register_with_tempmail(
+    pub async fn register_full_flow(
         &self,
-        email: &str,
-        verification_code: &str,
+        api_url: &str,
+        admin_password: &str,
         proxy_url: Option<&str>,
         account_password: Option<&str>,
         app_handle: Option<&tauri::AppHandle>,
     ) -> Result<Value, String> {
         let input = json!({
-            "email": email,
-            "verification_code": verification_code,
+            "api_url": api_url,
+            "admin_password": admin_password,
             "proxy_url": proxy_url,
             "account_password": account_password
         });
@@ -67,57 +63,35 @@ impl BrowserAutomation {
             .spawn()
             .map_err(|e| format!("启动 Python 脚本失败: {}", e))?;
 
-        // 写入参数
         if let Some(mut stdin) = child.stdin.take() {
             stdin
                 .write_all(input.to_string().as_bytes())
                 .map_err(|e| format!("写入参数失败: {}", e))?;
         }
 
-        // 读取输出
         let stdout = child.stdout.take().ok_or("无法获取 stdout")?;
         let reader = BufReader::new(stdout);
-
         let mut result: Option<Value> = None;
 
         for line in reader.lines() {
             if let Ok(line) = line {
-                // 解析 JSON 输出
                 if let Ok(json_data) = serde_json::from_str::<Value>(&line) {
-                    let msg_type = json_data.get("type").and_then(|v| v.as_str());
-
-                    match msg_type {
+                    match json_data.get("type").and_then(|v| v.as_str()) {
                         Some("log") => {
-                            // 实时日志
                             if let Some(handle) = app_handle {
-                                let email = json_data
-                                    .get("email")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("");
-                                let message = json_data
-                                    .get("message")
-                                    .and_then(|v| v.as_str())
-                                    .unwrap_or("");
-
-                                let _ = handle.emit(
-                                    "auto-register-log",
-                                    json!({
-                                        "email": email,
-                                        "message": message
-                                    }),
-                                );
+                                let email = json_data.get("email").and_then(|v| v.as_str()).unwrap_or("");
+                                let message = json_data.get("message").and_then(|v| v.as_str()).unwrap_or("");
+                                let _ = handle.emit("auto-register-log", json!({
+                                    "email": email,
+                                    "message": message
+                                }));
                             }
                         }
                         Some("result") => {
-                            // 最终结果
                             result = json_data.get("data").cloned();
                         }
                         Some("error") => {
-                            // 错误信息
-                            let message = json_data
-                                .get("message")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("未知错误");
+                            let message = json_data.get("message").and_then(|v| v.as_str()).unwrap_or("未知错误");
                             return Err(message.to_string());
                         }
                         _ => {}
@@ -126,25 +100,7 @@ impl BrowserAutomation {
             }
         }
 
-        // 等待进程结束
-        let status = child.wait().map_err(|e| format!("等待进程失败: {}", e))?;
-
-        if !status.success() {
-            return Err(format!("Python 脚本执行失败: {}", status));
-        }
-
+        let _ = child.wait();
         result.ok_or_else(|| "未获取到结果".to_string())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_check_camoufox_installed() {
-        let automation = BrowserAutomation::new();
-        // 这个测试可能失败，因为 Camoufox 可能未安装
-        let _ = automation.check_camoufox_installed().await;
     }
 }

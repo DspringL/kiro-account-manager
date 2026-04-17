@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { Play, Square, AlertCircle, Terminal, Mail, Settings, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Play, Square, AlertCircle, Terminal, Mail, Settings, CheckCircle, XCircle, Loader2, Copy } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
 import { showSuccess, showError } from '../../../utils/toast'
@@ -28,6 +28,7 @@ export default function AutoRegister() {
   const isRegisteringRef = useRef(false)  // 用 ref 跟踪运行状态，避免闭包陷阱
   const [registerCount, setRegisterCount] = useState(1)
   const [logs, setLogs] = useState([])
+  const [logCopied, setLogCopied] = useState(false)
   const [stats, setStats] = useState({ success: 0, failed: 0, total: 0 })
 
   // Camoufox 状态
@@ -369,13 +370,29 @@ export default function AutoRegister() {
           <div className="flex items-center gap-2">
             <Terminal size={20} className={accent.text} />
             <h2 className={`text-lg font-semibold ${colors.text}`}>运行日志</h2>
+            <span className={`text-xs ${colors.textMuted}`}>({logs.length} 条)</span>
           </div>
-          <button
-            onClick={clearLogs}
-            className={`text-sm ${colors.textMuted} hover:${colors.text}`}
-          >
-            清空
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                if (logs.length === 0) return
+                await navigator.clipboard.writeText(logs.join('\n'))
+                setLogCopied(true)
+                setTimeout(() => setLogCopied(false), 1500)
+              }}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}
+              title="复制全部日志"
+            >
+              {logCopied ? <CheckCircle size={13} className="text-green-400" /> : <Copy size={13} />}
+              {logCopied ? '已复制' : '复制'}
+            </button>
+            <button
+              onClick={clearLogs}
+              className={`text-xs px-2 py-1 rounded ${colors.card} border ${colors.cardBorder} ${colors.cardHover} ${colors.textMuted}`}
+            >
+              清空
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto bg-black/90 rounded-lg p-4 font-mono text-xs space-y-1 min-h-0">
