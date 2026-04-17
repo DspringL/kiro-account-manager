@@ -27,7 +27,9 @@ except ImportError:
     CAMOUFOX_AVAILABLE = False
 
 def log(message: str, email: str = ""):
-    print(json.dumps({"type": "log", "email": email, "message": message}), flush=True)
+    from datetime import datetime
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    print(json.dumps({"type": "log", "email": email, "message": f"[{ts}] {message}"}), flush=True)
 
 def fail(error: str):
     print(json.dumps({"type": "result", "data": {"success": False, "error": error}}), flush=True)
@@ -202,7 +204,7 @@ async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_pas
 
             await asyncio.sleep(2)
 
-            # ── 等待验证码输入框出现（说明邮件已发出）──────────────────────
+            # ── 等待验证码输入框出现（并发检测多个选择器）──────────────────
             log("等待验证码输入框出现（确认邮件已发送）...", email)
             code_selectors = [
                 'input[placeholder="6 位数"]',
@@ -210,14 +212,24 @@ async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_pas
                 'input[data-testid*="code"]',
             ]
             code_selector = None
-            for sel in code_selectors:
-                try:
-                    await asyncio.wait_for(page.wait_for_selector(sel), timeout=30)
-                    code_selector = sel
-                    log(f"✓ 验证码输入框已出现", email)
-                    break
-                except asyncio.TimeoutError:
-                    continue
+            try:
+                # 并发等待所有选择器，任意一个出现即可
+                tasks = [
+                    asyncio.ensure_future(page.wait_for_selector(sel, timeout=30000))
+                    for sel in code_selectors
+                ]
+                done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                # 取消未完成的任务
+                for t in pending:
+                    t.cancel()
+                # 找到对应的选择器
+                for i, task in enumerate(tasks):
+                    if task in done and not task.exception():
+                        code_selector = code_selectors[i]
+                        log(f"✓ 验证码输入框已出现 (选择器: {code_selector})", email)
+                        break
+            except Exception as e:
+                log(f"等待验证码输入框异常: {e}", email)
 
             if not code_selector:
                 delete_tempmail(api_url, admin_password, address_id)

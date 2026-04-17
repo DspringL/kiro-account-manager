@@ -117,18 +117,32 @@ pub async fn auto_register_with_tempmail(
 
     emit_log("========== 注册成功！==========");
 
-    // 尝试转换 SSO Token → refresh_token
-    let mut refresh_token = None;
+    // 用 SSO Token 换取真正的 OIDC refresh_token（ssoDeviceAuth 流程）
     if let Some(ref token) = sso_token {
-        emit_log("转换 SSO Token 为 refresh_token...");
+        emit_log("正在通过 SSO Token 换取 OIDC refresh_token...");
         match sso_token_converter::convert_sso_token_with_fallback(token).await {
             Ok(r) => {
-                emit_log("✓ 成功获取 refresh_token");
-                refresh_token = Some(r.refresh_token);
+                emit_log("✓ 成功获取 OIDC refresh_token！");
+                return Ok(RegisterResult {
+                    success: true,
+                    sso_token: sso_token.clone(),
+                    refresh_token: Some(r.refresh_token),
+                    name,
+                    email,
+                    error: None,
+                });
             }
             Err(e) => {
-                emit_log(&format!("⚠ 转换失败: {}，使用 SSO Token 作为 fallback", e));
-                refresh_token = sso_token.clone();
+                emit_log(&format!("⚠ SSO Token 转换失败: {}", e));
+                // 转换失败时仍然返回成功，让前端决定如何处理
+                return Ok(RegisterResult {
+                    success: true,
+                    sso_token: sso_token.clone(),
+                    refresh_token: None,
+                    name,
+                    email,
+                    error: Some(format!("SSO Token 转换失败: {}", e)),
+                });
             }
         }
     }
@@ -136,7 +150,7 @@ pub async fn auto_register_with_tempmail(
     Ok(RegisterResult {
         success: true,
         sso_token,
-        refresh_token,
+        refresh_token: None,
         name,
         email,
         error: None,
