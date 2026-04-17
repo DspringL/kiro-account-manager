@@ -41,7 +41,15 @@ pub struct RegisterResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sso_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_secret: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub region: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,22 +59,15 @@ pub struct RegisterResult {
 }
 
 impl RegisterResult {
-    pub fn success(sso_token: String, refresh_token: String, name: String, email: String) -> Self {
-        Self {
-            success: true,
-            sso_token: Some(sso_token),
-            refresh_token: Some(refresh_token),
-            name: Some(name),
-            email: Some(email),
-            error: None,
-        }
-    }
-
     pub fn error(error: String) -> Self {
         Self {
             success: false,
             sso_token: None,
+            access_token: None,
             refresh_token: None,
+            client_id: None,
+            client_secret: None,
+            region: None,
             name: None,
             email: None,
             error: Some(error),

@@ -161,14 +161,16 @@ export default function AutoRegister() {
           setStats(prev => ({ ...prev, success: successCount }))
           addLog(`✓ 注册成功: ${result.email || ''}`)
 
-          const token = result.refresh_token || result.sso_token
-          if (token) {
+          // 优先使用 OIDC token（access_token + refresh_token + client_id + client_secret）
+          if (result.access_token && result.refresh_token && result.client_id) {
             try {
-              await invoke('add_account_by_social', {
-                refreshToken: token,
-                provider: 'BuilderId',
-                machineId: null,
-                accessToken: null,
+              await invoke('add_account_by_oidc_token', {
+                accessToken: result.access_token,
+                refreshToken: result.refresh_token,
+                clientId: result.client_id,
+                clientSecret: result.client_secret || '',
+                region: result.region || 'us-east-1',
+                email: result.email || null,
               })
               addLog(`✓ 账号已导入: ${result.email}`)
               showSuccess(`账号 ${result.email} 注册成功并已导入`)
@@ -176,6 +178,9 @@ export default function AutoRegister() {
               addLog(`⚠ 导入账号失败: ${err}`)
               showError(`导入账号失败: ${err}`)
             }
+          } else if (result.error) {
+            addLog(`⚠ Token 转换失败，账号注册成功但未导入: ${result.error}`)
+            showError(`注册成功但导入失败: ${result.error}`)
           }
         } else {
           failedCount++

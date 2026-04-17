@@ -652,6 +652,83 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
     }
 }
 
+/// 使用 OIDC Token 直接导入账号（注册流程专用）
+/// 不调用 Kiro 的 /refreshToken，直接用 access_token 查配额后存储
+#[tauri::command]
+pub async fn add_account_by_oidc_token(
+    state: State<'_, AppState>,
+    access_token: String,
+    refresh_token: String,
+    client_id: String,
+    client_secret: String,
+    region: String,
+    email: Option<String>,
+) -> Result<AddAccountResult, String> {
+    let idp = "BuilderId".to_string();
+
+    // 用 access_token 查配额
+    let usage_result = get_usage_by_provider(&idp, &access_token).await?;
+
+    if usage_result.is_banned {
+        return Err("BANNED: 账号已被封禁".to_string());
+    }
+
+    let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
+    let final_email = new_email
+        .or_else(|| email.clone())
+        .or(user_id.clone())
+        .ok_or("无法获取账号邮箱或 userId")?;
+
+    let mut store = lock_store(&state.store, "store")?;
+    let existing_idx = find_existing_account_idx(
+        &store.accounts,
+        Some(&final_email),
+        &idp,
+        &refresh_token,
+        user_id.as_ref(),
+    );
+
+    let is_new = existing_idx.is_none();
+
+    let account = if let Some(idx) = existing_idx {
+        let existing = &mut store.accounts[idx];
+        existing.access_token = Some(access_token.clone());
+        existing.refresh_token = Some(refresh_token.clone());
+        existing.user_id = user_id;
+        existing.usage_data = Some(usage_result.usage_data);
+        existing.status = calc_status(usage_result.is_banned, usage_result.is_auth_error);
+        // 保存 OIDC 凭证
+        existing.client_id = Some(client_id.clone());
+        existing.client_secret = Some(client_secret.clone());
+        existing.region = Some(region.clone());
+        existing.auth_method = Some("IdC".to_string());
+        existing.clone()
+    } else {
+        let mut account = Account::new(final_email.clone(), format!("Kiro {idp} 账号"));
+        account.access_token = Some(access_token.clone());
+        account.refresh_token = Some(refresh_token.clone());
+        account.provider = Some(idp.clone());
+        account.auth_method = Some("IdC".to_string());
+        account.user_id = user_id;
+        account.usage_data = Some(usage_result.usage_data);
+        account.status = calc_status(usage_result.is_banned, usage_result.is_auth_error);
+        account.client_id = Some(client_id.clone());
+        account.client_secret = Some(client_secret.clone());
+        account.region = Some(region.clone());
+        account.machine_id = Some(uuid::Uuid::new_v4().to_string().to_lowercase());
+        store.accounts.insert(0, account.clone());
+        account
+    };
+
+    save_store(&store)?;
+    drop(store);
+
+    Ok(AddAccountResult {
+        account: account.clone(),
+        is_new,
+    })
+}
+
 /// 添加本地 Kiro IDE 账号
 #[tauri::command]
 pub async fn add_local_kiro_account(

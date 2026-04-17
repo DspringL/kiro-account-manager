@@ -126,7 +126,11 @@ pub async fn auto_register_with_tempmail(
                 return Ok(RegisterResult {
                     success: true,
                     sso_token: sso_token.clone(),
+                    access_token: Some(r.access_token),
                     refresh_token: Some(r.refresh_token),
+                    client_id: Some(r.client_id),
+                    client_secret: Some(r.client_secret),
+                    region: Some(r.region),
                     name,
                     email,
                     error: None,
@@ -134,11 +138,14 @@ pub async fn auto_register_with_tempmail(
             }
             Err(e) => {
                 emit_log(&format!("⚠ SSO Token 转换失败: {}", e));
-                // 转换失败时仍然返回成功，让前端决定如何处理
                 return Ok(RegisterResult {
                     success: true,
                     sso_token: sso_token.clone(),
+                    access_token: None,
                     refresh_token: None,
+                    client_id: None,
+                    client_secret: None,
+                    region: None,
                     name,
                     email,
                     error: Some(format!("SSO Token 转换失败: {}", e)),
@@ -150,7 +157,11 @@ pub async fn auto_register_with_tempmail(
     Ok(RegisterResult {
         success: true,
         sso_token,
+        access_token: None,
         refresh_token: None,
+        client_id: None,
+        client_secret: None,
+        region: None,
         name,
         email,
         error: None,

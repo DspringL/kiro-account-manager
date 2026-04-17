@@ -40,7 +40,7 @@ use tauri::{Listener, Manager};
 // 导入命令
 use browser::detect_installed_browsers;
 use commands::account_cmd::{
-    add_account_by_idc, add_account_by_social, add_local_kiro_account, delete_account,
+    add_account_by_idc, add_account_by_oidc_token, add_account_by_social, add_local_kiro_account, delete_account,
     delete_account_remote, delete_accounts, export_accounts, get_account_usage, get_accounts,
     get_accounts_by_group, get_accounts_by_tag, get_available_accounts, import_accounts,
     list_available_models, refresh_account_token, sync_account, update_account, verify_account,
@@ -314,6 +314,7 @@ fn main() {
             add_account_by_social,
             add_local_kiro_account,
             add_account_by_idc,
+            add_account_by_oidc_token,
             import_accounts,
             export_accounts,
             list_available_models,
