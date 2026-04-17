@@ -10,8 +10,10 @@ pub struct BrowserAutomation {
 
 impl BrowserAutomation {
     pub fn new() -> Self {
+        // CARGO_MANIFEST_DIR 在编译时指向 src-tauri/ 目录
+        // 脚本放在 src-tauri/scripts/ 下
         let script_path = if cfg!(debug_assertions) {
-            "src-tauri/scripts/auto_register.py".to_string()
+            format!("{}/scripts/auto_register.py", env!("CARGO_MANIFEST_DIR"))
         } else {
             "scripts/auto_register.py".to_string()
         };
