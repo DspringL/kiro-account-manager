@@ -3,7 +3,6 @@ use std::process::{Command, Stdio};
 use serde_json::{json, Value};
 use tauri::Emitter;
 
-/// 浏览器自动化服务（调用 Python 脚本）
 pub struct BrowserAutomation {
     python_path: String,
     script_path: String,
@@ -22,7 +21,6 @@ impl BrowserAutomation {
         }
     }
 
-    /// 检查 Camoufox 是否已安装
     pub async fn check_camoufox_installed(&self) -> Result<bool, String> {
         let output = Command::new(&self.python_path)
             .arg("-c")
@@ -33,13 +31,6 @@ impl BrowserAutomation {
     }
 
     /// 完整注册流程：传入临时邮箱 API 配置，Python 脚本内部完成所有步骤
-    ///
-    /// # 参数
-    /// - api_url: 临时邮箱 API 地址
-    /// - admin_password: 临时邮箱 Admin 密码
-    /// - proxy_url: 可选代理地址
-    /// - account_password: 可选 AWS 账号密码
-    /// - app_handle: Tauri 应用句柄，用于发送实时日志
     pub async fn register_full_flow(
         &self,
         api_url: &str,
@@ -54,6 +45,7 @@ impl BrowserAutomation {
             "proxy_url": proxy_url,
             "account_password": account_password
         });
+        let input_bytes = input.to_string().into_bytes();
 
         let mut child = Command::new(&self.python_path)
             .arg(&self.script_path)
@@ -61,46 +53,85 @@ impl BrowserAutomation {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("启动 Python 脚本失败: {}", e))?;
+            .map_err(|e| format!("启动 Python 脚本失败: {e}"))?;
 
+        // 写入参数后立即关闭 stdin，让 Python 的 sys.stdin.read() 能返回
         if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(input.to_string().as_bytes())
-                .map_err(|e| format!("写入参数失败: {}", e))?;
+            stdin.write_all(&input_bytes)
+                .map_err(|e| format!("写入参数失败: {e}"))?;
+            // stdin 在这里 drop，自动关闭，Python 才能读到 EOF
         }
 
+        // 读取 stdout（实时日志 + 最终结果）
         let stdout = child.stdout.take().ok_or("无法获取 stdout")?;
         let reader = BufReader::new(stdout);
         let mut result: Option<Value> = None;
 
         for line in reader.lines() {
-            if let Ok(line) = line {
-                if let Ok(json_data) = serde_json::from_str::<Value>(&line) {
-                    match json_data.get("type").and_then(|v| v.as_str()) {
-                        Some("log") => {
-                            if let Some(handle) = app_handle {
-                                let email = json_data.get("email").and_then(|v| v.as_str()).unwrap_or("");
-                                let message = json_data.get("message").and_then(|v| v.as_str()).unwrap_or("");
-                                let _ = handle.emit("auto-register-log", json!({
-                                    "email": email,
-                                    "message": message
-                                }));
-                            }
+            let line = match line {
+                Ok(l) => l,
+                Err(_) => continue,
+            };
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            if let Ok(json_data) = serde_json::from_str::<Value>(trimmed) {
+                match json_data.get("type").and_then(|v| v.as_str()) {
+                    Some("log") => {
+                        if let Some(handle) = app_handle {
+                            let email = json_data.get("email").and_then(|v| v.as_str()).unwrap_or("");
+                            let message = json_data.get("message").and_then(|v| v.as_str()).unwrap_or("");
+                            let _ = handle.emit("auto-register-log", json!({
+                                "email": email,
+                                "message": message
+                            }));
                         }
-                        Some("result") => {
-                            result = json_data.get("data").cloned();
-                        }
-                        Some("error") => {
-                            let message = json_data.get("message").and_then(|v| v.as_str()).unwrap_or("未知错误");
-                            return Err(message.to_string());
-                        }
-                        _ => {}
                     }
+                    Some("result") => {
+                        result = json_data.get("data").cloned();
+                    }
+                    Some("error") => {
+                        let msg = json_data.get("message").and_then(|v| v.as_str()).unwrap_or("未知错误");
+                        return Err(msg.to_string());
+                    }
+                    _ => {
+                        // 非 JSON 行也尝试作为日志输出
+                        if let Some(handle) = app_handle {
+                            let _ = handle.emit("auto-register-log", json!({
+                                "email": "",
+                                "message": trimmed
+                            }));
+                        }
+                    }
+                }
+            } else {
+                // 非 JSON 行（如 Python 的 print 调试输出）也转发到日志
+                if let Some(handle) = app_handle {
+                    let _ = handle.emit("auto-register-log", json!({
+                        "email": "",
+                        "message": trimmed
+                    }));
                 }
             }
         }
 
-        let _ = child.wait();
+        // 等待进程结束，同时收集 stderr 用于调试
+        let output = child.wait_with_output()
+            .map_err(|e| format!("等待进程失败: {e}"))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if !stderr.trim().is_empty() {
+                if let Some(handle) = app_handle {
+                    let _ = handle.emit("auto-register-log", json!({
+                        "email": "",
+                        "message": format!("[stderr] {}", stderr.trim())
+                    }));
+                }
+            }
+        }
+
         result.ok_or_else(|| "未获取到结果".to_string())
     }
 }
