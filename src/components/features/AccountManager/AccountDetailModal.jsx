@@ -2,19 +2,19 @@ import { useState, useRef, useEffect, memo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Copy, Check, RefreshCw, User, CreditCard, Shield } from 'lucide-react'
 import { TextInput } from '@mantine/core'
-import { useApp } from '../../hooks/useApp'
-import { useDialog } from '../../contexts/DialogContext'
-import { formatUsage, getAccountDisplayName } from '../../utils/accountStats'
-import { getAccountStatusMeta, isBannedStatus } from '../../utils/accountStatus'
-import { getProviderDisplayName, isGitHubProvider } from '../../utils/accountProvider'
-import { TokenJsonView } from '../features/AccountManager/TokenJsonView'
+import { useApp } from '../../../hooks/useApp'
+import { useDialog } from '../../../contexts/DialogContext'
+import { formatUsage, getAccountDisplayName } from '../../../utils/accountStats'
+import { getAccountStatusMeta, isBannedStatus } from '../../../utils/accountStatus'
+import { getProviderDisplayName, isGitHubProvider } from '../../../utils/accountProvider'
+import { TokenJsonView } from './TokenJsonView'
 import {
   DialogRoot,
   DialogContent,
   DialogBody,
   DialogFooter,
-} from '../ui/dialog'
-import { Button } from '../ui/button'
+} from '../../shared/dialog'
+import { Button } from '../../shared/button'
 
 // 配额卡片组件（优化性能）
 const QuotaCard = memo(({ title, used, quota, icon, status, expiry, colors, t }) => {

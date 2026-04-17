@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Loader, ArrowRight } from 'lucide-react'
-import { useApp } from '../../hooks/useApp'
-import { Button } from '../ui/button'
-import { getThemeAccent } from './KiroConfig/themeAccent'
+import { useApp } from '../../../hooks/useApp'
+import { Button } from '../../shared/button'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 const DEFAULT_PROVIDER_ORDER = ['Google', 'Github', 'BuilderId', 'Enterprise']
 

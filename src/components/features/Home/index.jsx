@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Users, Zap, Shield, TrendingUp, Sparkles, Server } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
-import { useApp } from '../../hooks/useApp'
-import { useDialog } from '../../contexts/DialogContext'
-import { useAccount } from '../../contexts/AccountContext'
-import { usePrivacy } from '../../contexts/PrivacyContext'
+import { useApp } from '../../../hooks/useApp'
+import { useDialog } from '../../../contexts/DialogContext'
+import { useAccount } from '../../../contexts/AccountContext'
+import { usePrivacy } from '../../../contexts/PrivacyContext'
 
 // 子组件
 import LoadingSkeleton from './Home/LoadingSkeleton'
