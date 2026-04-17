@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo } from 'react'
 import ConfirmModal from '../components/features/AccountManager/ConfirmModal'
-import UpdateDialog from '../components/modals/UpdateDialog'
+import UpdateDialog from '../components/shared/UpdateDialog'
 
 const DialogContext = createContext(null)
 
