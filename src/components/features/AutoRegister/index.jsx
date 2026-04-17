@@ -145,7 +145,11 @@ export default function AutoRegister() {
         break
       }
 
-      addLog(`\n[${i + 1}/${registerCount}] 开始注册...`)
+      // 多账号时加分割线
+      if (i > 0) {
+        addLog('─'.repeat(50))
+      }
+      addLog(`[${i + 1}/${registerCount}] 开始注册...`)
 
       try {
         const result = await invoke('auto_register_with_tempmail', {
@@ -414,6 +418,8 @@ export default function AutoRegister() {
                     ? 'text-red-400'
                     : log.includes('=====')
                     ? 'text-yellow-400'
+                    : log.startsWith('─')
+                    ? 'text-white/20 text-center tracking-widest'
                     : 'text-gray-300'
                 }
               >

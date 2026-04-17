@@ -29,7 +29,7 @@ except ImportError:
 def log(message: str, email: str = ""):
     from datetime import datetime
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    print(json.dumps({"type": "log", "email": email, "message": f"[{ts}] {message}"}), flush=True)
+    print(json.dumps({"type": "log", "email": "", "message": f"[{ts}] {message}"}), flush=True)
 
 def fail(error: str):
     print(json.dumps({"type": "result", "data": {"success": False, "error": error}}), flush=True)
