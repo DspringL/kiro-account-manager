@@ -7,15 +7,15 @@ import { useAccount } from '../../../contexts/AccountContext'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 
 // 子组件
-import LoadingSkeleton from './Home/LoadingSkeleton'
-import StatCard from './Home/StatCard'
-import CurrentAccountCard from './Home/CurrentAccountCard'
-import QuotaOverviewCard from './Home/QuotaOverviewCard'
-import AccountQuotaDetail from './Home/AccountQuotaDetail'
-import UsageDistribution from './Home/UsageDistribution'
-import QuotaPieChart from './Home/QuotaPieChart'
-import UsageTrendChart from './Home/UsageTrendChart'
-import { getThemeAccent } from './KiroConfig/themeAccent'
+import LoadingSkeleton from './LoadingSkeleton'
+import StatCard from './StatCard'
+import CurrentAccountCard from './CurrentAccountCard'
+import QuotaOverviewCard from './QuotaOverviewCard'
+import AccountQuotaDetail from './AccountQuotaDetail'
+import UsageDistribution from './UsageDistribution'
+import QuotaPieChart from './QuotaPieChart'
+import UsageTrendChart from './UsageTrendChart'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 function Home({ onNavigate }) {
   const { t, theme, colors } = useApp()

@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn deep_link_scheme_matches_registered_tauri_scheme() {
-        let config: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json"))
+        let config: serde_json::Value = serde_json::from_str(include_str!("../../tauri.conf.json"))
             .expect("tauri config should parse");
         let scheme = config["plugins"]["deep-link"]["desktop"]["schemes"][0]
             .as_str()

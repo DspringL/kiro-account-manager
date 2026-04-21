@@ -62,6 +62,8 @@ pub struct GatewayConfig {
     pub port: u16,
     #[serde(default)]
     pub access_token: Option<String>,
+    #[serde(default)]
+    pub client_api_keys: Vec<String>,
     #[serde(default = "default_region")]
     pub region: String,
     #[serde(default = "default_account_mode")]
@@ -218,6 +220,7 @@ impl Default for GatewayConfig {
             host: default_host(),
             port: default_port(),
             access_token: None,
+            client_api_keys: Vec::new(),
             region: default_region(),
             account_mode: default_account_mode(),
             account_id: None,
@@ -229,6 +232,32 @@ impl Default for GatewayConfig {
             log_level: default_log_level(),
         }
     }
+}
+
+pub(crate) fn effective_client_api_keys(config: &GatewayConfig) -> Vec<String> {
+    let mut keys = Vec::new();
+
+    if let Some(key) = config
+        .access_token
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        keys.push(key.to_string());
+    }
+
+    for key in config
+        .client_api_keys
+        .iter()
+        .map(|item| item.trim())
+        .filter(|item| !item.is_empty())
+    {
+        if !keys.iter().any(|existing| existing == key) {
+            keys.push(key.to_string());
+        }
+    }
+
+    keys
 }
 
 impl GatewayStatus {
@@ -290,14 +319,11 @@ fn ensure_config_valid(config: &GatewayConfig) -> Result<(), String> {
     ) {
         return Err("logLevel 必须是 debug/info/warn/error".to_string());
     }
-    if config
-        .access_token
-        .as_deref()
-        .unwrap_or_default()
-        .trim()
-        .is_empty()
-    {
+    if effective_client_api_keys(config).is_empty() {
         return Err("必须配置客户端 API Key".to_string());
+    }
+    if !config.local_only && config.allowed_ips.is_empty() {
+        return Err("允许远程访问时必须至少配置一个白名单来源 IP".to_string());
     }
     for entry in &config.allowed_ips {
         if !is_valid_allowlist_entry(entry) {
@@ -316,10 +342,17 @@ fn is_valid_allowlist_entry(entry: &str) -> bool {
 fn normalize_config(config: &GatewayConfig) -> GatewayConfig {
     let mut normalized = config.clone();
     normalized.host = normalized.host.trim().to_string();
+    normalized.access_token = normalized
+        .access_token
+        .as_ref()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
     normalized.region = normalized.region.trim().to_string();
     normalized.account_mode = normalized.account_mode.trim().to_string();
     normalized.strategy = normalized.strategy.trim().to_string();
     normalized.log_level = normalized.log_level.trim().to_ascii_lowercase();
+    normalized.client_api_keys = effective_client_api_keys(&normalized);
+    normalized.access_token = normalized.client_api_keys.first().cloned();
     normalized.allowed_ips = normalized
         .allowed_ips
         .iter()
@@ -905,6 +938,7 @@ mod tests {
         GatewayConfig {
             port,
             local_only: false,
+            allowed_ips: vec!["127.0.0.1".to_string()],
             account_mode: "single".to_string(),
             account_id: Some("test-account".to_string()),
             access_token: Some("sk-test".to_string()),
@@ -1154,6 +1188,72 @@ mod tests {
         let err =
             ensure_config_valid(&config).expect_err("remote access without api key should fail");
         assert!(err.contains("API Key"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn rejects_remote_access_without_allowlist() {
+        let config = GatewayConfig {
+            local_only: false,
+            account_mode: "single".to_string(),
+            account_id: Some("test-account".to_string()),
+            access_token: Some("sk-test".to_string()),
+            allowed_ips: Vec::new(),
+            ..GatewayConfig::default()
+        };
+
+        let err =
+            ensure_config_valid(&config).expect_err("remote access without allowlist should fail");
+        assert!(err.contains("白名单"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn normalize_config_promotes_legacy_access_token_to_client_api_keys() {
+        let config = GatewayConfig {
+            access_token: Some(" sk-primary ".to_string()),
+            client_api_keys: Vec::new(),
+            ..GatewayConfig::default()
+        };
+
+        let normalized = normalize_config(&config);
+
+        assert_eq!(normalized.client_api_keys, vec!["sk-primary".to_string()]);
+        assert_eq!(normalized.access_token.as_deref(), Some("sk-primary"));
+    }
+
+    #[test]
+    fn normalize_config_deduplicates_client_api_keys() {
+        let config = GatewayConfig {
+            access_token: Some("sk-primary".to_string()),
+            client_api_keys: vec![
+                " sk-primary ".to_string(),
+                "sk-secondary".to_string(),
+                "".to_string(),
+                "sk-secondary".to_string(),
+            ],
+            ..GatewayConfig::default()
+        };
+
+        let normalized = normalize_config(&config);
+
+        assert_eq!(
+            normalized.client_api_keys,
+            vec!["sk-primary".to_string(), "sk-secondary".to_string()]
+        );
+    }
+
+    #[test]
+    fn rejects_config_without_any_client_api_keys() {
+        let config = GatewayConfig {
+            access_token: Some("   ".to_string()),
+            client_api_keys: vec!["".to_string(), "   ".to_string()],
+            account_mode: "single".to_string(),
+            account_id: Some("test-account".to_string()),
+            ..GatewayConfig::default()
+        };
+
+        let err = ensure_config_valid(&normalize_config(&config))
+            .expect_err("missing client api keys should fail");
+        assert!(err.contains("客户端 API Key"), "unexpected error: {err}");
     }
 
     #[tokio::test]

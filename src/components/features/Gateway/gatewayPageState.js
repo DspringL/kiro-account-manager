@@ -1,11 +1,12 @@
 import { invoke } from '@tauri-apps/api/core'
-import { parseAllowedIps } from './gatewayPageUtils'
+import { getPrimaryClientApiKey, parseAllowedIps, parseClientApiKeys } from './gatewayPageUtils'
 
 export const DEFAULT_GATEWAY_CONFIG = {
   enabled: false,
   host: '127.0.0.1',
   port: 8765,
   apiKey: '',
+  clientApiKeysText: '',
   region: 'us-east-1',
   accountMode: 'single',
   accountId: null,
@@ -30,7 +31,8 @@ export const buildGatewayConfigSnapshot = (config) => JSON.stringify({
   enabled: !!config.enabled,
   host: config.host || '',
   port: Number(config.port) || 0,
-  apiKey: config.apiKey || '',
+  apiKey: getPrimaryClientApiKey(config.clientApiKeysText || config.apiKey),
+  clientApiKeysText: config.clientApiKeysText || config.apiKey || '',
   region: config.region || 'us-east-1',
   accountMode: config.accountMode || 'single',
   accountId: config.accountId || null,
@@ -45,7 +47,8 @@ export const buildGatewayConfigSnapshot = (config) => JSON.stringify({
 export const buildGatewayRuntimeSnapshot = (config) => JSON.stringify({
   host: config.host || '',
   port: Number(config.port) || 0,
-  apiKey: config.apiKey || '',
+  apiKey: getPrimaryClientApiKey(config.clientApiKeysText || config.apiKey),
+  clientApiKeysText: config.clientApiKeysText || config.apiKey || '',
   region: config.region || 'us-east-1',
   accountMode: config.accountMode || 'single',
   accountId: config.accountId || null,
@@ -58,10 +61,19 @@ export const buildGatewayRuntimeSnapshot = (config) => JSON.stringify({
 })
 
 export const hydrateGatewayConfig = (gatewayConfig) => ({
+  ...(() => {
+    const clientApiKeys = Array.isArray(gatewayConfig?.clientApiKeys)
+      ? parseClientApiKeys(gatewayConfig.clientApiKeys.join('\n'))
+      : parseClientApiKeys(gatewayConfig?.accessToken || '')
+    const primaryApiKey = clientApiKeys[0] || ''
+    return {
+      apiKey: primaryApiKey,
+      clientApiKeysText: clientApiKeys.join('\n'),
+    }
+  })(),
   enabled: gatewayConfig?.enabled ?? false,
   host: gatewayConfig?.host || '127.0.0.1',
   port: gatewayConfig?.port || 8765,
-  apiKey: gatewayConfig?.accessToken || '',
   region: gatewayConfig?.region || 'us-east-1',
   accountMode: gatewayConfig?.accountMode === 'local'
     ? 'single'
@@ -87,10 +99,16 @@ export const buildGatewayStatusState = (gatewayStatus, gatewayConfig, fallbackCo
 })
 
 export const buildGatewayPayload = (config) => ({
+  ...(() => {
+    const clientApiKeys = parseClientApiKeys(config.clientApiKeysText || config.apiKey)
+    return {
+      accessToken: clientApiKeys[0] || null,
+      clientApiKeys,
+    }
+  })(),
   enabled: !!config.enabled,
   host: config.host,
   port: Number(config.port),
-  accessToken: config.apiKey || null,
   region: config.region,
   accountMode: config.accountMode,
   accountId: config.accountId || null,

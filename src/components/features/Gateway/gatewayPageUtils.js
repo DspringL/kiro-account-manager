@@ -12,6 +12,14 @@ export const parseAllowedIps = (value) => String(value || '')
   .map(item => item.trim())
   .filter(Boolean)
 
+export const parseClientApiKeys = (value) => String(value || '')
+  .split(/[\n,]+/)
+  .map(item => item.trim())
+  .filter(Boolean)
+  .filter((item, index, items) => items.indexOf(item) === index)
+
+export const getPrimaryClientApiKey = (value) => parseClientApiKeys(value)[0] || ''
+
 const isValidIpv4Address = (value) => {
   if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(value)) {
     return false
@@ -103,10 +111,12 @@ export const applyGatewayLocalOnlyChange = (config, nextLocalOnly, createApiKey)
     localOnly: !!nextLocalOnly,
   }
 
-  if (!nextLocalOnly && !String(config?.apiKey || '').trim()) {
+  if (!nextLocalOnly && !parseClientApiKeys(config?.clientApiKeysText || config?.apiKey).length) {
+    const generatedKey = createApiKey()
     return {
       ...nextConfig,
-      apiKey: createApiKey(),
+      apiKey: generatedKey,
+      clientApiKeysText: generatedKey,
     }
   }
 
@@ -125,7 +135,9 @@ export const createGatewayFieldErrors = (config) => {
   const port = Number(config?.port)
   const region = String(config?.region || '').trim()
   const accountMode = String(config?.accountMode || 'single').trim()
+  const localOnly = config?.localOnly ?? true
   const allowedIps = parseAllowedIps(config?.allowedIpsText)
+  const clientApiKeys = parseClientApiKeys(config?.clientApiKeysText || config?.apiKey)
 
   if (!host) {
     errors.host = '监听地址不能为空'
@@ -151,8 +163,12 @@ export const createGatewayFieldErrors = (config) => {
     errors.groupId = 'group 模式必须选择分组'
   }
 
-  if (!String(config?.apiKey || '').trim()) {
-    errors.apiKey = '必须填写客户端 API Key'
+  if (!clientApiKeys.length) {
+    errors.clientApiKeysText = '必须至少填写一个客户端 API Key'
+  }
+
+  if (!localOnly && !allowedIps.length) {
+    errors.allowedIpsText = '允许远程访问时必须至少配置一个白名单来源 IP'
   }
 
   const invalidAllowlistEntry = allowedIps.find(entry => !isValidAllowlistEntry(entry))
@@ -161,6 +177,17 @@ export const createGatewayFieldErrors = (config) => {
   }
 
   return errors
+}
+
+export const redactGatewayApiKey = (apiKey) => {
+  const value = String(apiKey || '').trim()
+  if (!value) {
+    return 'sk-your-gateway-api-key'
+  }
+  if (value.length <= 8) {
+    return `${value.slice(0, 3)}***`
+  }
+  return `${value.slice(0, 6)}...${value.slice(-4)}`
 }
 
 export const mergeErrorHistory = (history, message, seenAt, limit = 8) => {
@@ -193,7 +220,7 @@ export const mergeErrorHistory = (history, message, seenAt, limit = 8) => {
 }
 
 export const buildClientSamples = (baseUrl, apiKey) => {
-  const safeKey = apiKey || 'sk-your-gateway-api-key'
+  const safeKey = redactGatewayApiKey(getPrimaryClientApiKey(apiKey))
   const anthropicEnv = `ANTHROPIC_BASE_URL=${baseUrl}\nANTHROPIC_API_KEY=${safeKey}`
   const openaiEnv = `OPENAI_BASE_URL=${baseUrl}\nOPENAI_API_KEY=${safeKey}`
   const openaiResponsesCurl = [
@@ -335,23 +362,27 @@ export const buildGatewayActionSummary = ({
 
 export const buildGatewaySecuritySummary = ({ config }) => {
   const allowedIpsCount = parseAllowedIps(config?.allowedIpsText).length
+  const clientApiKeys = parseClientApiKeys(config?.clientApiKeysText || config?.apiKey)
 
   return {
     exposureLabel: config?.localOnly ? '仅本机访问' : '允许远程访问',
     allowedIpsCount,
-    apiKeyState: String(config?.apiKey || '').trim() ? '已配置客户端 Key' : '未配置客户端 Key',
+    apiKeyState: clientApiKeys.length
+      ? `已配置 ${clientApiKeys.length} 个客户端 Key`
+      : '未配置客户端 Key',
     logLevel: config?.logLevel || 'debug',
   }
 }
 
-export const buildGatewayIntegrationSummary = ({ baseUrl, apiKey, logDir, errorHistory }) => {
-  const safeKey = apiKey || 'sk-your-gateway-api-key'
+export const buildGatewayIntegrationSummary = ({ baseUrl, apiKey, clientApiKeysText, logDir, errorHistory }) => {
+  const clientApiKeys = parseClientApiKeys(clientApiKeysText || apiKey)
+  const safeKey = redactGatewayApiKey(clientApiKeys[0] || '')
   const errorCount = Array.isArray(errorHistory) ? errorHistory.length : 0
   const errorHits = Array.isArray(errorHistory) ? errorHistory.reduce((sum, item) => sum + Number(item.count || 0), 0) : 0
 
   return {
     endpointLabel: baseUrl,
-    authLabel: `Bearer ${safeKey}`,
+    authLabel: clientApiKeys.length > 1 ? `Bearer ${safeKey}（共 ${clientApiKeys.length} 个 Key）` : `Bearer ${safeKey}`,
     logDirState: String(logDir || '').trim() ? '日志目录已定位' : '日志目录未获取',
     errorDigest: `${errorCount} 条错误 / ${errorHits} 次命中`,
   }

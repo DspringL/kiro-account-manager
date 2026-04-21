@@ -40,6 +40,7 @@ use super::{
         normalize_responses_request,
     },
     eventstream::try_decode_message,
+    effective_client_api_keys,
     models::{
         AnthropicContentBlock, AnthropicMessagesRequest, AnthropicMessagesResponse, AnthropicUsage,
         ModelsResponse, NormalizedMessage, NormalizedRequest, ToolCall, ToolCallFunction,
@@ -170,6 +171,7 @@ struct WebSearchSource {
 type UpstreamRequestError = (StatusCode, &'static str, String, Option<String>);
 
 const STREAMING_RESPONSE_PLACEHOLDER: &str = "[streaming response omitted from request log]";
+const MAX_SERVER_WEB_SEARCH_ITERATIONS: usize = 8;
 
 #[derive(Debug, Clone)]
 struct RequestLogContext<'a> {
@@ -179,6 +181,7 @@ struct RequestLogContext<'a> {
     request: Option<&'a NormalizedRequest>,
     upstream: Option<&'a UpstreamCredentials>,
     started_at: Instant,
+    #[allow(dead_code)]
     request_body: Option<&'a str>,
 }
 
@@ -358,31 +361,12 @@ fn serialize_logged_value(value: &Value) -> String {
     serde_json::to_string_pretty(value).unwrap_or_else(|_| value.to_string())
 }
 
-fn prepare_logged_body(body: &str) -> Option<String> {
-    let trimmed = body.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    let max_chars = 12_000usize;
-    let mut truncated = String::with_capacity(trimmed.len().min(max_chars));
-    for (index, ch) in trimmed.chars().enumerate() {
-        if index >= max_chars {
-            truncated.push_str("\n...[truncated]");
-            break;
-        }
-        truncated.push(ch);
-    }
-
-    Some(truncated)
-}
-
 fn write_request_log(
     context: &RequestLogContext<'_>,
     status: StatusCode,
     outcome: &str,
     error: Option<&str>,
-    response_body: Option<&str>,
+    _response_body: Option<&str>,
 ) {
     let duration_ms = context
         .started_at
@@ -402,8 +386,8 @@ fn write_request_log(
         outcome: outcome.to_string(),
         duration_ms,
         error: error.map(str::to_string),
-        request_body: context.request_body.and_then(prepare_logged_body),
-        response_body: response_body.and_then(prepare_logged_body),
+        request_body: None,
+        response_body: None,
     };
     let _ = append_gateway_request_log(&entry);
 }
@@ -1011,14 +995,14 @@ async fn execute_request_with_server_tools(
                 .find(|tool| tool.tool_type.starts_with("web_search_"))
         })
         .and_then(|tool| tool.web_search.clone());
-    let _max_uses = web_search_options
-        .as_ref()
-        .and_then(|options| options.max_uses)
-        .map(|value| value.max(0) as usize)
-        .unwrap_or(usize::MAX);
+    let _max_uses = server_web_search_iteration_limit(
+        web_search_options
+            .as_ref()
+            .and_then(|options| options.max_uses),
+    );
     let mut server_tool_calls = Vec::new();
 
-    for _ in 0..8 {
+    for _ in 0.._max_uses {
         let upstream_payload =
             build_kiro_payload(&state.http, &working_request, upstream.profile_arn.clone())
                 .await
@@ -1095,6 +1079,13 @@ async fn execute_request_with_server_tools(
         "api_error",
         "web_search 代理循环超过最大轮数".to_string(),
     ))
+}
+
+fn server_web_search_iteration_limit(max_uses: Option<i32>) -> usize {
+    max_uses
+        .unwrap_or(MAX_SERVER_WEB_SEARCH_ITERATIONS as i32)
+        .max(0)
+        .min(MAX_SERVER_WEB_SEARCH_ITERATIONS as i32) as usize
 }
 
 async fn send_generate_request<T: serde::Serialize + ?Sized>(
@@ -1457,13 +1448,10 @@ fn normalize_request(format: ResponseFormat, payload: &Value) -> Result<Normaliz
 }
 
 fn verify_client_auth(headers: &HeaderMap, config: &GatewayConfig) -> Result<(), String> {
-    let Some(expected) = config
-        .access_token
-        .as_ref()
-        .filter(|token| !token.trim().is_empty())
-    else {
+    let expected_keys = effective_client_api_keys(config);
+    if expected_keys.is_empty() {
         return Err("客户端 API Key 未配置".to_string());
-    };
+    }
 
     let authorization = headers
         .get(header::AUTHORIZATION)
@@ -1476,7 +1464,10 @@ fn verify_client_auth(headers: &HeaderMap, config: &GatewayConfig) -> Result<(),
         .get("x-api-key")
         .and_then(|value| value.to_str().ok());
 
-    if authorization == Some(expected.as_str()) || api_key == Some(expected.as_str()) {
+    if expected_keys
+        .iter()
+        .any(|expected| authorization == Some(expected.as_str()) || api_key == Some(expected.as_str()))
+    {
         Ok(())
     } else {
         Err("客户端 API Key 无效".to_string())
@@ -3331,6 +3322,33 @@ mod tests {
     }
 
     #[test]
+    fn verify_client_auth_accepts_any_configured_client_api_key() {
+        let config = GatewayConfig {
+            access_token: Some("sk-primary".to_string()),
+            client_api_keys: vec!["sk-primary".to_string(), "sk-secondary".to_string()],
+            ..GatewayConfig::default()
+        };
+
+        let mut bearer_headers = HeaderMap::new();
+        bearer_headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer sk-secondary"),
+        );
+        assert!(verify_client_auth(&bearer_headers, &config).is_ok());
+
+        let mut x_api_key_headers = HeaderMap::new();
+        x_api_key_headers.insert("x-api-key", HeaderValue::from_static("sk-primary"));
+        assert!(verify_client_auth(&x_api_key_headers, &config).is_ok());
+
+        let mut invalid_headers = HeaderMap::new();
+        invalid_headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Bearer sk-unknown"),
+        );
+        assert!(verify_client_auth(&invalid_headers, &config).is_err());
+    }
+
+    #[test]
     fn parse_web_search_mcp_result_preserves_results_and_filters_domains() {
         let result = json!({
             "content": [{
@@ -3358,6 +3376,16 @@ mod tests {
         );
         assert!(tool_result_text.contains("blog.rust-lang.org"));
         assert!(!tool_result_text.contains("example.com"));
+    }
+
+    #[test]
+    fn server_web_search_iteration_limit_uses_max_uses() {
+        assert_eq!(server_web_search_iteration_limit(None), 8);
+        assert_eq!(server_web_search_iteration_limit(Some(1)), 1);
+        assert_eq!(server_web_search_iteration_limit(Some(3)), 3);
+        assert_eq!(server_web_search_iteration_limit(Some(99)), 8);
+        assert_eq!(server_web_search_iteration_limit(Some(0)), 0);
+        assert_eq!(server_web_search_iteration_limit(Some(-5)), 0);
     }
 
     #[test]
@@ -3489,6 +3517,7 @@ mod tests {
             "resp_test",
             "msg_test",
             123,
+            None,
         );
 
         assert_eq!(
@@ -3549,6 +3578,7 @@ mod tests {
             "resp_test",
             "msg_test",
             123,
+            None,
         );
 
         assert_eq!(

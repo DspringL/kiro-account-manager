@@ -391,12 +391,12 @@ mod tests {
         );
         assert_eq!(
             resolve_idc_login_email("BuilderId", None, Some("builder-user".to_string()))
-                .unwrap_err(),
-            "获取邮箱失败，请检查账号状态".to_string()
+                .unwrap(),
+            "builder-user".to_string()
         );
         assert_eq!(
             resolve_idc_login_email("Enterprise", None, None).unwrap_err(),
-            "Enterprise 账号缺少 email 和 userId".to_string()
+            "Enterprise 账号缺少 userId 或 email".to_string()
         );
     }
 
