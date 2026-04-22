@@ -1,12 +1,7 @@
-name: Release
+name: Manual Build
 
 on:
-  # 推送 tag 时自动触发构建
-  push:
-    tags:
-      - 'v*'
-  
-  # 支持手动触发构建
+  # 仅支持手动触发构建
   workflow_dispatch:
     inputs:
       release_tag:
@@ -17,15 +12,16 @@ on:
         description: 'Release name'
         required: false
         type: string
+        default: 'Kiro Account Manager'
       draft_release:
         description: 'Create as draft release'
         required: false
-        default: false
+        default: true
         type: boolean
       prerelease:
         description: 'Mark as prerelease'
         required: false
-        default: false
+        default: true
         type: boolean
 
 # 权限配置
@@ -51,13 +47,8 @@ jobs:
       - name: Extract version
         id: version
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
-            echo "version=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
+          echo "tag=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
+          echo "version=${{ inputs.release_tag }}" >> $GITHUB_OUTPUT
 
   # macOS 构建
   build-macos:
@@ -117,8 +108,8 @@ jobs:
         with:
           tagName: ${{ needs.extract-version.outputs.version }}
           releaseName: ${{ inputs.release_name || format('Kiro Account Manager {0}', needs.extract-version.outputs.version) }}
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft_release || false }}
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          releaseDraft: ${{ inputs.draft_release }}
+          prerelease: ${{ inputs.prerelease }}
           args: --target ${{ matrix.target }}
 
   # Windows 构建
@@ -171,8 +162,8 @@ jobs:
         with:
           tagName: ${{ needs.extract-version.outputs.version }}
           releaseName: ${{ inputs.release_name || format('Kiro Account Manager {0}', needs.extract-version.outputs.version) }}
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft_release || false }}
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          releaseDraft: ${{ inputs.draft_release }}
+          prerelease: ${{ inputs.prerelease }}
           args: --target ${{ matrix.target }}
 
   # Linux 构建
@@ -240,8 +231,8 @@ jobs:
         with:
           tagName: ${{ needs.extract-version.outputs.version }}
           releaseName: ${{ inputs.release_name || format('Kiro Account Manager {0}', needs.extract-version.outputs.version) }}
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' && inputs.draft_release || false }}
-          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+          releaseDraft: ${{ inputs.draft_release }}
+          prerelease: ${{ inputs.prerelease }}
           args: --target ${{ matrix.target }}
 
   # 生成 Linux deb/rpm 专用的更新 JSON
@@ -249,7 +240,6 @@ jobs:
     name: Generate Linux Update JSON
     runs-on: ubuntu-latest
     needs: [extract-version, build-linux]
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     
     steps:
       - name: Download latest.json

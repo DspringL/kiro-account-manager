@@ -1,0 +1,146 @@
+name: Version Management
+
+on:
+  # 手动触发版本发布
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      custom_version:
+        description: 'Custom version (optional, e.g., 1.8.4)'
+        required: false
+        type: string
+      create_tag_only:
+        description: 'Only create tag (no build)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # 创建版本标签
+  create-version:
+    name: Create Version Tag
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          if [ -n "${{ inputs.custom_version }}" ]; then
+            # 使用自定义版本号
+            VERSION="${{ inputs.custom_version }}"
+            # 移除前缀 v（如果有）
+            VERSION="${VERSION#v}"
+            
+            echo "📦 使用自定义版本: v$VERSION"
+            
+            # 更新 package.json
+            npm version $VERSION --no-git-tag-version
+            
+            # 更新 tauri.conf.json
+            if command -v jq &> /dev/null; then
+              jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+              mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+            else
+              npm install -g jq
+              jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+              mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+            fi
+            
+            # 更新 Cargo.toml
+            sed -i "s/^version = .*/version = \"$VERSION\"/" src-tauri/Cargo.toml
+            
+            # 创建 git tag
+            TAG="v$VERSION"
+            git tag "$TAG"
+            
+            echo "✅ 版本号已更新为: $VERSION"
+          else
+            # 使用 standard-version 自动版本号
+            echo "📦 使用 standard-version 更新版本 (${{ inputs.version_type }})..."
+            npm run release:${{ inputs.version_type }}
+            
+            # 获取最新标签
+            TAG=$(git describe --tags --abbrev=0)
+            
+            echo "✅ 版本号已自动更新"
+          fi
+          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+          echo ""
+          echo "📋 版本信息:"
+          echo "   Tag: $TAG"
+          echo "   Version: ${TAG#v}"
+
+      - name: Push changes
+        run: |
+          echo "🚀 推送更改到远程仓库..."
+          git push origin main --follow-tags
+          echo "✅ 推送成功"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trigger build workflow
+        if: ${{ !inputs.create_tag_only }}
+        run: |
+          echo "🚀 触发构建工作流..."
+          gh workflow run release.yml \
+            --ref main \
+            -f release_tag=${{ steps.bump.outputs.tag }} \
+            -f release_name="Kiro Account Manager ${{ steps.bump.outputs.version }}"
+          echo "✅ 构建已触发"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output summary
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ 版本管理完成！"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 版本: ${{ steps.bump.outputs.version }}"
+          echo "🏷️  标签: ${{ steps.bump.outputs.tag }}"
+          if [ "${{ inputs.create_tag_only }}" = "true" ]; then
+            echo "📝 模式: 仅创建标签（未触发构建）"
+          else
+            echo "🔨 构建: 已自动触发构建工作流"
+          fi
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "下一步："
+          echo "  • 查看 Actions: https://github.com/${{ github.repository }}/actions"
+          echo "  • 查看 Releases: https://github.com/${{ github.repository }}/releases"
