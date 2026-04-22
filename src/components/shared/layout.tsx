@@ -1,8 +1,20 @@
 /**
  * Layout utility components for consistent spacing and alignment
  */
+import React from 'react'
 
-export function Stack({ gap = 'md', mt, p, className = '', children, ...props }) {
+interface BaseProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode;
+  className?: string;
+}
+
+interface StackProps extends BaseProps {
+  gap?: 'xs' | 'sm' | 'md' | 'lg' | number;
+  mt?: 'xs' | number;
+  p?: 'sm' | number;
+}
+
+export function Stack({ gap = 'md', mt, p, className = '', children, ...props }: StackProps) {
   const gapClass = typeof gap === 'number' ? `gap-[${gap}px]` : gap === 'xs' ? 'gap-1' : gap === 'sm' ? 'gap-2' : gap === 'lg' ? 'gap-6' : 'gap-4'
   const marginTopStyle = typeof mt === 'string' && mt === 'xs' ? { marginTop: '8px' } : typeof mt === 'number' ? { marginTop: `${mt}px` } : {}
   const paddingStyle = typeof p === 'string' && p === 'sm' ? { padding: '8px' } : typeof p === 'number' ? { padding: `${p}px` } : {}
@@ -13,7 +25,13 @@ export function Stack({ gap = 'md', mt, p, className = '', children, ...props })
   )
 }
 
-export function Group({ gap = 'md', justify, align = 'center', className = '', children, ...props }) {
+interface GroupProps extends BaseProps {
+  gap?: 'xs' | 'sm' | 'md' | 'lg' | number;
+  justify?: 'space-between' | 'flex-start' | 'flex-end' | 'center' | string;
+  align?: 'flex-start' | 'flex-end' | 'stretch' | 'center' | string;
+}
+
+export function Group({ gap = 'md', justify, align = 'center', className = '', children, ...props }: GroupProps) {
   const gapClass = typeof gap === 'number' ? `gap-[${gap}px]` : gap === 'xs' ? 'gap-1' : gap === 'sm' ? 'gap-2' : gap === 'lg' ? 'gap-6' : 'gap-4'
   const justifyClass = justify === 'space-between' ? 'justify-between' : justify === 'flex-start' ? 'justify-start' : justify === 'flex-end' ? 'justify-end' : justify === 'center' ? 'justify-center' : ''
   const alignClass = align === 'flex-start' ? 'items-start' : align === 'flex-end' ? 'items-end' : align === 'stretch' ? 'items-stretch' : align === 'center' ? 'items-center' : ''
@@ -24,12 +42,21 @@ export function Group({ gap = 'md', justify, align = 'center', className = '', c
   )
 }
 
+interface TextProps extends BaseProps {
+  size?: 'xs' | 'sm' | 'md' | 'lg' | string;
+  fw?: number | string;
+  mt?: number;
+  mb?: number;
+  tt?: 'uppercase' | string;
+  truncate?: boolean;
+}
+
 /**
  * Text component with size and weight options
  */
-export function Text({ size = 'md', fw, mt, mb, tt, truncate, className = '', style, children, ...props }) {
+export function Text({ size = 'md', fw, mt, mb, tt, truncate, className = '', style, children, ...props }: TextProps) {
   const sizeClass = size === 'xs' ? 'text-xs' : size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : size === '10px' ? 'text-[10px]' : 'text-base'
-  const weightClass = fw >= 700 ? 'font-bold' : fw >= 600 ? 'font-semibold' : fw >= 500 ? 'font-medium' : ''
+  const weightClass = typeof fw === 'number' ? (fw >= 700 ? 'font-bold' : fw >= 600 ? 'font-semibold' : fw >= 500 ? 'font-medium' : '') : ''
   const transformClass = tt === 'uppercase' ? 'uppercase' : ''
   const truncateClass = truncate ? 'truncate' : ''
   const nextStyle = {
@@ -43,10 +70,17 @@ export function Text({ size = 'md', fw, mt, mb, tt, truncate, className = '', st
   )
 }
 
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  color?: string;
+  variant?: string;
+  className?: string;
+  children?: React.ReactNode;
+}
+
 /**
  * Badge component with color variants (adapted from Mantine)
  */
-export function Badge({ color, className = '', children, ...props }) {
+export function Badge({ color, className = '', children, ...props }: BadgeProps) {
   const toneClass = color === 'green'
     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
     : color === 'teal'
@@ -64,10 +98,15 @@ export function Badge({ color, className = '', children, ...props }) {
   )
 }
 
+interface CardProps extends BaseProps {
+  withBorder?: boolean;
+  radius?: 'md' | 'lg' | 'xl' | string;
+}
+
 /**
  * Card component with border and radius options (adapted from Mantine)
  */
-export function Card({ withBorder, radius, className = '', children, ...props }) {
+export function Card({ withBorder, radius, className = '', children, ...props }: CardProps) {
   const borderClass = withBorder ? 'border border-gray-200 dark:border-gray-800' : ''
   const radiusClass = radius === 'md' ? 'rounded-md' : radius === 'lg' ? 'rounded-lg' : radius === 'xl' ? 'rounded-xl' : 'rounded'
   return (
@@ -77,10 +116,15 @@ export function Card({ withBorder, radius, className = '', children, ...props })
   )
 }
 
+interface CodeProps extends React.HTMLAttributes<HTMLElement> {
+  block?: boolean;
+  children?: React.ReactNode;
+}
+
 /**
  * Code component with block option
  */
-export function Code({ block, style, children, ...props }) {
+export function Code({ block, style, children, ...props }: CodeProps) {
   return block ? (
     <pre className="bg-muted rounded-md p-3 overflow-x-auto text-xs font-mono" style={style} {...props}>
       <code>{children}</code>
