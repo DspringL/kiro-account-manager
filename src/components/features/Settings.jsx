@@ -73,6 +73,9 @@ function Settings() {
     // 系统机器码
     const [systemMachineInfo, setSystemMachineInfo] = useState(null)
     const [machineGuidAction, setMachineGuidAction] = useState(null) // 'reset'
+    const [autoResetEnabled, setAutoResetEnabled] = useState(false)
+    const [autoResetInterval, setAutoResetInterval] = useState(5) // 秒
+    const [autoResetCountdown, setAutoResetCountdown] = useState(null) // 倒计时
 
     // 自动更新管理
     const [autoUpdateStatus, setAutoUpdateStatus] = useState(null)
@@ -155,6 +158,94 @@ function Settings() {
     useEffect(() => {
         loadSettings()
     }, [])
+
+    // 定时重置机器码
+    const autoResetTimerRef = useRef(null)
+    const countdownTimerRef = useRef(null)
+
+    // 清理定时器
+    useEffect(() => {
+        return () => {
+            if (autoResetTimerRef.current) {
+                clearInterval(autoResetTimerRef.current)
+            }
+            if (countdownTimerRef.current) {
+                clearInterval(countdownTimerRef.current)
+            }
+        }
+    }, [])
+
+    // 执行机器码重置
+    const executeMachineGuidReset = async (showNotification = true) => {
+        try {
+            const newGuid = await invoke('reset_system_machine_guid')
+            setSystemMachineInfo(prev => ({ ...prev, machineGuid: newGuid }))
+            if (showNotification) {
+                await showSuccess(t('settings.resetSuccess'), `${t('settings.newMachineGuid')}: ${newGuid}`)
+            }
+        } catch (err) {
+            console.error('Failed to reset machine GUID:', err)
+        }
+    }
+
+    // 启动自动重置
+    const startAutoReset = async (enabled) => {
+        // 清理现有定时器
+        if (autoResetTimerRef.current) {
+            clearInterval(autoResetTimerRef.current)
+            autoResetTimerRef.current = null
+        }
+        if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current)
+            countdownTimerRef.current = null
+        }
+        setAutoResetCountdown(null)
+
+        if (!enabled) {
+            await showSuccess(t('settings.autoResetStopped'), t('settings.autoResetStopped'))
+            return
+        }
+
+        // 启动新的定时器
+        const intervalMs = autoResetInterval * 1000
+        let remainingSeconds = autoResetInterval
+
+        // 倒计时更新
+        setAutoResetCountdown(remainingSeconds)
+        countdownTimerRef.current = setInterval(() => {
+            remainingSeconds--
+            if (remainingSeconds <= 0) {
+                remainingSeconds = autoResetInterval
+            }
+            setAutoResetCountdown(remainingSeconds)
+        }, 1000)
+
+        // 重置定时器
+        autoResetTimerRef.current = setInterval(async () => {
+            await executeMachineGuidReset(false)
+            // 重置倒计时
+            remainingSeconds = autoResetInterval
+            setAutoResetCountdown(remainingSeconds)
+        }, intervalMs)
+
+        await showSuccess(t('settings.autoResetActive').replace('{{interval}}', autoResetInterval))
+    }
+
+    // 处理自动重置开关
+    const handleAutoResetToggle = async (enabled) => {
+        setAutoResetEnabled(enabled)
+        await startAutoReset(enabled)
+    }
+
+    // 处理重置间隔变化
+    const handleAutoResetIntervalChange = async (value) => {
+        const interval = parseInt(value) || 5
+        setAutoResetInterval(interval)
+        // 如果已经启用，重新启动定时器
+        if (autoResetEnabled) {
+            await startAutoReset(true)
+        }
+    }
 
     const saveAppSettings = (updates, notifyChange = false) => persistAppSettings({
         updates,
@@ -446,22 +537,28 @@ function Settings() {
 
     // 系统机器码操作
     const handleResetSystemMachineGuid = async () => {
-        const confirmed = await showConfirm(
-            `⚠️ ${t('settings.resetSystemMachineGuid')}`,
-            t('settings.confirmResetSystemMachineGuid'),
-            { confirmText: t('settings.confirmReset'), cancelText: t('common.cancel') }
-        )
-        if (!confirmed) return
+        // 如果启用了自动重置，不需要弹窗确认，直接重置
+        if (autoResetEnabled) {
+            await executeMachineGuidReset(true)
+        } else {
+            // 没有启用自动重置时，保留原来的确认弹窗逻辑
+            const confirmed = await showConfirm(
+                `⚠️ ${t('settings.resetSystemMachineGuid')}`,
+                t('settings.confirmResetSystemMachineGuid'),
+                { confirmText: t('settings.confirmReset'), cancelText: t('common.cancel') }
+            )
+            if (!confirmed) return
 
-        setMachineGuidAction('reset')
-        try {
-            const newGuid = await invoke('reset_system_machine_guid')
-            setSystemMachineInfo(prev => ({ ...prev, machineGuid: newGuid }))
-            await showSuccess(t('settings.resetSuccess'), `${t('settings.newMachineGuid')}: ${newGuid}`)
-        } catch (err) {
-            await showError(t('settings.resetFailed'), err.toString())
-        } finally {
-            setMachineGuidAction(null) // 无论成功或失败，都恢复按钮可用状态
+            setMachineGuidAction('reset')
+            try {
+                const newGuid = await invoke('reset_system_machine_guid')
+                setSystemMachineInfo(prev => ({ ...prev, machineGuid: newGuid }))
+                await showSuccess(t('settings.resetSuccess'), `${t('settings.newMachineGuid')}: ${newGuid}`)
+            } catch (err) {
+                await showError(t('settings.resetFailed'), err.toString())
+            } finally {
+                setMachineGuidAction(null)
+            }
         }
     }
 
@@ -1125,6 +1222,52 @@ function Settings() {
                                 ? t('settings.machineGuidDescLinux')
                                 : t('settings.machineGuidDescWin')}
                     </p>
+
+                    {/* 自动重置设置 */}
+                    <div className={`rounded-xl p-4 mb-4 border ${colors.cardBorder} ${colors.cardSecondary}`}>
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <Clock size={16} className={colors.textMuted} />
+                                <span className={`text-sm font-medium ${colors.text}`}>{t('settings.autoResetMachineGuid')}</span>
+                            </div>
+                            <Switch
+                                checked={autoResetEnabled}
+                                onChange={(event) => handleAutoResetToggle(event.currentTarget.checked)}
+                                size="md"
+                            />
+                        </div>
+                        <p className={`text-xs ${colors.textMuted} mb-3`}>
+                            {t('settings.autoResetMachineGuidDesc')}
+                        </p>
+
+                        {/* 间隔设置 */}
+                        <div className="flex items-center gap-3">
+                            <span className={`text-xs ${colors.textMuted}`}>{t('settings.autoResetInterval')}:</span>
+                            <NumberInput
+                                min={1}
+                                value={autoResetInterval}
+                                onChange={(value) => handleAutoResetIntervalChange(value)}
+                                className={`flex-1 max-w-[120px]`}
+                                size="xs"
+                            />
+                            <span className={`text-xs ${colors.textMuted}`}>{t('common.seconds')}</span>
+                        </div>
+
+                        {/* 状态提示 */}
+                        {autoResetEnabled && (
+                            <div className={`mt-3 flex items-center gap-2 px-3 py-2 rounded-lg ${
+                                autoResetCountdown
+                                    ? 'bg-blue-500/10 border border-blue-500/20'
+                                    : 'bg-green-500/10 border border-green-500/20'
+                            }`}>
+                                <Clock size={14} className={autoResetCountdown ? 'text-blue-500' : 'text-green-500'} />
+                                <span className={`text-xs ${autoResetCountdown ? 'text-blue-500' : 'text-green-500'}`}>
+                                    {t('settings.autoResetActive').replace('{{interval}}', autoResetInterval)}
+                                    {autoResetCountdown && ` - ${autoResetCountdown}s`}
+                                </span>
+                            </div>
+                        )}
+                    </div>
 
                     {/* 当前值 */}
                     <div className={`rounded-xl p-4 mb-4 border ${colors.cardBorder} ${colors.cardSecondary}`}>
