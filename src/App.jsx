@@ -7,6 +7,7 @@ import UpdateChecker from './components/shared/UpdateChecker'
 import WelcomeModal from './components/shared/WelcomeModal'
 import { dismissBootSplash } from './utils/bootSplash'
 
+import { cn } from './lib/utils'
 import { useApp } from './hooks/useApp'
 import { useAutoRefresh } from './hooks/useAutoRefresh'
 import { useAutoSwitch } from './hooks/useAutoSwitch'
@@ -195,13 +196,13 @@ function App() {
   return (
     <PrivacyProvider>
       <AccountProvider>
-        <div className={`flex h-screen ${colors.main}`}>
+        <div className="flex h-screen bg-transparent">
           <Sidebar 
             activeMenu={activeMenu} 
             onMenuChange={setActiveMenu}
             onLogout={handleLogout}
           />
-          <main className="flex-1 overflow-hidden">
+          <main className={cn("flex-1 overflow-hidden", colors.main)}>
             <div className="h-full w-full">
               <Suspense fallback={<PageLoading />}>
                 {renderContent()}

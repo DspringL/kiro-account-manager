@@ -175,18 +175,18 @@
 [data-theme='aurora'] { --background: #f0fdfa; --background-rgb: 240 253 250; --primary: #0d9488; --primary-rgb: 13 148 136; --bg-color: #f0fdfa; --bg-gradient-1: #ccfbf1; --bg-gradient-1-rgb: 204 251 241; --bg-gradient-2: #e0f2fe; --bg-gradient-2-rgb: 224 242 254; --bg-gradient-3: #cffafe; --bg-gradient-3-rgb: 207 250 254; }
 
 @layer base {
+
   html {
-    background-color: var(--bg-color) !important;
+    background-color: var(--bg-color);
   }
   
   body {
-    background-image: none;
-    background-color: var(--bg-color);
+    background-color: transparent;
     color: var(--foreground);
     min-height: 100vh;
     position: relative;
   }
-
+  
   body::before {
     content: "";
     position: fixed;
@@ -237,6 +237,12 @@
     linear-gradient(180deg, rgb(var(--surface-rgb) / 0.45), rgb(var(--primary-rgb) / 0.05)),
     rgb(var(--surface-contrast-rgb) / 0.35);
   border-bottom: 1.5px solid var(--border);
+}
+
+.glass-main {
+  background: radial-gradient(circle at 50% 0%, rgb(var(--primary-rgb) / 0.08), transparent 85%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 * {
