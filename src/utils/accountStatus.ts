@@ -1,22 +1,26 @@
+import { Account, AccountUsageData } from '../types/account';
+
 const ACTIVE_STATUSES = new Set(['active', '正常', '有效'])
 const CAPPED_STATUSES = new Set(['capped', '封顶'])
 const BANNED_STATUSES = new Set(['banned', '封禁', '已封禁'])
 const INVALID_STATUSES = new Set(['invalid', '失效', '已失效', 'Token已失效', 'token已失效'])
 const EXPIRED_STATUSES = new Set(['expired', '过期', '已过期'])
 
-function resolveStatusInput(statusOrAccount, usageData) {
+function resolveStatusInput(statusOrAccount: string | Account | any, usageData?: AccountUsageData) {
   if (statusOrAccount && typeof statusOrAccount === 'object' && !Array.isArray(statusOrAccount)) {
     return {
-      status: statusOrAccount.status,
-      usageData: statusOrAccount.usageData}
+      status: (statusOrAccount as Account).status || (statusOrAccount as any).status,
+      usageData: (statusOrAccount as Account).usageData || usageData
+    }
   }
 
   return {
-    status: statusOrAccount,
-    usageData}
+    status: statusOrAccount as string,
+    usageData
+  }
 }
 
-function getUsageNumber(source, integerKey, preciseKey) {
+function getUsageNumber(source: any, integerKey: string, preciseKey: string): number | null {
   const precise = source?.[preciseKey]
   if (typeof precise === 'number') return precise
 
@@ -26,12 +30,9 @@ function getUsageNumber(source, integerKey, preciseKey) {
   return null
 }
 
-export function isUsageCapped(usageData) {
+export function isUsageCapped(usageData?: AccountUsageData): boolean {
   const breakdown = usageData?.usageBreakdownList?.[0]
   if (!breakdown) return false
-
-  const overageStatus = usageData?.overageConfiguration?.overageStatus
-  if (overageStatus !== 'DISABLED') return false
 
   const currentUsage = getUsageNumber(breakdown, 'currentUsage', 'currentUsageWithPrecision')
   const usageLimit = getUsageNumber(breakdown, 'usageLimit', 'usageLimitWithPrecision')
@@ -43,7 +44,7 @@ export function isUsageCapped(usageData) {
   return currentUsage >= usageLimit
 }
 
-export function normalizeAccountStatus(statusOrAccount, usageData) {
+export function normalizeAccountStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): string {
   const { status, usageData: resolvedUsageData } = resolveStatusInput(statusOrAccount, usageData)
   if (!status) return 'unknown'
 
@@ -61,36 +62,42 @@ export function normalizeAccountStatus(statusOrAccount, usageData) {
   return normalized
 }
 
-export function isActiveStatus(statusOrAccount, usageData) {
+export function isActiveStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   return normalizeAccountStatus(statusOrAccount, usageData) === 'active'
 }
 
-export function isCappedStatus(statusOrAccount, usageData) {
+export function isCappedStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   return normalizeAccountStatus(statusOrAccount, usageData) === 'capped'
 }
 
-export function isBannedStatus(statusOrAccount, usageData) {
+export function isBannedStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   return normalizeAccountStatus(statusOrAccount, usageData) === 'banned'
 }
 
-export function isInvalidStatus(statusOrAccount, usageData) {
+export function isInvalidStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   return normalizeAccountStatus(statusOrAccount, usageData) === 'invalid'
 }
 
-export function isExpiredStatus(statusOrAccount, usageData) {
+export function isExpiredStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   return normalizeAccountStatus(statusOrAccount, usageData) === 'expired'
 }
 
-export function isUnavailableStatus(statusOrAccount, usageData) {
+export function isUnavailableStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   const normalized = normalizeAccountStatus(statusOrAccount, usageData)
   return normalized === 'capped' || normalized === 'banned' || normalized === 'invalid' || normalized === 'expired'
 }
 
-export function isAvailableStatus(statusOrAccount, usageData) {
+export function isAvailableStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   return !isUnavailableStatus(statusOrAccount, usageData)
 }
 
-export function getAccountStatusMeta(statusOrAccount, t, usageData) {
+export interface StatusMeta {
+    key: string;
+    label: string;
+    tone: 'success' | 'warning' | 'danger';
+}
+
+export function getAccountStatusMeta(statusOrAccount: string | Account | any, t?: any, usageData?: AccountUsageData): StatusMeta {
   const normalized = normalizeAccountStatus(statusOrAccount, usageData)
 
   switch (normalized) {
