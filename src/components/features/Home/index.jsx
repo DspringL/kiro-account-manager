@@ -87,12 +87,12 @@ function Home({ onNavigate }) {
   }
 
   return (
-    <div className={`h-full overflow-auto ${colors.main} flex justify-center`}>
+    <div className="h-full overflow-auto flex flex-col items-center">
       {/* 背景装饰光晕 */}
       <div className="bg-glow bg-glow-1" />
       <div className="bg-glow bg-glow-2" />
       
-      <div className="max-w-5xl w-full p-8 relative">
+      <div className="w-full p-8 relative">
         {/* Header */}
         <div className="mb-8 animate-bounce-in">
           <div className="flex items-center gap-3 mb-2">

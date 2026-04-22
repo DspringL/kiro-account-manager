@@ -240,9 +240,11 @@
 }
 
 .glass-main {
-  background: radial-gradient(circle at 50% 0%, rgb(var(--primary-rgb) / 0.08), transparent 85%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgb(var(--background-rgb) / 0.06);
+  background-image: radial-gradient(circle at 50% 0%, rgb(var(--primary-rgb) / 0.1), transparent 80%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background-color 0.5s ease, background-image 0.5s ease;
 }
 
 * {
@@ -253,6 +255,17 @@
 html, body {
   margin: 0;
   padding: 0;
+}
+
+/* 隐藏全局窗口滚动条，只允许内部容器滚动 */
+::-webkit-scrollbar {
+  display: none;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
 }
 
 /* 重置常见元素的 margin/padding */
@@ -639,13 +652,13 @@ body:not(.dark) .card-glow:hover {
   border-radius: 50%;
   filter: blur(100px);
   pointer-events: none;
-  opacity: 0.15;
+  opacity: 0.12;
 }
 
 .bg-glow-1 {
   width: 400px;
   height: 400px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: radial-gradient(circle, rgb(var(--primary-rgb) / 0.4), transparent 70%);
   top: -100px;
   right: -100px;
 }
@@ -653,7 +666,7 @@ body:not(.dark) .card-glow:hover {
 .bg-glow-2 {
   width: 300px;
   height: 300px;
-  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  background: radial-gradient(circle, rgb(var(--primary-rgb) / 0.3), transparent 70%);
   bottom: -50px;
   left: -50px;
 }

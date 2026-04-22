@@ -196,7 +196,7 @@ function App() {
   return (
     <PrivacyProvider>
       <AccountProvider>
-        <div className="flex h-screen bg-transparent">
+        <div className="flex h-screen w-full bg-transparent overflow-hidden">
           <Sidebar 
             activeMenu={activeMenu} 
             onMenuChange={setActiveMenu}

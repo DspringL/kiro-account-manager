@@ -9,20 +9,20 @@ export const themes = {
   light: {
     nameKey: 'theme.light',
     sidebar: 'bg-gradient-to-b from-slate-100 to-slate-200',
-    sidebarText: 'text-slate-800',
-    sidebarHover: 'hover:bg-slate-300',
-    sidebarActive: 'bg-slate-800 text-white',
-    sidebarBorder: 'border-slate-300',
-    sidebarMuted: 'text-slate-600',
-    sidebarCard: 'bg-slate-200',
+    sidebarText: 'text-slate-900',
+    sidebarHover: 'hover:bg-slate-200/50',
+    sidebarActive: 'bg-slate-900 text-white',
+    sidebarBorder: 'border-slate-200',
+    sidebarMuted: 'text-slate-500',
+    sidebarCard: 'bg-black/5',
     main: 'glass-main',
     card: 'bg-white/80 backdrop-blur-md',
-    cardBorder: 'border-gray-200/50',
-    cardHover: 'hover:bg-gray-50/80',
-    cardSecondary: 'bg-gray-50/30',
-    text: 'text-gray-800',
-    textMuted: 'text-gray-500',
-    input: 'bg-white/50 border-gray-200',
+    cardBorder: 'border-slate-200/50',
+    cardHover: 'hover:bg-white/90',
+    cardSecondary: 'bg-slate-50/50',
+    text: 'text-slate-900',
+    textMuted: 'text-slate-500',
+    input: 'bg-white/60 border-slate-200',
     inputFocus: 'focus:ring-slate-500/20 focus:border-slate-500',
     btnPrimary: 'bg-slate-700 hover:bg-slate-800 text-white',
     btnSecondary: 'bg-gray-100/80 hover:bg-gray-200 border-gray-300 text-gray-700',
@@ -402,13 +402,14 @@ const lightBase = themes.light
 const darkBase = themes.dark
 
 Object.assign(themes, {
-  'dark-one': { ...darkBase, nameKey: 'theme.darkOne', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-[#1b1e23] to-[#121418]' },
-  tech: { ...darkBase, nameKey: 'theme.tech', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-[#0f172a] to-[#0b1120]', btnPrimary: 'bg-blue-600 hover:bg-blue-700 text-white' },
-  business: { ...lightBase, nameKey: 'theme.business', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-amber-100 to-orange-100', btnPrimary: 'bg-amber-600 hover:bg-amber-700 text-white' },
-  sunset: { ...lightBase, nameKey: 'theme.sunset', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-orange-100 to-red-100', btnPrimary: 'bg-orange-600 hover:bg-orange-700 text-white' },
-  ocean: { ...lightBase, nameKey: 'theme.ocean', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-cyan-100 to-blue-100', btnPrimary: 'bg-cyan-600 hover:bg-cyan-700 text-white' },
-  rose: { ...lightBase, nameKey: 'theme.rose', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-pink-100 to-rose-100', btnPrimary: 'bg-pink-600 hover:bg-pink-700 text-white' },
-  aurora: { ...lightBase, nameKey: 'theme.aurora', main: 'bg-transparent', sidebar: 'bg-gradient-to-b from-teal-100 to-emerald-100', btnPrimary: 'bg-teal-600 hover:bg-teal-700 text-white' }
+  'dark-one': { ...darkBase, nameKey: 'theme.darkOne', main: 'glass-main', sidebar: 'bg-gradient-to-b from-[#1b1e23] to-[#121418]' },
+  tech: { ...darkBase, nameKey: 'theme.tech', main: 'glass-main', sidebar: 'bg-gradient-to-b from-[#0f172a] to-[#0b1120]', btnPrimary: 'bg-blue-600 hover:bg-blue-700 text-white' },
+  business: { ...lightBase, nameKey: 'theme.business', main: 'glass-main', sidebarCard: 'bg-amber-500/10', btnPrimary: 'bg-amber-600 hover:bg-amber-700 text-white' },
+  sunset: { ...lightBase, nameKey: 'theme.sunset', main: 'glass-main', sidebarCard: 'bg-orange-500/10', btnPrimary: 'bg-orange-600 hover:bg-orange-700 text-white' },
+  ocean: { ...lightBase, nameKey: 'theme.ocean', main: 'glass-main', sidebarCard: 'bg-blue-500/10', btnPrimary: 'bg-blue-600 hover:bg-blue-700 text-white' },
+  rose: { ...lightBase, nameKey: 'theme.rose', main: 'glass-main', sidebarCard: 'bg-pink-500/10', btnPrimary: 'bg-pink-600 hover:bg-pink-700 text-white' },
+  aurora: { ...lightBase, nameKey: 'theme.aurora', main: 'glass-main', sidebarCard: 'bg-teal-500/10', btnPrimary: 'bg-teal-600 hover:bg-teal-700 text-white' },
+  forest: { ...lightBase, nameKey: 'theme.forest', main: 'glass-main', sidebarCard: 'bg-emerald-500/10', btnPrimary: 'bg-emerald-600 hover:bg-emerald-700 text-white' }
 })
 
 export function ThemeProvider({ children }) {
