@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Layers3, Eye, Copy, Check, Clock, Repeat, Key, BarChart3, Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Checkbox } from '@mantine/core'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { DialogRoot, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../shared/dialog'
@@ -132,14 +132,8 @@ const AccountCard = memo(function AccountCard({
       <div className="absolute top-3 left-3 z-10">
         <Checkbox
           checked={isSelected}
-          onChange={(e) => onSelect(e.currentTarget.checked)}
-          size="sm"
-          styles={{
-            root: { cursor: 'pointer' },
-            input: { 
-              cursor: 'pointer',
-            },
-          }}
+          onCheckedChange={onSelect}
+          className="cursor-pointer"
           aria-label={t('accountCard.selectAccount')}
         />
       </div>

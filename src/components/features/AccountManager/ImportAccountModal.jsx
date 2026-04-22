@@ -1,5 +1,10 @@
-﻿import { useState, useEffect } from 'react'
-import { Tabs, Textarea, Stack, Group, Alert, Progress, FileButton, Button as MantineButton } from '@mantine/core'
+﻿import { useState, useEffect, useRef } from 'react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
+import { Stack, Group } from '@/components/shared/layout'
+
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, FileJson, AlertCircle, CheckCircle, Loader2, Database, RefreshCw, LogIn } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../../hooks/useApp'
@@ -18,6 +23,40 @@ import {
   DialogFooter,
 } from '../../shared/dialog'
 import { Button } from '../../shared/button'
+
+function LegacyButton({ color, leftSection, className = '', children, ...props }) {
+  const colorClass = color === 'red'
+    ? 'text-red-600 hover:text-red-700'
+    : color === 'blue'
+      ? 'text-blue-600 hover:text-blue-700'
+      : color === 'violet' || color === 'grape'
+        ? 'text-purple-600 hover:text-purple-700'
+        : ''
+  return (
+    <Button {...props} variant="secondary" size={props.size === 'xs' || props.size === 'sm' ? 'sm' : 'default'} className={`${colorClass} ${className}`.trim()}>
+      {leftSection}
+      {children}
+    </Button>
+  )
+}
+
+function FileButton({ onChange, accept, children }) {
+  const inputRef = useRef(null)
+  const triggerProps = { onClick: () => inputRef.current?.click() }
+  const handleChange = async (event) => {
+    const file = event.target.files?.[0] || null
+    if (file) {
+      await onChange(file)
+    }
+    event.target.value = ''
+  }
+  return (
+    <>
+      <input ref={inputRef} type="file" accept={accept} className="hidden" onChange={handleChange} />
+      {children(triggerProps)}
+    </>
+  )
+}
 
 function validateAccount(item, index) {
   const errors = []
@@ -427,7 +466,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
   const renderResult = (result) => (
   <Stack gap="md" p="sm">
     {result.added && result.added.length > 0 && (
-      <Alert icon={<CheckCircle size={20} />} color="teal" variant="light">
+      <Alert icon={<CheckCircle size={20} />} color="teal">
         <div className={`font-medium ${colors.text}`}>✅ 新增 {result.added.length} 个账号</div>
         {result.added.length > 0 && (
           <div className={`text-sm mt-2 ${colors.text}`}>{result.added.map(s => s.email).join(', ')}</div>
@@ -436,7 +475,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
     )}
 
     {result.updated && result.updated.length > 0 && (
-      <Alert icon={<CheckCircle size={20} />} color="blue" variant="light">
+      <Alert icon={<CheckCircle size={20} />} color="blue">
         <div className={`font-medium ${colors.text}`}>📝 更新 {result.updated.length} 个账号</div>
         {result.updated.length > 0 && (
           <div className={`text-sm mt-2 ${colors.text}`}>{result.updated.map(s => s.email).join(', ')}</div>
@@ -445,7 +484,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }) {
     )}
 
     {result.failed && result.failed.length > 0 && (
-      <Alert icon={<AlertCircle size={20} />} color="red" variant="light">
+      <Alert icon={<AlertCircle size={20} />} color="red">
         <div className={`font-medium ${colors.text}`}>❌ 失败 {result.failed.length} 个</div>
         <Stack gap={4} mt="xs" p={0}>
           {result.failed.map((f, i) => (
@@ -481,7 +520,7 @@ return (
               <Alert
                 icon={kiroCliResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                 color={kiroCliResult.success ? "teal" : "red"}
-                variant="light"
+               
               >
                 <div className={`text-sm font-medium ${colors.text}`}>
                   {kiroCliResult.success
@@ -571,39 +610,37 @@ return (
               <Stack gap="lg">
                 <Group>
                   <FileButton onChange={handleFileSelect} accept=".json">
-                    {(props) => <MantineButton {...props} variant="light" leftSection={<FileJson size={16} />}>{t('import.selectFile')}</MantineButton>}
+                    {(props) => <LegacyButton {...props} leftSection={<FileJson size={16} />}>{t('import.selectFile')}</LegacyButton>}
                   </FileButton>
-                  <MantineButton variant="light" color="blue" size="sm" onClick={() => setJsonText(JSON.stringify([{ refreshToken: "", provider: "Google" }], null, 2))}>
+                  <LegacyButton color="blue" size="sm" onClick={() => setJsonText(JSON.stringify([{ refreshToken: "", provider: "Google" }], null, 2))}>
                     Social 模板
-                  </MantineButton>
-                  <MantineButton variant="light" color="violet" size="sm" onClick={() => setJsonText(JSON.stringify([{ refreshToken: "", clientId: "", clientSecret: "", provider: "BuilderId" }], null, 2))}>
+                  </LegacyButton>
+                  <LegacyButton color="violet" size="sm" onClick={() => setJsonText(JSON.stringify([{ refreshToken: "", clientId: "", clientSecret: "", provider: "BuilderId" }], null, 2))}>
                     BuilderId 模板
-                  </MantineButton>
-                  <MantineButton variant="light" color="grape" size="sm" onClick={() => setJsonText(JSON.stringify([{ refreshToken: "", clientId: "", clientSecret: "", provider: "Enterprise" }], null, 2))}>
+                  </LegacyButton>
+                  <LegacyButton color="grape" size="sm" onClick={() => setJsonText(JSON.stringify([{ refreshToken: "", clientId: "", clientSecret: "", provider: "Enterprise" }], null, 2))}>
                     Enterprise 模板
-                  </MantineButton>
+                  </LegacyButton>
                 </Group>
 
                 <Textarea
-                  label={t('import.orPaste')}
+                 
                   value={jsonText}
                   onChange={(e) => { setJsonText(e.target.value); parseJson(e.target.value) }}
                   rows={10}
                   placeholder={`[{"refreshToken": "aor...", "provider": "Google"}]`}
-                  classNames={{
-                    input: `${colors.text} ${colors.input} ${colors.inputFocus} font-mono`
-                  }}
+                  className={`${colors.text} ${colors.input} ${colors.inputFocus} font-mono`}
                 />
 
                 {parseResult && (
                   <Stack gap="xs">
                     {parseResult.valid.length > 0 && (
-                      <Alert icon={<CheckCircle size={16} />} color="teal" variant="light">
+                      <Alert icon={<CheckCircle size={16} />} color="teal">
                         {t('import.parseSuccess')}: {parseResult.valid.length} {t('import.validRecords')}
                       </Alert>
                     )}
                     {parseResult.errors.length > 0 && (
-                      <Alert icon={<AlertCircle size={16} />} color="red" variant="light">
+                      <Alert icon={<AlertCircle size={16} />} color="red">
                         <div className={`text-sm font-medium ${colors.text}`}>{t('import.validationError')}</div>
                         <Stack gap={2} mt="xs">
                           {parseResult.errors.slice(0, 5).map((err, i) => (
@@ -622,7 +659,7 @@ return (
 
             <Tabs.Panel value="kiro" pt="md" className="px-6 pb-4">
               <Stack gap="lg">
-                <Alert color="indigo" variant="light">
+                <Alert color="indigo">
                   <div className={`text-sm font-medium ${colors.text}`}>从 Kiro IDE 导入账号</div>
                   <div className={`text-xs mt-1 ${colors.textMuted}`}>
                     自动读取 Kiro IDE 缓存的账号信息（~/.aws/sso/cache/kiro-auth-token.json）
@@ -637,11 +674,11 @@ return (
                     </div>
                   </div>
                 ) : kiroError ? (
-                  <Alert icon={<AlertCircle size={16} />} color="red" variant="light">
+                  <Alert icon={<AlertCircle size={16} />} color="red">
                     <div className={`text-sm font-medium ${colors.text}`}>检测失败</div>
                     <div className={`text-xs mt-1 ${colors.textMuted}`}>{kiroError}</div>
-                    <MantineButton
-                      variant="light"
+                    <LegacyButton
+                     
                       color="red"
                       size="xs"
                       mt="sm"
@@ -649,11 +686,11 @@ return (
                       onClick={detectKiroAccounts}
                     >
                       重新检测
-                    </MantineButton>
+                    </LegacyButton>
                   </Alert>
                 ) : kiroAccounts.length > 0 ? (
                   <>
-                    <Alert icon={<CheckCircle size={16} />} color="teal" variant="light">
+                    <Alert icon={<CheckCircle size={16} />} color="teal">
                       <div className={`text-sm font-medium ${colors.text}`}>检测到 {kiroAccounts.length} 个账号</div>
                     </Alert>
 
@@ -680,7 +717,7 @@ return (
                     </div>
                   </>
                 ) : (
-                  <Alert icon={<AlertCircle size={16} />} color="gray" variant="light">
+                  <Alert icon={<AlertCircle size={16} />} color="gray">
                     <div className={`text-sm ${colors.text}`}>未检测到 Kiro IDE 账号</div>
                     <div className={`text-xs mt-1 ${colors.textMuted}`}>
                       请先在 Kiro IDE 中登录账号
@@ -692,7 +729,7 @@ return (
 
             <Tabs.Panel value="kiro-cli" pt="md" className="px-6 pb-4">
               <Stack gap="lg">
-                <Alert color="violet" variant="light">
+                <Alert color="violet">
                   <div className={`text-sm font-medium ${colors.text}`}>{t('import.kiroCliTitle')}</div>
                   <div className={`text-xs mt-1 ${colors.textMuted}`}>
                     {t('import.kiroCliHint')}
@@ -703,7 +740,7 @@ return (
                 </Alert>
 
                 {isWindowsOs && (
-                  <Alert icon={<AlertCircle size={16} />} color="blue" variant="light">
+                  <Alert icon={<AlertCircle size={16} />} color="blue">
                     <div className={`text-sm font-medium ${colors.text}`}>{t('import.kiroCliWindowsTitle')}</div>
                     <div className={`text-xs mt-1 ${colors.textMuted}`}>
                       {t('import.kiroCliWindowsHint')}
@@ -719,12 +756,12 @@ return (
                     </div>
                   </div>
                 ) : kiroCliDetected ? (
-                  <Alert icon={<CheckCircle size={16} />} color="teal" variant="light">
+                  <Alert icon={<CheckCircle size={16} />} color="teal">
                     <div className={`text-sm font-medium ${colors.text}`}>{t('import.kiroCliDetected')}</div>
                     <div className={`text-xs mt-1 ${colors.textMuted}`}>{kiroCliDbPath}</div>
                   </Alert>
                 ) : (
-                  <Alert icon={<AlertCircle size={16} />} color="gray" variant="light">
+                  <Alert icon={<AlertCircle size={16} />} color="gray">
                     <div className={`text-sm ${colors.text}`}>{t('import.kiroCliNotDetected')}</div>
                     <div className={`text-xs mt-1 ${colors.textMuted}`}>
                       {t('import.kiroCliPathHintManual')}
@@ -759,13 +796,13 @@ return (
                           accept=".sqlite3,.db"
                         >
                           {(props) => (
-                            <MantineButton
+                            <LegacyButton
                               {...props}
-                              variant="light"
+                             
                               className="px-4"
                             >
                               {t('import.browse')}
-                            </MantineButton>
+                            </LegacyButton>
                           )}
                         </FileButton>
                       </div>
@@ -778,7 +815,7 @@ return (
                       <Alert
                         icon={kiroCliResult.success ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                         color={kiroCliResult.success ? "teal" : "red"}
-                        variant="light"
+                       
                       >
                         <div className={`text-sm font-medium ${colors.text}`}>
                           {kiroCliResult.success 

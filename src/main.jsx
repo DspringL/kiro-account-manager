@@ -1,14 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './index.css'
 import App from './App.jsx'
-import { ThemeProvider } from './contexts/ThemeContext.jsx'
+import { ThemeProvider } from './components/theme-provider'
+import { ThemeProvider as AppThemeBridgeProvider } from './contexts/ThemeContext.jsx'
 import { DialogProvider } from './contexts/DialogContext.jsx'
 import { AppSettingsProvider } from './contexts/AppSettingsContext.jsx'
 import { I18nProvider } from './i18n.jsx'
 import { dismissBootSplash } from './utils/bootSplash.js'
-import '@mantine/core/styles.css'
-import './index.css'
-
+import { TooltipProvider } from '@/components/ui/tooltip'
 // 生产环境禁用浏览器快捷键
 if (import.meta.env.PROD) {
   document.addEventListener('keydown', (e) => {
@@ -50,12 +50,21 @@ if (import.meta.env.PROD) {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <I18nProvider>
     <AppSettingsProvider>
-      <ThemeProvider>
-        <DialogProvider>
-          <App />
-        </DialogProvider>
+      <ThemeProvider
+        attribute="data-theme"
+        defaultTheme="dark"
+        enableSystem={false}
+        disableTransitionOnChange
+        themes={['light', 'dark', 'purple', 'green']}
+      >
+        <AppThemeBridgeProvider>
+          <TooltipProvider>
+            <DialogProvider>
+              <App />
+            </DialogProvider>
+          </TooltipProvider>
+        </AppThemeBridgeProvider>
       </ThemeProvider>
     </AppSettingsProvider>
   </I18nProvider>,
 )
-

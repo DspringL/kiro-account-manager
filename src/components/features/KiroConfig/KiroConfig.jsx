@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { open } from '@tauri-apps/plugin-dialog'
 import { useApp } from '../../../hooks/useApp'
 import { Server, Settings2, FileText, Puzzle, Bot, Zap, FolderOpen, Link2, X } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import MCPPanel from './MCPPanel'
 import SteeringPanel from './SteeringPanel'
 import SkillsPanel from './SkillsPanel'
@@ -109,48 +110,58 @@ function KiroConfig() {
         </div>
 
         {/* Tab 切换 */}
-        <div className="flex gap-1 px-6 py-3 border-b border-transparent">
-          {TABS.map(tab => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            const isDisabled = !!tab.disabled
-            return (
-              <button
-                key={tab.id}
-                onClick={() => !isDisabled && setActiveTab(tab.id)}
-                disabled={isDisabled}
-                title={isDisabled ? t('kiroConfig.selectProjectDir') : ''}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 ${
-                  isActive ? colors.tagActive + ' ' + colors.text : colors.textMuted + ' ' + colors.tagHover
-                }`}
-              >
-                <Icon size={16} />
-                {tab.label}
-                {tab.count > 0 && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    isActive ? colors.badgeActive : colors.badgeDisabled
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+        <div className="px-6 py-3 border-b border-transparent">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              {TABS.map(tab => {
+                const Icon = tab.icon
+                const isDisabled = !!tab.disabled
+                return (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    disabled={isDisabled}
+                    title={isDisabled ? t('kiroConfig.selectProjectDir') : ''}
+                    className="flex items-center gap-2"
+                  >
+                    <Icon size={16} />
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                        activeTab === tab.id ? colors.badgeActive : colors.badgeDisabled
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
 
-      {/* 内容区 */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-{activeTab === 'mcp' && <MCPPanel onCountChange={setMcpCount} projectDir={projectDir} />}
-        {activeTab === 'steering' && <SteeringPanel onCountChange={setSteeringCount} projectDir={projectDir} />}
-        {activeTab === 'skills' && <SkillsPanel onCountChange={setSkillsCount} projectDir={projectDir} />}
-        {activeTab === 'hooks' && (
-          projectDir
-            ? <HooksPanel onCountChange={setHooksCount} projectDir={projectDir} />
-            : <div className={`h-full flex items-center justify-center ${colors.textMuted}`}>{t('kiroConfig.selectProjectDir')}</div>
-        )}
-        {activeTab === 'agents' && <AgentsPanel onCountChange={setAgentsCount} projectDir={projectDir} />}
-        {activeTab === 'powers' && <PowersPanel onCountChange={setPowersCount} />}
+            {/* 内容区 */}
+            <TabsContent value="mcp">
+              <MCPPanel onCountChange={setMcpCount} projectDir={projectDir} />
+            </TabsContent>
+            <TabsContent value="steering">
+              <SteeringPanel onCountChange={setSteeringCount} projectDir={projectDir} />
+            </TabsContent>
+            <TabsContent value="skills">
+              <SkillsPanel onCountChange={setSkillsCount} projectDir={projectDir} />
+            </TabsContent>
+            <TabsContent value="hooks">
+              {projectDir
+                ? <HooksPanel onCountChange={setHooksCount} projectDir={projectDir} />
+                : <div className={`h-full flex items-center justify-center ${colors.textMuted}`}>{t('kiroConfig.selectProjectDir')}</div>
+              }
+            </TabsContent>
+            <TabsContent value="agents">
+              <AgentsPanel onCountChange={setAgentsCount} projectDir={projectDir} />
+            </TabsContent>
+            <TabsContent value="powers">
+              <PowersPanel onCountChange={setPowersCount} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
 
     </div>

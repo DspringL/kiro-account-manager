@@ -31,7 +31,7 @@
 Kiro Account Manager 是一个基于 **Tauri 2.x** 的桌面应用，用于集中管理 **Kiro IDE** 账号与本地配置。
 
 **技术栈**：
-- 前端：React 18 + Vite + Mantine UI + TailwindCSS 4
+- 前端：React 18 + Vite + shadcn/ui + TailwindCSS 4
 - 后端：Rust + Tauri 2.x
 - 通信：前端通过 `invoke()` 调用 Tauri commands
 - 运行平台：Windows / macOS / Linux

@@ -4,7 +4,9 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { Puzzle, RefreshCw, Trash2, Save, Plus, X, FolderOpen, Globe, Download } from 'lucide-react'
-import { TextInput, Select, Textarea } from '@mantine/core'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   getThemeAccent,
   getSolidAccentButton,
@@ -386,7 +388,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
             <div className={`px-4 py-3 border-b ${colors.cardBorder} flex items-center gap-4 flex-wrap`}>
               <div className="flex items-center gap-2">
                 <span className={`text-xs ${colors.textMuted}`}>{t('skills.fmName')}:</span>
-                <TextInput
+                <Input
                   value={editState.name}
                   onChange={(e) => updateEditState('name', e.target.value)}
                   placeholder={t('skills.fmNamePlaceholder')}
@@ -394,12 +396,12 @@ function SkillsPanel({ onCountChange, projectDir }) {
                   classNames={{
                     input: `${colors.text} ${colors.input} ${colors.inputFocus}`
                   }}
-                  styles={{ input: { width: '140px', borderRadius: '0.5rem' } }}
+                  style={{ width: '140px', borderRadius: '0.5rem' }}
                 />
               </div>
               <div className="flex items-center gap-2 flex-1">
                 <span className={`text-xs ${colors.textMuted}`}>{t('skills.fmDescription')}:</span>
-                <TextInput
+                <Input
                   value={editState.description}
                   onChange={(e) => updateEditState('description', e.target.value)}
                   placeholder={t('skills.fmDescriptionPlaceholder')}
@@ -407,7 +409,7 @@ function SkillsPanel({ onCountChange, projectDir }) {
                   classNames={{
                     input: `${colors.text} ${colors.input} ${colors.inputFocus}`
                   }}
-                  styles={{ input: { flex: 1, minWidth: '200px', borderRadius: '0.5rem' } }}
+                  style={{ flex: 1, minWidth: '200px', borderRadius: '0.5rem' }}
                 />
               </div>
             </div>
@@ -514,7 +516,7 @@ function CreateSkillModal({ onCreate, onClose, accent, accentGradientButtonClass
         <div className="p-5 space-y-4">
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('skills.skillName')}</label>
-            <TextInput
+            <Input
               placeholder={t('skills.skillNamePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -522,14 +524,14 @@ function CreateSkillModal({ onCreate, onClose, accent, accentGradientButtonClass
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
             <p className={`text-xs ${colors.textMuted} mt-1`}>{t('skills.skillNameHint')}</p>
           </div>
 
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('skills.fmDescription')}</label>
-            <TextInput
+            <Input
               placeholder={t('skills.fmDescriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -537,7 +539,7 @@ function CreateSkillModal({ onCreate, onClose, accent, accentGradientButtonClass
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
             <p className={`text-xs ${colors.textMuted} mt-1`}>{t('skills.fmDescriptionHint')}</p>
           </div>
@@ -545,21 +547,15 @@ function CreateSkillModal({ onCreate, onClose, accent, accentGradientButtonClass
           {hasProjectDir && (
             <div>
               <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('kiroConfig.scope')}</label>
-              <Select
-                value={scope}
-                onChange={setScope}
-                data={[
-                  { value: 'user', label: t('kiroConfig.scopeUser') },
-                  { value: 'project', label: t('kiroConfig.scopeProject') },
-                ]}
-                size="md"
-                classNames={{
-                  input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                  dropdown: `${colors.card} border ${colors.cardBorder}`,
-                  option: `${colors.text}`
-                }}
-                styles={{ input: { borderRadius: '0.5rem' } }}
-              />
+              <Select value={scope} onValueChange={setScope}>
+                <SelectTrigger className={`${colors.text} ${colors.input} ${colors.inputFocus}`} style={{ borderRadius: '0.5rem' }}>
+                  <SelectValue placeholder={t('kiroConfig.scopeUser')} />
+                </SelectTrigger>
+                <SelectContent className={`${colors.card} border ${colors.cardBorder}`}>
+                  <SelectItem value="user" className={colors.text}>{t('kiroConfig.scopeUser')}</SelectItem>
+                  <SelectItem value="project" className={colors.text}>{t('kiroConfig.scopeProject')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -606,49 +602,49 @@ function ImportGithubSkillModal({ onImport, onClose, accent, accentGradientButto
         <div className="p-5 space-y-4">
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('skills.githubRepoUrl')}</label>
-            <TextInput
+            <Input
               placeholder="https://github.com/owner/repo"
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
               size="md"
               classNames={{ input: `${colors.text} ${colors.input} ${colors.inputFocus}` }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
           </div>
 
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('skills.githubPath')}</label>
-            <TextInput
+            <Input
               placeholder={t('skills.githubPathPlaceholder')}
               value={pathInRepo}
               onChange={(e) => setPathInRepo(e.target.value)}
               size="md"
               classNames={{ input: `${colors.text} ${colors.input} ${colors.inputFocus}` }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('skills.githubBranch')}</label>
-              <TextInput
+              <Input
                 placeholder="main"
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
                 size="md"
                 classNames={{ input: `${colors.text} ${colors.input} ${colors.inputFocus}` }}
-                styles={{ input: { borderRadius: '0.5rem' } }}
+                style={{ borderRadius: '0.5rem' }}
               />
             </div>
             <div>
               <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('skills.importTargetName')}</label>
-              <TextInput
+              <Input
                 placeholder={t('skills.importTargetNamePlaceholder')}
                 value={targetName}
                 onChange={(e) => setTargetName(e.target.value)}
                 size="md"
                 classNames={{ input: `${colors.text} ${colors.input} ${colors.inputFocus}` }}
-                styles={{ input: { borderRadius: '0.5rem' } }}
+                style={{ borderRadius: '0.5rem' }}
               />
             </div>
           </div>

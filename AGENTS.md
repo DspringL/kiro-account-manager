@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- 前端：`src/`（React 18 + Vite + Tailwind 4 + Mantine 7），页面与组件位于 `components/`（按 features/layout/modals/shared/ui 分层），状态与 hooks 在 `contexts/`、`hooks/`，通用工具在 `utils/`、`lib/`，API 封装放 `api/`。
+- 前端：`src/`（React 18 + Vite + Tailwind 4 + shadcn/ui），页面与组件位于 `components/`（按 features/layout/modals/shared/ui 分层），状态与 hooks 在 `contexts/`、`hooks/`，通用工具在 `utils/`、`lib/`，API 封装放 `api/`。
 - 国际化：`src/locales/` 与 `locales/` 为翻译资源；仅保留简体中文界面。
 - 后端：`src-tauri/src/`（Rust 2021，Tauri 2.x）。`commands/` 定义 IPC 指令，`providers/` 管理登录方式，`state.rs` 维护全局状态；打包配置在 `tauri.conf.json`，依赖管理在 `Cargo.toml`。
 - 资产与构建产物：`src/assets/` 静态资源；`dist/` 为前端构建输出；`screenshots/` 用于文档截图；`docs/` 存放使用/发布文档。

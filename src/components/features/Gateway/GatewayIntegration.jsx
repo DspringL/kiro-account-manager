@@ -1,5 +1,6 @@
 import { Check, Copy } from 'lucide-react'
-import { Badge, Button, Card, Code, Group, Stack, Text } from '@mantine/core'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { GatewayCodeCard, GatewaySectionHeader, GatewayStatCard, GatewaySubCard, GatewaySurfaceCard } from './GatewayShared'
 
 function GatewayIntegration({
@@ -14,11 +15,11 @@ function GatewayIntegration({
   return (
     <div className="grid grid-cols-1 gap-4">
       <GatewaySurfaceCard colors={colors}>
-        <Stack gap="sm">
+        <div className="flex flex-col gap-3">
           <GatewaySectionHeader
             colors={colors}
             title="接入指南"
-            badge={<Badge color="indigo">客户端接入</Badge>}
+            badge={<Badge variant="secondary">客户端接入</Badge>}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
@@ -45,11 +46,11 @@ function GatewayIntegration({
           </div>
 
           <GatewaySubCard>
-            <Stack gap="sm">
+            <div className="flex flex-col gap-3">
               <GatewaySectionHeader
                 colors={colors}
                 title="兼容能力矩阵"
-                badge={<Badge color="blue">Protocol Surface</Badge>}
+                badge={<Badge variant="secondary">Protocol Surface</Badge>}
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <GatewayStatCard colors={colors} label="Anthropic" value="Messages / 流式事件" detail="支持 Claude 兼容接入、消息级流式返回、账号路由与本地鉴权。" />
@@ -57,7 +58,7 @@ function GatewayIntegration({
                 <GatewayStatCard colors={colors} label="网关边界" value="本地入口 + 上游凭证托管" detail="客户端只接触本地网关客户端 Key（命中任意已配置 Key 即可）；Kiro access token 与区域信息由网关自动管理。" />
                 <GatewayStatCard colors={colors} label="排障支持" value="日志 / 错误 / 请求元数据" detail="默认记录端点、状态码、耗时、模型、Region、上游来源等元数据；如旧日志里仍有 body，这里也会兼容展示。" />
               </div>
-            </Stack>
+            </div>
           </GatewaySubCard>
 
           <GatewayCodeCard
@@ -65,11 +66,12 @@ function GatewayIntegration({
             code={clientSamples.anthropic.env}
             actions={(
               <Button
-                variant="light"
-                size="xs"
-                leftSection={<Copy size={14} />}
+                variant="secondary"
+                size="sm"
                 onClick={() => copyText(clientSamples.anthropic.env, 'Claude / Anthropic 配置已复制')}
+                className="gap-1"
               >
+                <Copy size={14} />
                 复制 Claude / Anthropic 配置
               </Button>
             )}
@@ -81,40 +83,53 @@ function GatewayIntegration({
             actions={(
               <>
                 <Button
-                  variant="light"
-                  size="xs"
-                  leftSection={<Copy size={14} />}
+                  variant="secondary"
+                  size="sm"
                   onClick={() => copyText(clientSamples.openai.env, 'OpenAI 兼容配置已复制')}
+                  className="gap-1"
                 >
+                  <Copy size={14} />
                   复制 OpenAI 兼容配置
                 </Button>
                 <Button
-                  variant="light"
-                  size="xs"
-                  leftSection={<Copy size={14} />}
+                  variant="secondary"
+                  size="sm"
                   onClick={() => copyText(clientSamples.openai.curl, '兼容 Responses curl 已复制')}
+                  className="gap-1"
                 >
+                  <Copy size={14} />
                   复制兼容 Responses curl
                 </Button>
-                {copySuccess ? <Badge color="green" leftSection={<Check size={12} />}>{copySuccess}</Badge> : null}
+                {copySuccess ? (
+                  <Badge variant="default" className="gap-1">
+                    <Check size={12} />
+                    {copySuccess}
+                  </Badge>
+                ) : null}
               </>
             )}
           >
-            <Text size="xs" mt={8} className={colors.textMuted}>
-              OpenAI 兼容客户端仅支持 <Code>/v1/responses</Code>，示例 model 可替换为任意网关支持的模型。
-            </Text>
-            <Code block mt="xs">{clientSamples.openai.curl}</Code>
+            <p className={`text-xs mt-2 ${colors.textMuted}`}>
+              OpenAI 兼容客户端仅支持 <code className="bg-muted px-1 py-0.5 rounded text-xs">/v1/responses</code>，示例 model 可替换为任意网关支持的模型。
+            </p>
+            <pre className="bg-muted rounded-md p-3 overflow-x-auto text-xs font-mono mt-2">
+              <code>{clientSamples.openai.curl}</code>
+            </pre>
           </GatewayCodeCard>
 
           <GatewayCodeCard title="凭证口径">
-            <Stack gap={6} mt="xs">
-              <Text size="xs" className={colors.textMuted}>客户端 {'->'} 本地网关 使用 API Key</Text>
-              <Code block>{integrationSummary.authLabel}</Code>
-              <Text size="xs" className={colors.textMuted}>本地网关 {'->'} Kiro API 使用本地 access token</Text>
-              <Code block>Authorization: Bearer &lt;local kiro access token&gt;</Code>
-            </Stack>
+            <div className="flex flex-col gap-1.5 mt-2">
+              <p className={`text-xs ${colors.textMuted}`}>客户端 {'->'} 本地网关 使用 API Key</p>
+              <pre className="bg-muted rounded-md p-3 overflow-x-auto text-xs font-mono">
+                <code>{integrationSummary.authLabel}</code>
+              </pre>
+              <p className={`text-xs ${colors.textMuted}`}>本地网关 {'->'} Kiro API 使用本地 access token</p>
+              <pre className="bg-muted rounded-md p-3 overflow-x-auto text-xs font-mono">
+                <code>Authorization: Bearer &lt;local kiro access token&gt;</code>
+              </pre>
+            </div>
           </GatewayCodeCard>
-        </Stack>
+        </div>
       </GatewaySurfaceCard>
     </div>
   )

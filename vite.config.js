@@ -1,9 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import path from 'path'
 import pkg from './package.json'
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -29,8 +35,6 @@ export default defineConfig({
     include: [
       'react',
       'react-dom',
-      '@mantine/core',
-      '@mantine/hooks',
       'lucide-react',
       '@tauri-apps/api',
       'i18next',
@@ -63,7 +67,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vendor': ['react', 'react-dom'],
-          'mantine': ['@mantine/core', '@mantine/hooks'],
           'icons': ['lucide-react'],
           'tauri': [
             '@tauri-apps/api',

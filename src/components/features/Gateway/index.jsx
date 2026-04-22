@@ -1,7 +1,10 @@
 import { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Activity, Play, RotateCcw, Square } from 'lucide-react'
-import { Alert, Badge, Button, Card, Group, Stack, Tabs, Text } from '@mantine/core'
+import { Activity, Play, RotateCcw, Square, LayoutDashboard, Plug, Activity as ActivityIcon, Settings } from 'lucide-react'
+import { Alert as AlertPrimitive, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '../../../hooks/useApp'
+import { Stack, Group, Badge, Card, Text } from '@/components/shared/layout'
 import GatewayAdvanced from './GatewayAdvanced'
 import GatewayIntegration from './GatewayIntegration'
 import GatewayObservability from './GatewayObservability'
@@ -14,8 +17,8 @@ import {
   clearGatewayRequestLogs,
   DEFAULT_GATEWAY_CONFIG,
   DEFAULT_GATEWAY_STATUS,
+  fetchGatewayStatus,
   fetchGatewayRequestLogs,
-  hydrateGatewayConfig,
   loadGatewayPageData,
   openGatewayLogDir,
   saveGatewayConfig,
@@ -24,17 +27,17 @@ import {
 } from './gatewayPageState'
 import { useGatewayPolling } from './useGatewayPolling'
 
+function Alert(props) {
+  return <AlertPrimitive {...props} />
+}
+
 function ThemedAlert({ colors, title, children, ...props }) {
   return (
-    <Alert
-      {...props}
-      title={<span className={colors.text}>{title}</span>}
-    >
-      {typeof children === 'string' ? (
-        <Text size="sm" className={colors.textMuted}>
-          {children}
-        </Text>
-      ) : children}
+    <Alert {...props}>
+      {title && <AlertTitle className={colors.text}>{title}</AlertTitle>}
+      <AlertDescription className={colors.textMuted}>
+        {children}
+      </AlertDescription>
     </Alert>
   )
 }
@@ -604,42 +607,38 @@ function GatewayPage() {
               <Group gap="xs">
                 <Button
                   variant="default"
-                  leftSection={<Activity size={16} />}
                   onClick={handleSave}
-                  loading={saving || loading}
                   disabled={!hasUnsavedChanges || hasFieldErrors || saving || loading}
                 >
+                  <Activity size={16} className="mr-1" />
                   保存配置
                 </Button>
                 {status.running ? (
                   <Button
                     variant="light"
-                    leftSection={<RotateCcw size={16} />}
                     onClick={handleRestart}
-                    loading={saving || loading}
                     disabled={hasFieldErrors || saving || loading}
                   >
+                    <RotateCcw size={16} className="mr-1" />
                     重启网关
                   </Button>
                 ) : null}
                 {!status.running ? (
                   <Button
                     color="green"
-                    leftSection={<Play size={16} />}
                     onClick={handleStart}
-                    loading={saving || loading}
                     disabled={hasFieldErrors || saving || loading}
                   >
+                    <Play size={16} className="mr-1" />
                     启动网关
                   </Button>
                 ) : (
                   <Button
                     color="red"
-                    leftSection={<Square size={16} />}
                     onClick={handleStop}
-                    loading={saving || loading}
                     disabled={saving || loading}
                   >
+                    <Square size={16} className="mr-1" />
                     停止网关
                   </Button>
                 )}
@@ -687,21 +686,32 @@ function GatewayPage() {
 
         <Tabs
           value={activeTab}
-          keepMounted={false}
-          onChange={(value) => {
+          onValueChange={(value) => {
             startTransition(() => {
               setActiveTab(value || 'overview')
             })
           }}
         >
-          <Tabs.List>
-            <Tabs.Tab value="overview">总览</Tabs.Tab>
-            <Tabs.Tab value="integration">接入</Tabs.Tab>
-            <Tabs.Tab value="observability">观测</Tabs.Tab>
-            <Tabs.Tab value="advanced">高级</Tabs.Tab>
-          </Tabs.List>
+          <TabsList>
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <LayoutDashboard size={16} />
+              总览
+            </TabsTrigger>
+            <TabsTrigger value="integration" className="flex items-center gap-2">
+              <Plug size={16} />
+              接入
+            </TabsTrigger>
+            <TabsTrigger value="observability" className="flex items-center gap-2">
+              <ActivityIcon size={16} />
+              观测
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <Settings size={16} />
+              高级
+            </TabsTrigger>
+          </TabsList>
 
-          <Tabs.Panel value="overview" pt="md">
+          <TabsContent value="overview">
             <GatewayOverview
               colors={colors}
               loading={loading}
@@ -720,9 +730,9 @@ function GatewayPage() {
               logDir={logDir}
               latestErrorEntry={latestErrorEntry}
             />
-          </Tabs.Panel>
+          </TabsContent>
 
-          <Tabs.Panel value="integration" pt="md">
+          <TabsContent value="integration">
             <GatewayIntegration
               colors={colors}
               integrationGuidance={integrationGuidance}
@@ -732,9 +742,9 @@ function GatewayPage() {
               copyText={copyText}
               copySuccess={copySuccess}
             />
-          </Tabs.Panel>
+          </TabsContent>
 
-          <Tabs.Panel value="observability" pt="md">
+          <TabsContent value="observability">
             <GatewayObservability
               colors={colors}
               observabilityHighlights={observabilityHighlights}
@@ -766,9 +776,9 @@ function GatewayPage() {
               renderMetricList={renderMetricList}
               filteredRequestLogs={filteredRequestLogs}
             />
-          </Tabs.Panel>
+          </TabsContent>
 
-          <Tabs.Panel value="advanced" pt="md">
+          <TabsContent value="advanced">
             <GatewayAdvanced
               colors={colors}
               config={config}
@@ -790,7 +800,7 @@ function GatewayPage() {
               applyGatewayLocalOnlyChange={applyGatewayLocalOnlyChange}
               createGeneratedApiKey={createGeneratedApiKey}
             />
-          </Tabs.Panel>
+          </TabsContent>
         </Tabs>
       </Stack>
     </div>

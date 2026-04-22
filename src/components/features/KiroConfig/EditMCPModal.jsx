@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { X, Terminal, AlertCircle, Wand2 } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
-import { Textarea } from '@mantine/core'
+import { Textarea } from '@/components/ui/textarea'
 import { useApp } from '../../../hooks/useApp'
 import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
 
@@ -113,7 +113,7 @@ function EditMCPModal({ name, config, onClose, onSuccess, projectDir }) {
         </div>
 
         {/* 内容 */}
-        <div className="relative flex-1 overflow-auto p-6 space-y-4" style={{ padding: 'var(--mantine-spacing-md)' }}>
+        <div className="relative flex-1 overflow-auto p-6 space-y-4" style={{ padding: 'var(--app-space-md)' }}>
           {/* JSON 配置 */}
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1.5">
@@ -139,18 +139,7 @@ function EditMCPModal({ name, config, onClose, onSuccess, projectDir }) {
               onChange={e => setJsonConfig(e.target.value)}
               rows={16}
               spellCheck={false}
-              styles={(theme) => ({
-                input: {
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontSize: '0.875rem',
-                  borderColor: parseError ? 'rgba(239, 68, 68, 0.5)' : undefined,
-                  borderRadius: '0.75rem',
-                  padding: '0.75rem'
-                }
-              })}
-              classNames={{
-                input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-              }}
+              className={`font-mono text-sm ${parseError ? 'border-red-500/50' : ''} ${colors.text} ${colors.input} ${colors.inputFocus}`}
             />
             <p className={`text-xs ${colors.textMuted} mt-2 flex items-start gap-1.5`}>
               <span className={`${accent.text} font-medium`}>💡</span>

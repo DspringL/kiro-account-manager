@@ -1,5 +1,6 @@
 import { Check, Copy, FolderOpen, Radio, RefreshCw, Shield } from 'lucide-react'
-import { Badge, Button, Card, Code, Group, Stack, Text } from '@mantine/core'
+import { Button } from '@/components/ui/button'
+import { Stack, Group, Badge, Card, Code, Text } from '@/components/shared/layout'
 import { GatewayPathCard, GatewaySectionHeader, GatewayStatCard, GatewaySubCard, GatewaySurfaceCard } from './GatewayShared'
 
 function GatewayOverview({
@@ -31,7 +32,8 @@ function GatewayOverview({
             icon={Radio}
             title="控制台总览"
             actions={(
-              <Button variant="light" size="xs" leftSection={<RefreshCw size={14} />} onClick={handleRefresh} loading={loading}>
+              <Button variant="light" size="xs" onClick={handleRefresh}>
+                <RefreshCw size={14} className="mr-1" />
                 刷新
               </Button>
             )}
@@ -127,7 +129,8 @@ function GatewayOverview({
               <Stack gap={8}>
                 <Text size="xs" className={colors.textMuted}>快速复制</Text>
                 <Text fw={700} className={colors.text}>基础入口</Text>
-                <Button variant="light" size="xs" leftSection={<Copy size={14} />} onClick={() => copyText(effectiveBaseUrl, '网关入口已复制')}>
+                <Button variant="light" size="xs" onClick={() => copyText(effectiveBaseUrl, '网关入口已复制')}>
+                  <Copy size={14} className="mr-1" />
                   复制入口地址
                 </Button>
               </Stack>
@@ -139,9 +142,9 @@ function GatewayOverview({
                 <Button
                   variant="light"
                   size="xs"
-                  leftSection={<Copy size={14} />}
                   onClick={() => copyText(clientSamples.openai.env, 'OpenAI 兼容配置已复制')}
                 >
+                  <Copy size={14} className="mr-1" />
                   复制 OpenAI 兼容环境变量
                 </Button>
               </Stack>
@@ -150,14 +153,15 @@ function GatewayOverview({
               <Stack gap={8}>
                 <Text size="xs" className={colors.textMuted}>排障入口</Text>
                 <Text fw={700} className={colors.text}>日志目录</Text>
-                <Button variant="light" size="xs" leftSection={<FolderOpen size={14} />} onClick={handleOpenLogDir}>
+                <Button variant="light" size="xs" onClick={handleOpenLogDir}>
+                  <FolderOpen size={14} className="mr-1" />
                   打开日志目录
                 </Button>
               </Stack>
             </GatewaySubCard>
           </div>
 
-          {copySuccess ? <Badge color="green" leftSection={<Check size={12} />}>{copySuccess}</Badge> : null}
+          {copySuccess ? <Badge color="green"><Check size={12} className="mr-1" />{copySuccess}</Badge> : null}
         </Stack>
       </GatewaySurfaceCard>
 

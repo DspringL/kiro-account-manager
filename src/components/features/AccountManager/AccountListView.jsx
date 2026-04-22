@@ -1,7 +1,7 @@
 import { useRef, useMemo, memo, useState, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Users, Plus, RefreshCw, Repeat, Eye, Edit2, Trash2, Copy, UserX, ChevronUp, ChevronDown } from 'lucide-react'
-import { Checkbox } from '@mantine/core'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useApp } from '../../../hooks/useApp'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { getQuota, getUsed, formatUsage, getAccountDisplayName } from '../../../utils/accountStats'
@@ -77,14 +77,9 @@ const ListRow = memo(function ListRow({
       )}
       <Checkbox
         checked={isSelected}
-        onChange={(e) => onSelectOne(account.id, e.currentTarget.checked)}
+        onCheckedChange={(checked) => onSelectOne(account.id, checked)}
         onClick={(e) => e.stopPropagation()}
-        className="shrink-0"
-        styles={{
-          input: {
-            cursor: 'pointer',
-          },
-        }}
+        className="shrink-0 cursor-pointer"
       />
 
       <div className="w-48 shrink-0">

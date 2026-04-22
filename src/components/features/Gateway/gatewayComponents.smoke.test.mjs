@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
-import { MantineProvider } from '@mantine/core'
 import react from '@vitejs/plugin-react'
 import {
   getAdvancedProps,
@@ -20,11 +19,7 @@ let GatewayObservability
 
 function renderComponent(Component, props) {
   return renderToStaticMarkup(
-    React.createElement(
-      MantineProvider,
-      null,
-      React.createElement(Component, props)
-    )
+    React.createElement(Component, props)
   )
 }
 

@@ -1,4 +1,6 @@
-import { Card, Progress, Group, Stack, Text, Badge } from '@mantine/core'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { TrendingUp } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
@@ -7,57 +9,41 @@ import { getThemeAccent } from '../KiroConfig/themeAccent'
 function QuotaOverviewCard({ stats, colors, t }) {
   const { theme } = useApp()
   const accent = getThemeAccent(theme)
-  const getProgressColor = (percent) => {
-    if (percent > 80) return 'red'
-    if (percent > 50) return 'yellow'
-    return 'green'
-  }
-
-  const getBadgeColor = (percent) => {
-    if (percent > 80) return 'red'
-    if (percent > 50) return 'yellow'
-    return 'green'
+  const getBadgeVariant = (percent) => {
+    if (percent > 80) return 'destructive'
+    if (percent > 50) return 'secondary'
+    return 'default'
   }
 
   return (
-    <Card
-      className="card-glow animate-scale-in delay-400"
-      shadow="sm"
-      padding="lg"
-      radius="xl"
-      withBorder
-    >
-      <Group gap="sm" mb="md">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.cardSecondary}`}>
-          <TrendingUp size={20} className={accent.text} />
+    <Card className="card-glow animate-scale-in delay-400">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors.cardSecondary}`}>
+            <TrendingUp size={20} className={accent.text} />
+          </div>
+          <span className={`font-semibold ${colors.text}`}>{t('home.quotaOverview')}</span>
         </div>
-        <Text fw={600} className={colors.text}>{t('home.quotaOverview')}</Text>
-      </Group>
-      
-      <Group gap="md" mb="sm">
-        <Progress
-          value={stats.usagePercent}
-          color={getProgressColor(stats.usagePercent)}
-          size="md"
-          radius="xl"
-          style={{ flex: 1 }}
-          animated
-        />
-        <Badge
-          color={getBadgeColor(stats.usagePercent)}
-          variant="light"
-          size="sm"
-        >
-          {stats.usagePercent}%
-        </Badge>
-      </Group>
-      
-      <Group justify="space-between">
-        <Text size="sm" className={colors.textMuted}>{t('home.usedTotal')}</Text>
-        <Text size="sm" fw={500} className={colors.text}>
-          {stats.totalUsedStr} / {stats.totalQuotaStr}
-        </Text>
-      </Group>
+      </CardHeader>
+
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Progress
+            value={stats.usagePercent}
+            className="flex-1"
+          />
+          <Badge variant={getBadgeVariant(stats.usagePercent)}>
+            {stats.usagePercent}%
+          </Badge>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <span className={`text-sm ${colors.textMuted}`}>{t('home.usedTotal')}</span>
+          <span className={`text-sm font-medium ${colors.text}`}>
+            {stats.totalUsedStr} / {stats.totalQuotaStr}
+          </span>
+        </div>
+      </CardContent>
     </Card>
   )
 }

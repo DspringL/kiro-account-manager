@@ -4,13 +4,16 @@ import { getVersion } from '@tauri-apps/api/app'
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { check } from '@tauri-apps/plugin-updater'
-import { Card, Stack, Group, Text, Badge, Image, Button, Modal, Transition } from '@mantine/core'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import alipayQR from '../../../assets/donate/alipay.jpg'
 import wechatQR from '../../../assets/donate/wechat.jpg'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
-import { isLightTheme as checkIsLightTheme, getMantinePrimaryColor } from '../../../utils/themeMode'
+import { isLightTheme as checkIsLightTheme } from '../../../utils/themeMode'
 
 // 常量定义
 const QQ_NUMBER = '1292548381'
@@ -47,80 +50,64 @@ const AppLogo = ({ accent, iconColors }) => (
 )
 
 // 技术栈徽章组件
-const TechBadge = ({ icon: Icon, value, color }) => (
-  <Badge
-    leftSection={<Icon size={14} />}
-    color={color}
-    variant="light"
-    size="lg"
-    radius="xl"
-  className="transition-colors duration-200 hover:shadow-md cursor-default"
-  >
+const TechBadge = ({ icon: Icon, value }) => (
+  <Badge variant="secondary" className="transition-colors duration-200 hover:shadow-md cursor-default px-3 py-1.5 text-sm flex items-center gap-1.5">
+    <Icon size={14} />
     {value}
   </Badge>
 )
 
 // 链接按钮组件
-const LinkButton = ({ href, icon: Icon, children, color, variant = 'filled', fullWidth = false }) => (
+const LinkButton = ({ href, icon: Icon, children, fullWidth = false }) => (
   <Button
-    component="a"
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    leftSection={<Icon size={18} />}
-    variant={variant}
-    color={color}
-    radius="md"
-    fullWidth={fullWidth}
-    className="transition-colors duration-200 hover:shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+    asChild
+    variant="default"
+    className={`transition-all duration-200 hover:shadow-lg cursor-pointer ${fullWidth ? 'w-full' : ''}`}
   >
-    {children}
+    <a href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+      <Icon size={18} />
+      {children}
+    </a>
   </Button>
 )
 
 // QR 码图片组件
 const QRCodeImage = ({ src, alt, onClick, accent, colors, onKeyDown }) => (
-  <Stack
-    gap="xs"
-    align="center"
-    style={{ cursor: 'pointer' }}
+  <div
+    className="flex flex-col items-center gap-2 cursor-pointer transition-all duration-200 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 rounded-lg p-2"
     onClick={onClick}
     role="button"
     tabIndex={0}
     onKeyDown={onKeyDown}
     aria-label={alt}
-    className="transition-colors duration-200 hover:shadow-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
   >
     <div className="relative group">
       <div className={`absolute inset-0 ${accent.bg} rounded-lg blur-md opacity-0 group-hover:opacity-40 transition-opacity duration-200`} />
-      <Image
+      <img
         src={src}
         alt={alt}
-        w={120}
-        h={120}
-        radius="md"
-        className="relative transition-transform duration-200 shadow-md"
+        className="relative w-[120px] h-[120px] rounded-md shadow-md transition-transform duration-200"
       />
     </div>
-    <Text size="sm" fw={500} className={colors.text}>{alt}</Text>
-  </Stack>
+    <p className={`text-sm font-medium ${colors.text}`}>{alt}</p>
+  </div>
 )
 
 // 信息卡片组件
 const InfoCard = ({ title, items, colors }) => (
   <div className={`${colors.cardSecondary} rounded-xl p-4 transition-colors duration-200 hover:shadow-md`}>
     {title && (
-      <Text size="sm" fw={500} className={colors.text} mb="xs">
+      <p className={`text-sm font-medium mb-2 ${colors.text}`}>
         {title}
-      </Text>
+      </p>
     )}
-    <Stack gap="xs" className={colors.text}>
+    <div className={`flex flex-col gap-2 ${colors.text}`}>
       {items.map((item, index) => (
-        <Text key={index} size="sm" style={{ lineHeight: 1.6 }}>
+        <p key={index} className="text-sm leading-relaxed">
           {item}
-        </Text>
+        </p>
       ))}
-    </Stack>
+    </div>
   </div>
 )
 
@@ -134,15 +121,6 @@ function About() {
 
   // 使用 useMemo 缓存主题相关计算
   const accent = useMemo(() => getThemeAccent(theme), [theme])
-  const mantineAccentColor = useMemo(() => getMantinePrimaryColor(theme), [theme])
-
-  // 统一的卡片样式
-  const cardStyles = useMemo(() => ({
-    className: `${colors.card} border ${colors.cardBorder}`,
-    shadow: 'lg',
-    radius: 'xl',
-    styles: { root: { backgroundColor: 'transparent' } }
-  }), [colors])
 
   // 图标颜色（适配主题）
   const iconColors = useMemo(() => {
@@ -158,9 +136,9 @@ function About() {
 
   // 技术栈配置
   const techStack = useMemo(() => [
-    { icon: Code2, label: t('about.frontend'), value: 'React + Vite', color: 'cyan' },
-    { icon: Palette, label: t('about.ui'), value: 'TailwindCSS', color: 'pink' },
-    { icon: Cpu, label: t('about.backend'), value: 'Tauri + Rust', color: 'orange' },
+    { icon: Code2, label: t('about.frontend'), value: 'React + Vite' },
+    { icon: Palette, label: t('about.ui'), value: 'TailwindCSS' },
+    { icon: Cpu, label: t('about.backend'), value: 'Tauri + Rust' },
   ], [t])
 
   // 赞助福利列表
@@ -237,90 +215,89 @@ function About() {
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         {/* 头部卡片 */}
-        <Transition mounted={mounted} transition="fade-up" duration={400} timingFunction="ease">
-          {(styles) => (
-            <Card {...cardStyles} p="xl" style={styles}>
-              <Stack gap="lg" align="center">
+        <div className={`transition-all duration-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <Card className={`${colors.card} border ${colors.cardBorder} shadow-lg`}>
+            <CardContent className="p-6 sm:p-8">
+              <div className="flex flex-col items-center gap-4">
                 <AppLogo accent={accent} iconColors={iconColors} />
 
-                <Text size="xl" fw={700} className={colors.text}>{t('about.appName')}</Text>
+                <h1 className={`text-xl font-bold ${colors.text}`}>{t('about.appName')}</h1>
 
-                <Group gap="sm">
-                  <Badge color="blue" size="lg" radius="xl" variant="dot">
+                <div className="flex items-center gap-2">
+                  <Badge variant="default" className="px-3 py-1">
                     v{version || '...'}
                   </Badge>
                   <Button
                     onClick={checkUpdate}
-                    loading={checking}
-                    leftSection={<RefreshCw size={12} />}
-                    variant="light"
-                    color="green"
-                    size="compact-sm"
-                    radius="xl"
+                    disabled={checking}
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1"
                   >
+                    <RefreshCw size={12} className={checking ? 'animate-spin' : ''} />
                     {checking ? t('about.checking') : t('about.checkUpdate')}
                   </Button>
-                </Group>
+                </div>
 
-                <Text size="sm" className={colors.textMuted} ta="center" maw={500}>
+                <p className={`text-sm text-center max-w-[500px] ${colors.textMuted}`}>
                   {t('about.appDesc')}
-                </Text>
+                </p>
 
-                <Group gap="sm" justify="center" wrap="wrap">
-                  {techStack.map(({ icon, label, value, color }) => (
-                    <TechBadge key={label} icon={icon} value={value} color={color} />
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  {techStack.map(({ icon, label, value }) => (
+                    <TechBadge key={label} icon={icon} value={value} />
                   ))}
-                </Group>
-              </Stack>
-            </Card>
-          )}
-        </Transition>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* 链接 */}
-        <Transition mounted={mounted} transition="fade-up" duration={400} delay={100} timingFunction="ease">
-          {(styles) => (
-            <Card {...cardStyles} p="lg" style={styles}>
-              <Text size="sm" fw={500} className={colors.text} ta="center" mb="md">{t('about.links')}</Text>
-              <Stack gap="sm">
-                <Group gap="sm" grow>
-                  <LinkButton href={LINKS.website} icon={ExternalLink} color="cyan">
+        <div className={`transition-all duration-400 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <Card className={`${colors.card} border ${colors.cardBorder} shadow-lg`}>
+            <CardContent className="p-4 sm:p-6">
+              <p className={`text-sm font-medium text-center mb-4 ${colors.text}`}>{t('about.links')}</p>
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <LinkButton href={LINKS.website} icon={ExternalLink}>
                     {t('about.website')}
                   </LinkButton>
-                  <LinkButton href={LINKS.github} icon={Github} color="dark">
+                  <LinkButton href={LINKS.github} icon={Github}>
                     GitHub
                   </LinkButton>
-                </Group>
+                </div>
 
-                <Group gap="sm" grow>
-                  <LinkButton href={LINKS.tutorial} icon={BookOpen} color="blue">
+                <div className="grid grid-cols-2 gap-2">
+                  <LinkButton href={LINKS.tutorial} icon={BookOpen}>
                     {t('about.tutorial')}
                   </LinkButton>
-                  <LinkButton href={LINKS.qqGroup} icon={QQIcon} color="cyan">
+                  <LinkButton href={LINKS.qqGroup} icon={QQIcon}>
                     {t('about.qqGroup')}
                   </LinkButton>
-                </Group>
+                </div>
 
-                <LinkButton href={LINKS.gateway} icon={Github} color="grape" variant="light" fullWidth>
+                <LinkButton href={LINKS.gateway} icon={Github} fullWidth>
                   {t('about.shop')}
                 </LinkButton>
-              </Stack>
-            </Card>
-          )}
-        </Transition>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* 赞赏 */}
-        <Transition mounted={mounted} transition="fade-up" duration={400} delay={200} timingFunction="ease">
-          {(styles) => (
-            <Card {...cardStyles} p="lg" style={styles}>
-              <Stack gap="md">
-                <Group gap="xs" justify="center">
+        <div className={`transition-all duration-400 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <Card className={`${colors.card} border ${colors.cardBorder} shadow-lg`}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-center gap-2">
                   <Coffee size={20} className={`${iconColors.coffee} animate-bounce`} />
-                  <Text size="lg" fw={600} className={colors.text}>{t('about.donate')}</Text>
-                </Group>
+                  <h2 className={`text-lg font-semibold ${colors.text}`}>{t('about.donate')}</h2>
+                </div>
 
-                <Text size="sm" className={colors.text} ta="center" style={{ lineHeight: 1.6 }}>
+                <p className={`text-sm text-center leading-relaxed ${colors.text}`}>
                   {t('about.donateDesc')}
-                </Text>
+                </p>
 
                 <InfoCard
                   title={t('about.sponsorBenefits')}
@@ -328,7 +305,7 @@ function About() {
                   colors={colors}
                 />
 
-                <Group justify="center" gap="xl" mt="sm">
+                <div className="flex items-center justify-center gap-8 mt-2">
                   <QRCodeImage
                     src={alipayQR}
                     alt={t('about.alipay')}
@@ -345,88 +322,74 @@ function About() {
                     colors={colors}
                     onKeyDown={(e) => handlePreviewKeyDown(e, wechatQR)}
                   />
-                </Group>
+                </div>
 
-                <Text size="xs" className={colors.textMuted} ta="center" mt="xs">
+                <p className={`text-xs text-center mt-1 ${colors.textMuted}`}>
                   {t('about.clickToEnlarge')}
-                </Text>
-              </Stack>
-            </Card>
-          )}
-        </Transition>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* 付费服务 */}
-        <Transition mounted={mounted} transition="fade-up" duration={400} delay={300} timingFunction="ease">
-          {(styles) => (
-            <Card {...cardStyles} p="xl" style={styles}>
-              <Stack gap="md">
-                <Group gap="xs" justify="center">
+        <div className={`transition-all duration-400 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <Card className={`${colors.card} border ${colors.cardBorder} shadow-lg`}>
+            <CardContent className="p-6 sm:p-8">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-center gap-2">
                   <MessageCircle size={20} className={accent.text} />
-                  <Text size="lg" fw={600} className={colors.text}>{t('about.paidServices')}</Text>
-                </Group>
+                  <h2 className={`text-lg font-semibold ${colors.text}`}>{t('about.paidServices')}</h2>
+                </div>
 
-                <Text size="sm" className={colors.text} ta="center" style={{ lineHeight: 1.6 }}>
+                <p className={`text-sm text-center leading-relaxed ${colors.text}`}>
                   {t('about.paidServicesDesc')}
-                </Text>
+                </p>
 
                 <InfoCard items={paidServices} colors={colors} />
 
-                <Group justify="center" gap="md" mt="sm">
+                <div className="flex items-center justify-center gap-4 mt-2">
                   <Button
                     onClick={handleContactQQ}
-                    leftSection={<MessageCircle size={16} />}
-                    variant="light"
-                    color={mantineAccentColor}
-                    radius="xl"
-                    className="transition-colors duration-200 hover:shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    variant="secondary"
+                    className="gap-2 transition-all duration-200 hover:shadow-lg"
                   >
+                    <MessageCircle size={16} />
                     {t('about.contactQQ')}
                   </Button>
-                </Group>
-              </Stack>
-            </Card>
-          )}
-        </Transition>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* 底部 */}
-        <Transition mounted={mounted} transition="fade" duration={400} delay={400} timingFunction="ease">
-          {(styles) => (
-            <Group gap="xs" justify="center" className="py-4" style={styles}>
-              <Text size="sm" className={colors.textMuted}>{t('about.madeWith')}</Text>
-              <Heart size={14} className={`${iconColors.heart} animate-pulse`} />
-              <Text size="sm" className={colors.textMuted}>{t('about.by')} hj01857655</Text>
-              <Text size="sm" className={colors.textMuted}>·</Text>
-              <Text size="sm" className={colors.textMuted}>© {CURRENT_YEAR}</Text>
-            </Group>
-          )}
-        </Transition>
+        <div className={`transition-all duration-400 delay-400 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="flex items-center justify-center gap-2 py-4">
+            <span className={`text-sm ${colors.textMuted}`}>{t('about.madeWith')}</span>
+            <Heart size={14} className={`${iconColors.heart} animate-pulse`} />
+            <span className={`text-sm ${colors.textMuted}`}>{t('about.by')} hj01857655</span>
+            <span className={`text-sm ${colors.textMuted}`}>·</span>
+            <span className={`text-sm ${colors.textMuted}`}>© {CURRENT_YEAR}</span>
+          </div>
+        </div>
       </div>
 
       {/* 图片预览弹窗 */}
-      <Modal
-        opened={!!previewImg}
-        onClose={closePreview}
-        centered
-        withCloseButton={false}
-        size="auto"
-        padding={0}
-        styles={{
-          content: { background: 'transparent' },
-          body: { padding: 0 }
-        }}
-        transitionProps={{ transition: 'fade', duration: 200 }}
-      >
-        <div className="relative">
-          <Image src={previewImg} alt="预览" maw={320} mah={320} radius="xl" />
-          <button
-            className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.card}`}
-            onClick={closePreview}
-            aria-label="关闭预览"
-          >
-            <X size={16} className={colors.text} />
-          </button>
-        </div>
-      </Modal>
+      <Dialog open={!!previewImg} onOpenChange={(open) => !open && closePreview()}>
+        <DialogContent className="max-w-fit p-0 bg-transparent border-none shadow-none">
+          <div className="relative">
+            <img src={previewImg} alt="预览" className="max-w-[320px] max-h-[320px] rounded-xl" />
+            <button
+              className={`absolute -top-3 -right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30 ${colors.card}`}
+              onClick={closePreview}
+              aria-label="关闭预览"
+            >
+              <X size={16} className={colors.text} />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

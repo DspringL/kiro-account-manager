@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { Filter, X } from 'lucide-react'
 import { useTheme } from '../../../contexts/ThemeContext'
 import { useTranslation } from 'react-i18next'
@@ -405,11 +405,11 @@ function FilterDropdown({
               margin: 4px 0;
             }
             .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: var(--mantine-primary-color-filled);
+              background: var(--app-primary-solid);
               border-radius: 3px;
             }
             .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: var(--mantine-primary-color-filled-hover);
+              background: var(--app-primary-solid-hover);
             }
           `}</style>
         </div>

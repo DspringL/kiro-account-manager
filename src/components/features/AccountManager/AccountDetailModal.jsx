@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, memo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { Copy, Check, RefreshCw, User, CreditCard, Shield } from 'lucide-react'
-import { TextInput } from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { formatUsage, getAccountDisplayName } from '../../../utils/accountStats'
@@ -457,42 +456,27 @@ function AccountDetailModal({ account, onClose }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <TextInput
-                  label={t('detail.emailAddress')}
+                <label className={`block text-sm font-medium ${colors.textMuted} mb-2`}>
+                  {t('detail.emailAddress')}
+                </label>
+                <input
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   required
-                  classNames={{
-                    label: `text-sm font-medium ${colors.textMuted} mb-2`,
-                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-                  }}
-                  styles={{
-                    input: {
-                      fontSize: '0.875rem',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '0.75rem',
-                    }
-                  }}
+                  className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2`}
                 />
               </div>
               <div>
-                <TextInput
-                  label={t('detail.remarkLabel')}
+                <label className={`block text-sm font-medium ${colors.textMuted} mb-2`}>
+                  {t('detail.remarkLabel')}
+                </label>
+                <input
+                  type="text"
                   value={form.label}
                   readOnly
                   placeholder={t('common.none')}
-                  classNames={{
-                    label: `text-sm font-medium ${colors.textMuted} mb-2`,
-                    input: `${colors.text} ${colors.input} opacity-60`
-                  }}
-                  styles={{
-                    input: {
-                      fontSize: '0.875rem',
-                      padding: '0.75rem 1rem',
-                      borderRadius: '0.75rem',
-                    }
-                  }}
+                  className={`w-full px-4 py-3 border rounded-xl text-sm ${colors.text} ${colors.input} opacity-60`}
                 />
               </div>
             </div>

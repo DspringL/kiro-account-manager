@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { Server, Plus, Edit2, Trash2, Terminal, Search, X } from 'lucide-react'
-import { TextInput } from '@mantine/core'
+import { Input } from '@/components/ui/input'
 import AddMCPModal from './AddMCPModal'
 import EditMCPModal from './EditMCPModal'
 import { getThemeAccent, getGradientAccentButton } from './themeAccent'
@@ -12,27 +12,24 @@ import { handleUiError } from '../../../utils/errorLogger'
 // 搜索框组件
 function SearchInput({ value, onChange, placeholder, colors, t, accent }) {
   return (
-    <div className="flex-1 max-w-xs">
-      <TextInput
+    <div className="flex-1 max-w-xs relative">
+      <Search size={16} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${colors.textMuted} pointer-events-none`} />
+      <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        size="sm"
-        leftSection={<Search size={16} className={colors.textMuted} />}
-        rightSection={value ? (
-          <button
-            type="button"
-            aria-label={t('common.clear')}
-            onClick={() => onChange('')}
-            className={`p-1 rounded ${colors.cardHover} cursor-pointer transition-colors duration-200 focus:ring-2 ${accent.ring}`}
-          >
-            <X size={14} className={colors.textMuted} />
-          </button>
-        ) : null}
-        classNames={{
-          input: `${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-1 transition-colors duration-200`
-        }}
+        className={`pl-9 pr-8 h-8 ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-1 transition-colors duration-200`}
       />
+      {value && (
+        <button
+          type="button"
+          aria-label={t('common.clear')}
+          onClick={() => onChange('')}
+          className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded ${colors.cardHover} cursor-pointer transition-colors duration-200 focus:ring-2 ${accent.ring}`}
+        >
+          <X size={14} className={colors.textMuted} />
+        </button>
+      )}
     </div>
   )
 }

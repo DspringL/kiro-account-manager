@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { CopyButton } from '@mantine/core'
 import { Copy, Check, Folder, Plus, X } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
@@ -105,7 +104,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
   const accent = getThemeAccent(theme)
   const { showError } = useDialog()
   const isIdCAccount = account.provider === 'BuilderId' || account.provider === 'Enterprise'
-  
+
   const [form, setForm] = useState({
     label: account.label || '',
     accessToken: account.accessToken || '',
@@ -114,14 +113,26 @@ function EditAccountModal({ account, onClose, onSuccess }) {
     clientSecret: account.clientSecret || '',
     machineId: account.machineId || '',
   })
+
   const [selectedTagIds, setSelectedTagIds] = useState((account.tagLinks || []).map(link => link.tagId))
   const [selectedGroupId, setSelectedGroupId] = useState(account.groupId || '')
   const [groups, setGroups] = useState([])
   const [saving, setSaving] = useState(false)
+  const [copiedField, setCopiedField] = useState(null)
 
   useEffect(() => {
     getGroups().then(setGroups).catch(() => {})
   }, [])
+
+  const handleCopy = async (text, field) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 2000)
+    } catch (e) {
+      console.error('复制失败:', e)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -137,7 +148,7 @@ function EditAccountModal({ account, onClose, onSuccess }) {
         params.clientId = form.clientId || null
         params.clientSecret = form.clientSecret || null
       }
-      const updatedAccount = await invoke('update_account', params)
+      const updatedAccount = await invoke('update_account', { params })
       await setAccountGroup(account.id, selectedGroupId || null)
       await setAccountTags(account.id, selectedTagIds)
       onSuccess?.(updatedAccount)
@@ -183,17 +194,13 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                 onChange={(e) => setForm({ ...form, machineId: e.target.value })}
                 className={`w-full px-4 py-3 pr-10 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2`}
               />
-              <CopyButton value={form.machineId}>
-                {({ copied, copy }) => (
-                  <button
-                    onClick={copy}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover}`}
-                    title={copied ? '已复制' : '复制'}
-                  >
-                    {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
-                  </button>
-                )}
-              </CopyButton>
+              <button
+                onClick={() => handleCopy(form.machineId, 'machineId')}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover}`}
+                title={copiedField === 'machineId' ? '已复制' : '复制'}
+              >
+                {copiedField === 'machineId' ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
+              </button>
             </div>
           </div>
 
@@ -211,17 +218,13 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                     onChange={(e) => setForm({ ...form, clientId: e.target.value })}
                     className={`w-full px-4 py-3 pr-10 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2`}
                   />
-                  <CopyButton value={form.clientId}>
-                    {({ copied, copy }) => (
-                      <button
-                        onClick={copy}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover}`}
-                        title={copied ? '已复制' : '复制'}
-                      >
-                        {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
-                      </button>
-                    )}
-                  </CopyButton>
+                  <button
+                    onClick={() => handleCopy(form.clientId, 'clientId')}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg ${colors.cardHover}`}
+                    title={copiedField === 'clientId' ? '已复制' : '复制'}
+                  >
+                    {copiedField === 'clientId' ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
+                  </button>
                 </div>
               </div>
               <div>
@@ -236,17 +239,13 @@ function EditAccountModal({ account, onClose, onSuccess }) {
                     rows={2}
                     className={`w-full px-4 py-3 pr-10 border rounded-xl ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2 resize-none`}
                   />
-                  <CopyButton value={form.clientSecret}>
-                    {({ copied, copy }) => (
-                      <button
-                        onClick={copy}
-                        className={`absolute right-3 top-3 p-1.5 rounded-lg ${colors.cardHover}`}
-                        title={copied ? '已复制' : '复制'}
-                      >
-                        {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
-                      </button>
-                    )}
-                  </CopyButton>
+                  <button
+                    onClick={() => handleCopy(form.clientSecret, 'clientSecret')}
+                    className={`absolute right-3 top-3 p-1.5 rounded-lg ${colors.cardHover}`}
+                    title={copiedField === 'clientSecret' ? '已复制' : '复制'}
+                  >
+                    {copiedField === 'clientSecret' ? <Check size={16} className="text-green-500" /> : <Copy size={16} className={colors.textMuted} />}
+                  </button>
                 </div>
               </div>
             </>

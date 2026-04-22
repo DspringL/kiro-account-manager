@@ -1,7 +1,7 @@
 import { useRef, useMemo, useState, useEffect, useCallback, memo } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Users, Plus, Eye, Edit2, Copy, Key, BarChart3, Repeat, Trash2, UserX } from 'lucide-react'
-import { Checkbox } from '@mantine/core'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useTranslation } from 'react-i18next'
 import { useApp } from '../../../hooks/useApp'
 import { useTheme } from '../../../contexts/ThemeContext'
@@ -192,20 +192,15 @@ function AccountTable({
     <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden p-6">
       {accounts.length > 0 && (
         <div className="flex items-center justify-between mb-4 px-1 shrink-0">
-          <Checkbox
-            checked={selectedIds.length === accounts.length && accounts.length > 0}
-            onChange={(e) => onSelectAll(e.currentTarget.checked)}
-            label={
-              <span className={`text-sm ${colors.textMuted}`}>
-                {selectedIds.length > 0 ? `${t('common.selected')} ${selectedIds.length}` : t('common.selectAll')}
-              </span>
-            }
-            styles={{
-              root: { cursor: 'pointer' },
-              input: { cursor: 'pointer' },
-              label: { cursor: 'pointer' },
-            }}
-          />
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={selectedIds.length === accounts.length && accounts.length > 0}
+              onCheckedChange={onSelectAll}
+            />
+            <span className={`text-sm ${colors.textMuted}`}>
+              {selectedIds.length > 0 ? `${t('common.selected')} ${selectedIds.length}` : t('common.selectAll')}
+            </span>
+          </label>
           <span className={`text-sm ${colors.textMuted}`}>
             {accounts.length === totalCount ? `共 ${totalCount} 个账号` : `${accounts.length} / ${totalCount} 个账号`}
           </span>

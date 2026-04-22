@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { X, Terminal, AlertCircle, Wand2, ClipboardPaste, Check, AlertTriangle } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
-import { Textarea } from '@mantine/core'
 import { useApp } from '../../../hooks/useApp'
 import { MCP_TEMPLATES } from './MCPTemplates'
 import { getThemeAccent, getGradientAccentButton } from '../KiroConfig/themeAccent'
@@ -238,7 +237,7 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
         </div>
 
         {/* 内容 */}
-        <div className="relative flex-1 overflow-auto p-6 space-y-4" style={{ padding: 'var(--mantine-spacing-md)' }}>
+        <div className="relative flex-1 overflow-auto p-6 space-y-4" style={{ padding: 'var(--app-space-md)' }}>
           {/* 快速模板 */}
           <div>
             <label className={`block text-xs ${colors.textMuted} mb-1.5`}>快速填充</label>
@@ -290,19 +289,12 @@ function AddMCPModal({ onClose, onSuccess, projectDir }) {
                 </button>
               </div>
             </div>
-            <Textarea
+            <textarea
               value={jsonConfig}
               onChange={e => setJsonConfig(e.target.value)}
               rows={12}
               spellCheck={false}
-              styles={{
-                input: {
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                  fontSize: '0.875rem',
-                  borderRadius: '0.75rem',
-                  padding: '0.75rem'
-                }
-              }}
+              className={`w-full px-3 py-2 text-xs border rounded-lg font-mono resize-none ${colors.input} ${colors.text} ${colors.inputFocus} focus:ring-2`}
             />
             <div className={`text-xs ${colors.textMuted} mt-1.5`}>
               支持 {`{ "name": config }`} 或 {`{ "mcpServers": { ... } }`} 格式

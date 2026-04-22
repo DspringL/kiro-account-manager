@@ -1,12 +1,11 @@
 // 配额分布饼图组件
-import { Card, Group, Stack, Text } from '@mantine/core'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart } from 'lucide-react'
 import { useMemo } from 'react'
 import { useApp } from '../../../hooks/useApp'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { getAccountDisplayName } from '../../../utils/accountStats'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
-
 import { getQuota as getQuotaFromUtils } from '../../../utils/accountStats'
 
 // 饼图颜色
@@ -52,19 +51,15 @@ export default function QuotaPieChart({ accounts }) {
   if (accounts.length === 0) return null
 
   return (
-    <Card
-      className="card-glow animate-scale-in"
-      shadow="sm"
-      padding="lg"
-      radius="xl"
-      withBorder
-    >
-      <Group gap="xs" mb="md">
-        <PieChart size={18} className={accent.text} />
-        <Text fw={600} className={colors.text}>{t('stats.quotaDistribution')}</Text>
-      </Group>
-
-      <Group align="flex-start" gap="xl">
+    <Card className="card-glow animate-scale-in">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <PieChart size={18} className={accent.text} />
+          <CardTitle className={colors.text}>{t('stats.quotaDistribution')}</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-start gap-6">
         {/* SVG 饼图 */}
         <div className="relative w-36 h-36 flex-shrink-0">
           <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
@@ -91,20 +86,21 @@ export default function QuotaPieChart({ accounts }) {
         </div>
 
         {/* 图例 */}
-        <Stack gap={6} style={{ flex: 1, maxHeight: 144, overflowY: 'auto' }}>
+        <div className="flex flex-col gap-1.5 flex-1 max-h-36 overflow-y-auto">
           {pieSlices.map((slice, i) => (
-            <Group key={i} gap="xs" wrap="nowrap">
+            <div key={i} className="flex gap-2 items-center">
               <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: slice.color }} />
-              <Text size="xs" className={colors.text} truncate style={{ flex: 1 }}>
+              <span className={`text-xs ${colors.text} truncate flex-1`}>
                 {maskEmail(slice.email).split('@')[0]}
-              </Text>
-              <Text size="xs" className={`${colors.textMuted} flex-shrink-0`}>
+              </span>
+              <span className={`text-xs ${colors.textMuted} flex-shrink-0`}>
                 {slice.percentage}%
-              </Text>
-            </Group>
+              </span>
+            </div>
           ))}
-        </Stack>
-      </Group>
+        </div>
+      </div>
+      </CardContent>
     </Card>
   )
 }

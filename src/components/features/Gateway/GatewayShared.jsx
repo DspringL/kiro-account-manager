@@ -1,49 +1,51 @@
-import { Card, Code, Group, Stack, Text } from '@mantine/core'
+import { Card, CardContent } from '@/components/ui/card'
 
 export function GatewaySurfaceCard({ colors, className = '', children, ...props }) {
   return (
     <Card
-      withBorder
-      radius="md"
-      className={`${colors.card} ${colors.cardBorder} ${className}`.trim()}
+      className={`${colors.card} ${colors.cardBorder} border rounded-md ${className}`.trim()}
       {...props}
     >
-      {children}
+      <CardContent className="p-4">
+        {children}
+      </CardContent>
     </Card>
   )
 }
 
 export function GatewaySubCard({ className = '', children, ...props }) {
   return (
-    <Card withBorder radius="md" className={className} {...props}>
-      {children}
+    <Card className={`border rounded-md ${className}`} {...props}>
+      <CardContent className="p-4">
+        {children}
+      </CardContent>
     </Card>
   )
 }
 
 export function GatewaySectionHeader({ colors, icon: Icon, title, badge, actions, groupProps = {} }) {
   return (
-    <Group justify="space-between" {...groupProps}>
-      <Group gap="xs">
+    <div className="flex items-center justify-between" {...groupProps}>
+      <div className="flex items-center gap-2">
         {Icon ? <Icon size={16} /> : null}
-        <Text fw={600} className={colors.text}>{title}</Text>
-      </Group>
+        <h3 className={`font-semibold ${colors.text}`}>{title}</h3>
+      </div>
       {actions || badge || null}
-    </Group>
+    </div>
   )
 }
 
 export function GatewayStatCard({ colors, label, value, detail, valueProps = {}, className = '' }) {
   return (
     <GatewaySubCard className={className}>
-      <Text size="xs" className={colors.textMuted}>{label}</Text>
-      <Text fw={700} className={colors.text} mt={4} {...valueProps}>
+      <p className={`text-xs ${colors.textMuted}`}>{label}</p>
+      <p className={`font-bold mt-1 ${colors.text}`} {...valueProps}>
         {value}
-      </Text>
+      </p>
       {detail ? (
-        <Text size="sm" className={colors.textMuted} mt={6}>
+        <p className={`text-sm mt-1.5 ${colors.textMuted}`}>
           {detail}
-        </Text>
+        </p>
       ) : null}
     </GatewaySubCard>
   )
@@ -52,14 +54,14 @@ export function GatewayStatCard({ colors, label, value, detail, valueProps = {},
 export function GatewayPathCard({ title = '日志目录', value, actions }) {
   return (
     <GatewaySubCard>
-      <Text size="xs" fw={600}>{title}</Text>
-      <Text size="xs" mt={6} style={{ fontFamily: 'JetBrains Mono, monospace', wordBreak: 'break-all' }}>
+      <p className="text-xs font-semibold">{title}</p>
+      <p className="text-xs mt-1.5 font-mono break-all">
         {value}
-      </Text>
+      </p>
       {actions ? (
-        <Group mt="sm" gap="xs">
+        <div className="mt-3 flex items-center gap-2">
           {actions}
-        </Group>
+        </div>
       ) : null}
     </GatewaySubCard>
   )
@@ -68,18 +70,22 @@ export function GatewayPathCard({ title = '日志目录', value, actions }) {
 export function GatewayCodeCard({ title, code, description, actions, children }) {
   return (
     <GatewaySubCard>
-      {title ? <Text size="xs" fw={600}>{title}</Text> : null}
-      {code ? <Code block mt={title ? 'xs' : undefined}>{code}</Code> : null}
+      {title ? <p className="text-xs font-semibold">{title}</p> : null}
+      {code ? (
+        <pre className={`bg-muted rounded-md p-3 overflow-x-auto text-xs font-mono ${title ? 'mt-2' : ''}`}>
+          <code>{code}</code>
+        </pre>
+      ) : null}
       {description ? (
-        <Text size="xs" mt={8}>
+        <p className="text-xs mt-2">
           {description}
-        </Text>
+        </p>
       ) : null}
       {children || null}
       {actions ? (
-        <Group mt="sm" gap="xs">
+        <div className="mt-3 flex items-center gap-2">
           {actions}
-        </Group>
+        </div>
       ) : null}
     </GatewaySubCard>
   )

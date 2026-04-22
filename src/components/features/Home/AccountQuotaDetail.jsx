@@ -1,8 +1,13 @@
-import { Card, Group, Stack, Text, Badge, Progress, ActionIcon, Tooltip } from '@mantine/core'
 import { RefreshCw } from 'lucide-react'
 import { getAccountDisplayName } from '../../../utils/accountStats'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
 import { getProviderDisplayName, isGitHubProvider } from '../../../utils/accountProvider'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Stack, Group, Text } from '@/components/shared/layout'
 
 // 当前账号配额详情
 function AccountQuotaDetail({ 
@@ -50,15 +55,9 @@ function AccountQuotaDetail({
   const { quota: currentQuota, used: currentUsed, percent: currentPercent } = currentQuotaInfo
 
   return (
-    <Card
-      className="card-glow animate-scale-in delay-500"
-      shadow="sm"
-      padding={0}
-      radius="xl"
-      withBorder
-    >
+    <Card className="card-glow animate-scale-in delay-500">
       {/* 头部 */}
-        <AccountHeader 
+        <AccountHeader
           currentAccount={currentAccount}
           userInfo={userInfo}
           subInfo={subInfo}
@@ -70,10 +69,10 @@ function AccountQuotaDetail({
           colors={colors}
           t={t}
         />
-      
-      <Stack p="lg" gap="md">
+
+      <CardContent className="p-6 flex flex-col gap-4">
         {/* 本月用量进度 */}
-        <MonthlyUsageProgress 
+        <MonthlyUsageProgress
           currentPercent={currentPercent}
           currentUsed={currentUsed}
           currentQuota={currentQuota}
@@ -83,16 +82,16 @@ function AccountQuotaDetail({
         />
 
         {/* 两列布局 */}
-        <Group grow align="flex-start">
+        <div className="grid grid-cols-2 gap-4">
           {subInfo && (
-            <SubscriptionDetails 
+            <SubscriptionDetails
               subInfo={subInfo}
               overageConfig={overageConfig}
               colors={colors}
               t={t}
             />
           )}
-        <AccountInfo 
+        <AccountInfo
           currentAccount={currentAccount}
           userInfo={userInfo}
           breakdown={breakdown}
@@ -101,10 +100,10 @@ function AccountQuotaDetail({
           colors={colors}
           t={t}
         />
-        </Group>
+        </div>
 
         {/* 额度明细 */}
-        <QuotaBreakdown 
+        <QuotaBreakdown
           mainUsed={mainUsed}
           mainLimit={mainLimit}
           mainPercent={mainPercent}
@@ -114,7 +113,7 @@ function AccountQuotaDetail({
           colors={colors}
           t={t}
         />
-      </Stack>
+      </CardContent>
     </Card>
   )
 }
@@ -122,13 +121,8 @@ function AccountQuotaDetail({
 // 账号头部
 function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refreshingAccount, handleRefreshCurrentAccount, maskEmail, colors, t, accent }) {
   return (
-    <Group 
-      justify="space-between" 
-      p="md" 
-      className={`border-b ${colors.cardBorder}`}
-      wrap="nowrap"
-    >
-      <Group gap="md" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+    <div className={`flex items-center justify-between p-4 border-b ${colors.cardBorder}`}>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 ${
           currentAccount.provider === 'Google' ? 'bg-gradient-to-br from-red-500 to-orange-500' :
           isGitHubProvider(currentAccount.provider) ? 'bg-gradient-to-br from-gray-700 to-gray-900' :
@@ -136,45 +130,46 @@ function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refr
         }`}>
           {currentAccount.provider?.[0] || 'K'}
         </div>
-        <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-          <Group gap="xs" wrap="nowrap">
-            <Text fw={600} className={colors.text} truncate>
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={`font-semibold ${colors.text} truncate`}>
               {userInfo?.email ? maskEmail(userInfo.email) : (currentAccount.email ? maskEmail(currentAccount.email) : getAccountDisplayName(currentAccount))}
-            </Text>
+            </span>
             {subInfo?.type && (
               <Badge
-                size="xs"
-                variant="filled"
+                variant={subInfo.type.includes('PRO') ? 'default' : 'secondary'}
+                className="shrink-0"
                 style={{
                   background: subInfo.type.includes('PRO+') ? 'linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153))' :
                              subInfo.type.includes('PRO') ? 'rgb(59, 130, 246)' :
                              undefined
                 }}
-                className={subInfo.type.includes('PRO') ? 'shrink-0' : `shrink-0 ${colors.badgeDisabled}`}
               >
                 {subInfo.subscriptionTitle || 'Free'}
               </Badge>
             )}
-          </Group>
-          <Text size="xs" className={colors.textMuted}>
+          </div>
+          <span className={`text-xs ${colors.textMuted}`}>
             {getProviderDisplayName(currentAccount.provider)}
             {daysUntilReset != null && ` · ${daysUntilReset === 0 ? t('home.resetToday') : `${daysUntilReset} ${t('home.daysUntilReset')}`}`}
-          </Text>
-        </Stack>
-      </Group>
-      <Tooltip label={t('home.refreshAccount')}>
-        <ActionIcon
-          onClick={handleRefreshCurrentAccount}
-          disabled={refreshingAccount}
-          variant="subtle"
-          radius="xl"
-          loading={refreshingAccount}
-          className={refreshingAccount ? 'spinning' : ''}
-        >
-          <RefreshCw size={16} className={colors.textMuted} />
-        </ActionIcon>
+          </span>
+        </div>
+      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            onClick={handleRefreshCurrentAccount}
+            disabled={refreshingAccount}
+            variant="ghost"
+            size="icon"
+            className={refreshingAccount ? 'spinning' : ''}
+          >
+            <RefreshCw size={16} className={colors.textMuted} />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{t('home.refreshAccount')}</TooltipContent>
       </Tooltip>
-    </Group>
+    </div>
   )
 }
 
@@ -217,10 +212,7 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, accen
       </Group>
       <Progress
         value={currentPercent}
-        color={getProgressColor()}
-        size="md"
-        radius="xl"
-        animated
+        className="h-2 rounded-full"
       />
     </Card>
   )

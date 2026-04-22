@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { AlertTriangle, ExternalLink, MessageCircle } from 'lucide-react'
-import { Checkbox } from '@mantine/core'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useApp } from '../../hooks/useApp'
 
 // 公告 API
@@ -98,7 +98,7 @@ export default function AnnouncementModal() {
         </div>
 
         {/* 内容 */}
-        <div className="p-6" style={{ padding: 'var(--mantine-spacing-md)' }}>
+        <div className="p-6" style={{ padding: 'var(--app-space-md)' }}>
           <div className={`text-base leading-relaxed ${colors.text}`}>
             {announcement.content?.map((text, i) => (
               <p key={i} className={i === 0 ? 'mb-4 font-medium text-red-500' : 'mb-3'}>
@@ -202,14 +202,11 @@ export default function AnnouncementModal() {
         </div>
 
         {/* 底部按钮 */}
-        <div className="px-6 pb-6" style={{ padding: 'var(--mantine-spacing-md)', paddingTop: 0 }}>
+        <div className="px-6 pb-6" style={{ padding: 'var(--app-space-md)', paddingTop: 0 }}>
           <label className={`flex items-center gap-3 mb-4 cursor-pointer select-none ${colors.text}`}>
             <Checkbox
               checked={agreed}
-              onChange={(e) => setAgreed(e.currentTarget.checked)}
-              classNames={{
-                input: 'cursor-pointer'
-              }}
+              onCheckedChange={setAgreed}
             />
             <span className="text-sm">我已阅读并知晓以上内容</span>
           </label>

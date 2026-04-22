@@ -3,7 +3,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { FileText, RefreshCw, Trash2, Save, Plus, X, Globe, FolderOpen, Wand2, Sparkles } from 'lucide-react'
-import { TextInput, Select, Textarea } from '@mantine/core'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   getThemeAccent,
   getSolidAccentButton,
@@ -541,23 +543,23 @@ function Editor({ file, editState, hasChanges, saving, refining, inclusionOption
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <span className={`text-xs ${colors.textMuted}`}>{t('steering.inclusionMode')}:</span>
-            <Select
-              value={editState.inclusion}
-              onChange={onInclusionChange}
-              data={inclusionOptions.map(opt => ({ value: opt.value, label: opt.label }))}
-              size="xs"
-              classNames={{
-                input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                dropdown: `${colors.card} border ${colors.cardBorder}`,
-                option: `${colors.text}`
-              }}
-              styles={{ input: { minWidth: '120px', borderRadius: '0.5rem' } }}
-            />
+            <Select value={editState.inclusion} onValueChange={onInclusionChange}>
+              <SelectTrigger className={`${colors.text} ${colors.input} ${colors.inputFocus}`} style={{ minWidth: '120px', borderRadius: '0.5rem', height: '1.5rem', padding: '0 0.5rem', fontSize: '0.75rem' }}>
+                <SelectValue placeholder="选择模式..." />
+              </SelectTrigger>
+              <SelectContent className={`${colors.card} border ${colors.cardBorder}`}>
+                {inclusionOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className={colors.text}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {editState.inclusion === 'fileMatch' && (
             <div className="flex items-center gap-2">
               <span className={`text-xs ${colors.textMuted}`}>{t('steering.filePattern')}:</span>
-              <TextInput
+              <Input
                 value={editState.filePattern}
                 onChange={(e) => onFilePatternChange(e.target.value)}
                 placeholder="**/*.jsx"
@@ -565,7 +567,7 @@ function Editor({ file, editState, hasChanges, saving, refining, inclusionOption
                 classNames={{
                   input: `${colors.text} ${colors.input} ${colors.inputFocus}`
                 }}
-                styles={{ input: { width: '128px', borderRadius: '0.5rem' } }}
+                style={{ width: '128px', borderRadius: '0.5rem' }}
               />
             </div>
           )}
@@ -573,7 +575,7 @@ function Editor({ file, editState, hasChanges, saving, refining, inclusionOption
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <span className={`text-xs ${colors.textMuted}`}>{t('steering.fmName')}:</span>
-            <TextInput
+            <Input
               value={editState.name}
               onChange={(e) => onNameChange(e.target.value)}
               placeholder={t('steering.fmNamePlaceholder')}
@@ -581,12 +583,12 @@ function Editor({ file, editState, hasChanges, saving, refining, inclusionOption
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { width: '140px', borderRadius: '0.5rem' } }}
+              style={{ width: '140px', borderRadius: '0.5rem' }}
             />
           </div>
           <div className="flex items-center gap-2 flex-1">
             <span className={`text-xs ${colors.textMuted}`}>{t('steering.fmDescription')}:</span>
-            <TextInput
+            <Input
               value={editState.description}
               onChange={(e) => onDescriptionChange(e.target.value)}
               placeholder={t('steering.fmDescriptionPlaceholder')}
@@ -594,7 +596,7 @@ function Editor({ file, editState, hasChanges, saving, refining, inclusionOption
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { flex: 1, minWidth: '200px', borderRadius: '0.5rem' } }}
+              style={{ flex: 1, minWidth: '200px', borderRadius: '0.5rem' }}
             />
           </div>
         </div>
@@ -663,7 +665,7 @@ function CreateModal({ inclusionOptions, onCreate, onClose, accent, colors, t, h
         <div className="p-5 space-y-4">
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('steering.fileName')}</label>
-            <TextInput
+            <Input
               placeholder={t('steering.fileNamePlaceholder')}
               value={fileName}
               onChange={(e) => setFileName(e.target.value)}
@@ -671,14 +673,14 @@ function CreateModal({ inclusionOptions, onCreate, onClose, accent, colors, t, h
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
             <p className={`text-xs ${colors.textMuted} mt-1`}>{t('steering.fileNameHint')}</p>
           </div>
 
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('steering.fmName')}</label>
-            <TextInput
+            <Input
               placeholder={t('steering.fmNamePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -686,13 +688,13 @@ function CreateModal({ inclusionOptions, onCreate, onClose, accent, colors, t, h
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
           </div>
 
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('steering.fmDescription')}</label>
-            <TextInput
+            <Input
               placeholder={t('steering.fmDescriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -700,54 +702,45 @@ function CreateModal({ inclusionOptions, onCreate, onClose, accent, colors, t, h
               classNames={{
                 input: `${colors.text} ${colors.input} ${colors.inputFocus}`
               }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              style={{ borderRadius: '0.5rem' }}
             />
           </div>
 
           {hasProjectDir && (
             <div>
               <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('kiroConfig.scope')}</label>
-              <Select
-                value={scope}
-                onChange={setScope}
-                data={[
-                  { value: 'user', label: t('kiroConfig.scopeUser') },
-                  { value: 'project', label: t('kiroConfig.scopeProject') },
-                ]}
-                size="md"
-                classNames={{
-                  input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                  dropdown: `${colors.card} border ${colors.cardBorder}`,
-                  option: `${colors.text}`
-                }}
-                styles={{ input: { borderRadius: '0.5rem' } }}
-              />
+              <Select value={scope} onValueChange={setScope}>
+                <SelectTrigger className={`${colors.text} ${colors.input} ${colors.inputFocus}`} style={{ borderRadius: '0.5rem' }}>
+                  <SelectValue placeholder={t('kiroConfig.scopeUser')} />
+                </SelectTrigger>
+                <SelectContent className={`${colors.card} border ${colors.cardBorder}`}>
+                  <SelectItem value="user" className={colors.text}>{t('kiroConfig.scopeUser')}</SelectItem>
+                  <SelectItem value="project" className={colors.text}>{t('kiroConfig.scopeProject')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('steering.inclusionMode')}</label>
-            <Select
-              value={inclusion}
-              onChange={setInclusion}
-              data={inclusionOptions.map(opt => ({
-                value: opt.value,
-                label: `${opt.label} - ${opt.desc}`
-              }))}
-              size="md"
-              classNames={{
-                input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                dropdown: `${colors.card} border ${colors.cardBorder}`,
-                option: `${colors.text}`
-              }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
-            />
+            <Select value={inclusion} onValueChange={setInclusion}>
+              <SelectTrigger className={`${colors.text} ${colors.input} ${colors.inputFocus}`} style={{ borderRadius: '0.5rem' }}>
+                <SelectValue placeholder="选择模式" />
+              </SelectTrigger>
+              <SelectContent className={`${colors.card} border ${colors.cardBorder}`}>
+                {inclusionOptions.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className={colors.text}>
+                    {opt.label} - {opt.desc}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {inclusion === 'fileMatch' && (
             <div>
               <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('steering.filePattern')}</label>
-              <TextInput
+              <Input
                 placeholder={t('steering.filePatternPlaceholder')}
                 value={filePattern}
                 onChange={(e) => setFilePattern(e.target.value)}
@@ -755,7 +748,7 @@ function CreateModal({ inclusionOptions, onCreate, onClose, accent, colors, t, h
                 classNames={{
                   input: `${colors.text} ${colors.input} ${colors.inputFocus}`
                 }}
-                styles={{ input: { borderRadius: '0.5rem' } }}
+                style={{ borderRadius: '0.5rem' }}
               />
             </div>
           )}

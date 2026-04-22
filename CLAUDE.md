@@ -40,7 +40,7 @@ npm run build:release    # Run scripts/build-release.ps1
 ## Architecture
 
 ### Tech Stack
-- **Frontend**: React 18 + Vite + TailwindCSS 4 + Mantine UI 7 + i18next (zh-CN only)
+- **Frontend**: React 18 + Vite + TailwindCSS 4 + shadcn/ui + i18next (zh-CN only)
 - **Backend**: Rust (edition 2021) + Tauri 2.x + reqwest + rusqlite
 - **Persistence**: JSON files in `~/.kiro-account-manager/` (no database)
 

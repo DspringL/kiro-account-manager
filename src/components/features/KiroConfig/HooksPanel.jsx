@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Textarea, TextInput } from '@mantine/core'
 import { FolderOpen, Link2, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
@@ -274,7 +273,7 @@ function HooksPanel({ onCountChange, projectDir }) {
               </button>
             </div>
             <div className="flex-1 p-4 overflow-hidden">
-              <Textarea
+              <textarea
                 value={editContent}
                 onChange={(e) => {
                   const next = e.target.value
@@ -282,24 +281,11 @@ function HooksPanel({ onCountChange, projectDir }) {
                   setHasChanges(next !== (selectedHook.content || ''))
                 }}
                 placeholder={t('hooks.contentPlaceholder')}
-                classNames={{ input: `${colors.inputFocus}` }}
-                styles={{
-                  root: { height: '100%', display: 'flex', flexDirection: 'column' },
-                  wrapper: { flex: 1, display: 'flex' },
-                  input: {
-                    flex: 1,
-                    height: '100%',
-                    minHeight: '400px',
-                    padding: '1rem',
-                    borderRadius: '0.75rem',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.5',
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                    resize: 'none',
-                    color: surface.editorText,
-                    backgroundColor: surface.editorBg,
-                    borderColor: surface.editorBorder,
-                  }
+                className={`w-full h-full min-h-[400px] p-4 rounded-xl text-sm leading-relaxed font-mono resize-none ${colors.inputFocus}`}
+                style={{
+                  color: surface.editorText,
+                  backgroundColor: surface.editorBg,
+                  borderColor: surface.editorBorder,
                 }}
               />
             </div>
@@ -367,7 +353,8 @@ function CreateHookModal({ onCreate, onClose, colors, t, accent, accentGradientB
         <div className="p-5 space-y-4">
           <div>
             <label className={`block text-xs font-medium ${colors.textMuted} mb-1.5`}>{t('hooks.fileName')}</label>
-            <TextInput
+            <input
+              type="text"
               placeholder={t('hooks.fileNamePlaceholder')}
               value={fileName}
               onChange={(e) => setFileName(e.target.value)}
@@ -377,9 +364,7 @@ function CreateHookModal({ onCreate, onClose, colors, t, accent, accentGradientB
                   handleSubmit()
                 }
               }}
-              size="md"
-              classNames={{ input: `${colors.text} ${colors.input} ${colors.inputFocus}` }}
-              styles={{ input: { borderRadius: '0.5rem' } }}
+              className={`w-full px-3 py-2 text-sm border rounded-lg ${colors.text} ${colors.input} ${colors.inputFocus} focus:ring-2`}
             />
             <p className={`text-xs ${colors.textMuted} mt-1`}>{t('hooks.fileNameHint')}</p>
             {!!normalized && <p className={`text-xs mt-1 ${colors.textMuted}`}>{t('hooks.fileNamePreview')}: {normalized}</p>}

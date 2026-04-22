@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
-import { Lock, Copy, Sun, Moon, Palette, Check, RefreshCw, Settings as SettingsIcon, Clock, Globe, Search, Shield, Download, Upload, Shuffle, AlertTriangle, Eye, EyeOff, Repeat } from 'lucide-react'
-import { Select, Switch, TextInput, Textarea, NumberInput, Button, ActionIcon, Card } from '@mantine/core'
+import { Lock, Copy, Sun, Moon, Palette, Check, RefreshCw, Settings as SettingsIcon, Clock, Globe, Search, Shield, Download, Upload, Shuffle, AlertTriangle, Eye, EyeOff, Repeat, LayoutDashboard, Cpu, Bot, Bell } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs'
 import { useApp } from '../../../hooks/useApp'
 import { useDialog } from '../../../contexts/DialogContext'
 import { useAppSettings } from '../../../contexts/AppSettingsContext'
@@ -11,12 +11,18 @@ import { getThemeAccent, isLightTheme as checkIsLightTheme } from '../KiroConfig
 import { buildSettingsErrorMessage, persistAppSettings, runKiroCommandWithAppSettings } from './settingsActions'
 import { AI_MODELS, buildThemeOptions, NOTIFICATION_SETTINGS_FIELD_MAP } from './settingsConstants'
 import { isValidBrowserPath, isValidProxy, resolveOsLabel } from './settingsValidators'
+import SettingsAppearance from './SettingsAppearance'
+import SettingsGeneral from './SettingsGeneral'
+import SettingsKiro from './SettingsKiro'
+import SettingsAgent from './SettingsAgent'
+import SettingsNotifications from './SettingsNotifications'
 
 function Settings() {
     const { t, theme, colors, setTheme } = useApp()
     const { showConfirm, showError, showSuccess } = useDialog()
     const { updateSettings: updateAppSettings } = useAppSettings()
     const { privacyMode, setPrivacyMode } = usePrivacy()
+    const [activeTab, setActiveTab] = useState('general')
     // 用于 SVG 箭头颜色（浅色主题用深色）
     const isLightTheme = checkIsLightTheme(theme)
 
@@ -458,9 +464,6 @@ function Settings() {
         }
     }
 
-    const themeIconMap = { Sun, Moon, Palette }
-    const themeOptions = buildThemeOptions(t)
-
     // 复制到剪贴板
     const [copiedField, setCopiedField] = useState(null)
     const copiedTimerRef = useRef(null)
@@ -527,625 +530,176 @@ function Settings() {
                     </div>
                 </div>
 
-                {/* 主题设置 */}
-                <Card
-                    className="card-glow animate-slide-in-left delay-100"
-                    shadow="sm"
-                    padding="md"
-                    radius="xl"
-                    withBorder
-                    style={{ marginBottom: '1.5rem' }}
-                >
-                    <div className="flex flex-col gap-3">
-                        <div className="w-full text-left">
-                            <p className={`text-sm font-semibold ${colors.text}`}>{t('settings.theme')}</p>
-                            <p className={`text-xs ${colors.textMuted} mt-0.5`}>{t('settings.themeDesc')}</p>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
-                            {themeOptions.map((opt) => {
-                                const Icon = themeIconMap[opt.iconName]
-                                const isActive = theme === opt.key
-                                return (
-                                    <button
-                                        key={opt.key}
-                                        onClick={() => setTheme(opt.key)}
-                                        className={`relative min-h-[44px] flex items-center justify-center gap-2.5 px-3 py-2 rounded-xl border-2 transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 ${accent.ring} ${isActive
-                                            ? `${themeAccentBorderClass} ${colors.card}`
-                                            : `${colors.cardBorder} ${colors.cardHover} ${colors.card}`
-                                            }`}
-                                    >
-                                        <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${opt.color} flex items-center justify-center flex-shrink-0`}>
-                                            <Icon size={14} className="text-white" />
-                                        </div>
-                                        <span className={`text-sm font-medium ${colors.text}`}>{opt.name}</span>
-                                        {isActive && (
-                                            <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center ${themeAccentDotClass}`}>
-                                                <Check size={10} className="text-white" />
-                                            </div>
-                                        )}
-                                    </button>
-                                )
-                            })}
-                        </div>
-                    </div>
-                </Card>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="glass-card mb-6 flex h-11 w-full justify-start overflow-x-auto rounded-xl border-none p-1 no-scrollbar lg:w-fit">
+                        <TabsTrigger value="general" className="gap-2 px-5 shrink-0 text-sm font-medium">
+                            <LayoutDashboard size={16} />
+                            {t('settings.general')}
+                        </TabsTrigger>
+                        <TabsTrigger value="appearance" className="gap-2 px-5 shrink-0 text-sm font-medium">
+                            <Palette size={16} />
+                            {t('settings.appearance')}
+                        </TabsTrigger>
+                        <TabsTrigger value="kiro" className="gap-2 px-5 shrink-0 text-sm font-medium">
+                            <Cpu size={16} />
+                            {t('settings.kiro')}
+                        </TabsTrigger>
+                        <TabsTrigger value="agent" className="gap-2 px-5 shrink-0 text-sm font-medium">
+                            <Bot size={16} />
+                            {t('settings.agent')}
+                        </TabsTrigger>
+                        <TabsTrigger value="notifications" className="gap-2 px-5 shrink-0 text-sm font-medium">
+                            <Bell size={16} />
+                            {t('settings.notifications')}
+                        </TabsTrigger>
+                    </TabsList>
 
-                {/* Kiro IDE 设置 */}
-                <Card
-                    className="card-glow animate-slide-in-left delay-150"
-                    shadow="sm"
-                    padding="lg"
-                    radius="xl"
-                    withBorder
-                    style={{ marginBottom: '1.5rem' }}
-                >
-                    <h2 className={`text-lg font-semibold ${colors.text} mb-1`}>{t('settings.kiroSettings')}</h2>
-                    <p className={`text-sm ${colors.textMuted} mb-4`}>{t('settings.kiroSettingsDesc')}</p>
-
-                    <div className="grid grid-cols-2 gap-6">
-                        {/* 左列：下拉选项 + 代理 */}
-                        <div className="space-y-4">
-                            {/* AI 模型 */}
-                            <div>
-                                <label className={`block text-sm ${colors.textMuted} mb-1.5`}>
-                                    {t('settings.aiModel')} {savingModel && <span className={`text-xs ml-2 ${themeAccentTextClass}`}>{t('settings.saving')}</span>}
-                                </label>
-                                <Select
-                                    value={aiModel}
-                                    onChange={handleApplyModel}
-                                    disabled={savingModel}
-                                    data={AI_MODELS.map(model => ({
-                                        value: model.value,
-                                        label: model.recommended ? `${model.label} (⭐ ${t('common.recommended')})` : model.label
-                                    }))}
-                                    classNames={{
-                                        input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                        dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                        option: `${colors.text}`
-                                    }}
-                                />
-                            </div>
-
-                            {/* 锁定模型 */}
-                            <label className={`flex items-center gap-3 cursor-pointer rounded-lg p-3 border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                <Switch
-                                    checked={lockModel}
-                                    onChange={(e) => handleLockModelChange(e.currentTarget.checked)}
-                                    size="sm"
-                                />
-                                <Lock size={14} className={colors.textMuted} />
-                                <div>
-                                    <span className={`text-sm ${colors.text}`}>{t('settings.lockModel')}</span>
-                                    <p className={`text-xs ${colors.textMuted}`}>{t('settings.lockModelDesc')}</p>
-                                </div>
-                            </label>
-
-                            {/* Agent 自主模式 */}
-                            <div>
-                                <label className={`block text-sm ${colors.textMuted} mb-1.5`}>{t('settings.agentAutonomy')}</label>
-                                <Select
-                                    value={agentAutonomy}
-                                    onChange={handleAgentAutonomyChange}
-                                    data={[
-                                        { value: 'Supervised', label: t('settings.agentSupervised') },
-                                        { value: 'Autopilot', label: t('settings.agentAutopilot') }
-                                    ]}
-                                    classNames={{
-                                        input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                        dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                        option: `${colors.text}`
-                                    }}
-                                />
-                            </div>
-
-                            {/* 信任命令 */}
-                            <div>
-                                <label className={`block text-sm ${colors.textMuted} mb-1.5`}>{t('settings.trustedCommands')}</label>
-                                <Select
-                                    value={trustedCommandsMode}
-                                    onChange={handleTrustedCommandsModeChange}
-                                    data={[
-                                        { value: 'none', label: t('settings.trustedCommandsNone') },
-                                        { value: 'common', label: t('settings.trustedCommandsCommon') },
-                                        { value: 'all', label: t('settings.trustedCommandsAll') }
-                                    ]}
-                                    classNames={{
-                                        input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                        dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                        option: `${colors.text}`
-                                    }}
-                                />
-                                {trustedCommandsMode === 'common' && (
-                                    <Textarea
-                                        value={customTrustedCommands}
-                                        onChange={(e) => handleCustomTrustedCommandsChange(e.currentTarget.value)}
-                                        placeholder="npm *&#10;git *&#10;cargo *"
-                                        classNames={{
-                                            input: `${colors.text} ${colors.input} ${colors.inputFocus} font-mono text-sm mt-2`
-                                        }}
-                                        rows={3}
-                                        autosize={false}
-                                    />
-                                )}
-                                <p className={`text-xs ${colors.textMuted} mt-1`}>{t('settings.trustedCommandsDesc')}</p>
-                            </div>
-
-                            {/* 信任工具 */}
-                            <div>
-                                <label className={`block text-sm ${colors.textMuted} mb-1.5`}>{t('settings.trustedTools')}</label>
-                                <TextInput
-                                    value={trustedTools}
-                                    onChange={(e) => setTrustedTools(e.currentTarget.value)}
-                                    onBlur={(e) => handleTrustedToolsSave(e.currentTarget.value)}
-                                    placeholder={t('settings.trustedToolsPlaceholder')}
-                                    classNames={{
-                                        input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-                                    }}
-                                />
-                                <p className={`text-xs ${colors.textMuted} mt-1`}>{t('settings.trustedToolsDesc')}</p>
-                            </div>
-
-                            {/* MCP 配置 */}
-                            <div>
-                                <label className={`block text-sm ${colors.textMuted} mb-1.5`}>{t('settings.configureMCP')}</label>
-                                <Select
-                                    value={configureMcp}
-                                    onChange={handleConfigureMcpChange}
-                                    data={[
-                                        { value: 'Enabled', label: t('settings.configureMCPEnabled') },
-                                        { value: 'Disabled', label: t('settings.configureMCPDisabled') }
-                                    ]}
-                                    classNames={{
-                                        input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                        dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                        option: `${colors.text}`
-                                    }}
-                                />
-                            </div>
-
-                            {/* HTTP 代理 */}
-                            <div>
-                                <label className={`block text-sm ${colors.textMuted} mb-1.5`}>{t('settings.httpProxy')}</label>
-                                <div className="flex gap-2">
-                                    <TextInput
-                                        value={httpProxy}
-                                        onChange={(e) => setHttpProxy(e.currentTarget.value)}
-                                        placeholder="http://127.0.0.1:7897"
-                                        classNames={{
-                                            input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-                                        }}
-                                        className="flex-1"
-                                    />
-                                    <button
-                                        onClick={handleDetectProxy}
-                                        disabled={detectingProxy}
-                                        className={`btn-icon px-3 py-2 border rounded-lg ${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text} flex items-center gap-1 text-xs`}
-                                        title={t('settings.detectProxyTitle')}
-                                    >
-                                        {detectingProxy ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
-                                        {t('settings.detect')}
-                                    </button>
-                                    <button
-                                        onClick={handleApplyProxy}
-                                        disabled={savingProxy || !proxyChanged}
-                                        className={`btn-icon px-3 py-2 rounded-lg flex items-center gap-1 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed border ${proxyChanged
-                                            ? themeAccentButtonClass
-                                            : `${colors.cardSecondary} ${colors.textMuted} ${colors.cardBorder}`
-                                            }`}
-                                    >
-                                        {savingProxy ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
-                                        {savingProxy ? t('settings.saving') : t('settings.apply')}
-                                    </button>
-                                </div>
-                                <p className={`text-xs ${colors.textMuted} mt-1`}>{t('settings.proxyTip')}</p>
-                            </div>
-                        </div>
-
-                        {/* 右列：功能开关 + 通知 + 遥测 */}
-                        <div className="space-y-3">
-                            {/* 功能开关 */}
-                            <span className={`text-sm ${colors.textMuted} block`}>{t('settings.agentSettingsDesc')}</span>
-                            <div className="grid grid-cols-2 gap-2">
-                                <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                    <Switch checked={enableCodebaseIndexing} onChange={(e) => handleCodebaseIndexingChange(e.currentTarget.checked)} size="xs" />
-                                    <span className={`text-xs ${colors.text}`}>{t('settings.enableCodebaseIndexing')}</span>
-                                </label>
-                                <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                    <Switch checked={enableTabAutocomplete} onChange={(e) => handleTabAutocompleteChange(e.currentTarget.checked)} size="xs" />
-                                    <span className={`text-xs ${colors.text}`}>{t('settings.enableTabAutocomplete')}</span>
-                                </label>
-                                <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                    <Switch checked={usageSummary} onChange={(e) => handleUsageSummaryChange(e.currentTarget.checked)} size="xs" />
-                                    <span className={`text-xs ${colors.text}`}>{t('settings.usageSummary')}</span>
-                                </label>
-                                <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                    <Switch checked={codeReferences} onChange={(e) => handleCodeReferencesChange(e.currentTarget.checked)} size="xs" />
-                                    <span className={`text-xs ${colors.text}`}>{t('settings.codeReferences')}</span>
-                                </label>
-                                <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                    <Switch checked={enableDebugLogs} onChange={(e) => handleDebugLogsChange(e.currentTarget.checked)} size="xs" />
-                                    <span className={`text-xs ${colors.text}`}>{t('settings.enableDebugLogs')}</span>
-                                </label>
-                                <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                    <Switch checked={referenceTracker} onChange={(e) => handleReferenceTrackerChange(e.currentTarget.checked)} size="xs" />
-                                    <span className={`text-xs ${colors.text}`}>{t('settings.referenceTracker')}</span>
-                                </label>
-                            </div>
-
-                            {/* 通知设置 */}
-                            <div className={`pt-3 border-t border-dashed ${colors.cardBorder}`}>
-                                <span className={`text-sm ${colors.textMuted} mb-2 block`}>{t('settings.notifications')}</span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={notifyActionRequired} onChange={(e) => handleNotificationChange('kiroAgent.notifications.agent.actionRequired', e.currentTarget.checked, setNotifyActionRequired)} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.notifyActionRequired')}</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={notifyFailure} onChange={(e) => handleNotificationChange('kiroAgent.notifications.agent.failure', e.currentTarget.checked, setNotifyFailure)} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.notifyFailure')}</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={notifySuccess} onChange={(e) => handleNotificationChange('kiroAgent.notifications.agent.success', e.currentTarget.checked, setNotifySuccess)} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.notifySuccess')}</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={notifyBilling} onChange={(e) => handleNotificationChange('kiroAgent.notifications.billing', e.currentTarget.checked, setNotifyBilling)} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.notifyBilling')}</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* 遥测与隐私 */}
-                            <div className={`pt-3 border-t border-dashed ${colors.cardBorder}`}>
-                                <span className={`text-sm ${colors.textMuted} mb-2 block`}>{t('settings.telemetry')}</span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={telemetryContentCollection} onChange={(e) => handleTelemetryChange('telemetry.dataSharingAndPromptLogging.contentCollectionForServiceImprovement', e.currentTarget.checked, setTelemetryContentCollection, 'telemetryContentCollection')} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.telemetryContentCollection')}</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={telemetryUsageAnalytics} onChange={(e) => handleTelemetryChange('telemetry.dataSharingAndPromptLogging.usageAnalyticsAndPerformanceMetrics', e.currentTarget.checked, setTelemetryUsageAnalytics, 'telemetryUsageAnalytics')} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.telemetryUsageAnalytics')}</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={telemetryEditStats} onChange={(e) => handleTelemetryChange('telemetry.editStats.enabled', e.currentTarget.checked, setTelemetryEditStats, 'telemetryEditStats')} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.telemetryEditStats')}</span>
-                                    </label>
-                                    <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border ${colors.cardBorder} ${colors.cardSecondary} ${colors.cardHover}`}>
-                                        <Switch checked={telemetryFeedback} onChange={(e) => handleTelemetryChange('telemetry.feedback.enabled', e.currentTarget.checked, setTelemetryFeedback, 'telemetryFeedback')} size="xs" />
-                                        <span className={`text-xs ${colors.text}`}>{t('settings.telemetryFeedback')}</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-
-                {/* 账号设置 + 浏览器设置 并排 */}
-                <div className="grid grid-cols-2 gap-4" style={{ marginBottom: '1.5rem' }}>
-                <Card
-                    className="card-glow animate-slide-in-left delay-200"
-                    shadow="sm"
-                    padding="lg"
-                    radius="xl"
-                    withBorder
-                >
-                    <h2 className={`text-lg font-semibold ${colors.text} mb-1`}>{t('settings.account')}</h2>
-                    <p className={`text-sm ${colors.textMuted} mb-4`}>{t('settings.accountDesc')}</p>
-
-                    {/* 自动刷新 Token + 刷新间隔 */}
-                    <div className="flex items-center gap-3 mb-4">
-                        <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border flex-shrink-0 ${accountToggleContainerClass}`} title={t('settings.autoRefreshDesc')}>
-                            <Switch
-                                checked={autoRefresh}
-                                onChange={(e) => handleAutoRefreshChange(e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Clock size={16} />
-                            <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoRefresh')}</span>
-                        </label>
-                        <div className="relative flex-1">
-                            <Select
-                                value={String(autoRefreshInterval)}
-                                onChange={(value) => handleAutoRefreshIntervalChange(value)}
-                                disabled={!autoRefresh}
-                                data={[
-                                    { value: '10', label: `10 ${t('common.minutes')}` },
-                                    { value: '20', label: `20 ${t('common.minutes')}` },
-                                    { value: '30', label: `30 ${t('common.minutes')}` },
-                                    { value: '40', label: `40 ${t('common.minutes')}` },
-                                    { value: '50', label: `50 ${t('common.minutes')} (${t('common.recommended')})` }
-                                ]}
-                                classNames={{
-                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                    dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                    option: `${colors.text}`
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* 机器码设置 - 勾选框 + 二选一下拉框 */}
-                    <div className="flex items-center gap-3 mb-4">
-                        <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border flex-shrink-0 ${accountToggleContainerClass}`} title={t('settings.autoChangeMachineIdDesc')}>
-                            <Switch
-                                checked={autoChangeMachineId}
-                                onChange={(e) => handleAutoChangeMachineIdChange(e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Shuffle size={16} />
-                            <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoChangeMachineId')}</span>
-                        </label>
-                        <div className="relative flex-1">
-                            <Select
-                                value={machineIdMode}
-                                onChange={handleMachineIdModeChange}
-                                disabled={!autoChangeMachineId}
-                                data={[
-                                    { value: 'bind', label: `${t('settings.machineIdBind')} (${t('common.recommended')})` },
-                                    { value: 'random', label: t('settings.machineIdRandom') }
-                                ]}
-                                classNames={{
-                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                    dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                    option: `${colors.text}`
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* 隐私模式 */}
-                    <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border mb-4 ${accountToggleContainerClass}`} title={t('settings.privacyModeDesc')}>
-                        <Switch
-                            checked={privacyMode}
-                            onChange={(e) => setPrivacyMode(e.currentTarget.checked)}
-                            size="sm"
+                    <TabsContent value="general">
+                        <SettingsGeneral
+                            autoRefresh={autoRefresh}
+                            setAutoRefresh={setAutoRefresh}
+                            autoRefreshInterval={autoRefreshInterval}
+                            setAutoRefreshInterval={setAutoRefreshInterval}
+                            autoChangeMachineId={autoChangeMachineId}
+                            setAutoChangeMachineId={setAutoChangeMachineId}
+                            machineIdMode={machineIdMode}
+                            setMachineIdMode={setMachineIdMode}
+                            privacyMode={privacyMode}
+                            setPrivacyMode={setPrivacyMode}
+                            autoSwitchEnabled={autoSwitchEnabled}
+                            setAutoSwitchEnabled={setAutoSwitchEnabled}
+                            autoSwitchThreshold={autoSwitchThreshold}
+                            setAutoSwitchThreshold={setAutoSwitchThreshold}
+                            autoSwitchInterval={autoSwitchInterval}
+                            setAutoSwitchInterval={setAutoSwitchInterval}
+                            browserPath={browserPath}
+                            setBrowserPath={setBrowserPath}
+                            originalBrowserPath={originalBrowserPath}
+                            setOriginalBrowserPath={setOriginalBrowserPath}
+                            savingBrowser={savingBrowser}
+                            setSavingBrowser={setSavingBrowser}
+                            detectedBrowsers={detectedBrowsers}
+                            setDetectedBrowsers={setDetectedBrowsers}
+                            showBrowserList={showBrowserList}
+                            setShowBrowserList={setShowBrowserList}
+                            systemMachineInfo={systemMachineInfo}
+                            setSystemMachineInfo={setSystemMachineInfo}
+                            machineGuidAction={machineGuidAction}
+                            handleResetSystemMachineGuid={handleResetSystemMachineGuid}
+                            handleDetectBrowsers={handleDetectBrowsers}
+                            handleApplyBrowser={handleApplyBrowser}
+                            handleAutoRefreshChange={handleAutoRefreshChange}
+                            handleAutoRefreshIntervalChange={handleAutoRefreshIntervalChange}
+                            handleAutoChangeMachineIdChange={handleAutoChangeMachineIdChange}
+                            handleMachineIdModeChange={handleMachineIdModeChange}
+                            handleAutoSwitchEnabledChange={handleAutoSwitchEnabledChange}
+                            handleAutoSwitchThresholdChange={handleAutoSwitchThresholdChange}
+                            handleAutoSwitchIntervalChange={handleAutoSwitchIntervalChange}
+                            t={t}
+                            colors={colors}
+                            accent={accent}
+                            themeAccentButtonClass={themeAccentButtonClass}
+                            themeAccentTextClass={themeAccentTextClass}
                         />
-                        {privacyMode ? <EyeOff size={16} /> : <Eye size={16} />}
-                        <span className="text-sm font-medium whitespace-nowrap">{t('settings.privacyMode')}</span>
-                        <span className={`text-xs ${colors.textMuted} ml-1`}>({t('settings.privacyModeHint')})</span>
-                    </label>
+                    </TabsContent>
 
-                    {/* 自动换号 */}
-                    <div>
-                        <label className={`flex items-center gap-2 cursor-pointer px-4 py-3 rounded-xl border mb-2 ${accountToggleContainerClass}`} title={t('settings.autoSwitchDesc')}>
-                            <Switch
-                                checked={autoSwitchEnabled}
-                                onChange={(e) => handleAutoSwitchEnabledChange(e.currentTarget.checked)}
-                                size="sm"
-                            />
-                            <Repeat size={16} />
-                            <span className="text-sm font-medium whitespace-nowrap">{t('settings.autoSwitch')}</span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                            <span className={`text-xs ${colors.textMuted} whitespace-nowrap`}>{t('settings.autoSwitchThreshold')}</span>
-                            <NumberInput
-                                value={autoSwitchThreshold}
-                                onChange={handleAutoSwitchThresholdChange}
-                                disabled={!autoSwitchEnabled}
-                                min={0}
-                                step={0.1}
-                                classNames={{
-                                    input: `${colors.text} ${colors.input} ${colors.inputFocus} text-center w-16`
-                                }}
-                                size="xs"
-                            />
-                            <Select
-                                value={String(autoSwitchInterval)}
-                                onChange={(value) => handleAutoSwitchIntervalChange(value)}
-                                disabled={!autoSwitchEnabled}
-                                data={[
-                                    { value: '1', label: `1 ${t('common.minutes')}` },
-                                    { value: '3', label: `3 ${t('common.minutes')}` },
-                                    { value: '5', label: `5 ${t('common.minutes')}` },
-                                    { value: '10', label: `10 ${t('common.minutes')}` },
-                                    { value: '15', label: `15 ${t('common.minutes')}` },
-                                    { value: '30', label: `30 ${t('common.minutes')}` }
-                                ]}
-                                classNames={{
-                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`,
-                                    dropdown: `${colors.card} border ${colors.cardBorder}`,
-                                    option: `${colors.text}`
-                                }}
-                                className="flex-1"
-                                size="xs"
-                            />
-                        </div>
-                    </div>
-                </Card>
+                    <TabsContent value="appearance">
+                        <SettingsAppearance
+                            theme={theme}
+                            setTheme={setTheme}
+                            t={t}
+                            colors={colors}
+                        />
+                    </TabsContent>
 
-                {/* 浏览器设置 */}
-                <Card
-                    className="card-glow animate-slide-in-left delay-250"
-                    shadow="sm"
-                    padding="lg"
-                    radius="xl"
-                    withBorder
-                >
-                    <div className="flex items-center gap-2 mb-1">
-                        <Globe size={18} className={themeAccentTextClass} />
-                        <h2 className={`text-lg font-semibold ${colors.text}`}>{t('settings.browser')}</h2>
-                    </div>
-                    <p className={`text-sm ${colors.textMuted} mb-4`}>
-                        {t('settings.browserDesc')}
-                    </p>
+                    <TabsContent value="kiro">
+                        <SettingsKiro
+                            aiModel={aiModel}
+                            setAiModel={setAiModel}
+                            lockModel={lockModel}
+                            setLockModel={setLockModel}
+                            agentAutonomy={agentAutonomy}
+                            setAgentAutonomy={setAgentAutonomy}
+                            trustedCommandsMode={trustedCommandsMode}
+                            setTrustedCommandsMode={setTrustedCommandsMode}
+                            customTrustedCommands={customTrustedCommands}
+                            setCustomTrustedCommands={setCustomTrustedCommands}
+                            trustedTools={trustedTools}
+                            setTrustedTools={setTrustedTools}
+                            configureMcp={configureMcp}
+                            setConfigureMcp={setConfigureMcp}
+                            httpProxy={httpProxy}
+                            setHttpProxy={setHttpProxy}
+                            originalProxy={originalProxy}
+                            savingProxy={savingProxy}
+                            detectingProxy={detectingProxy}
+                            savingModel={savingModel}
+                            handleApplyModel={handleApplyModel}
+                            handleLockModelChange={handleLockModelChange}
+                            handleAgentAutonomyChange={handleAgentAutonomyChange}
+                            handleTrustedCommandsModeChange={handleTrustedCommandsModeChange}
+                            handleCustomTrustedCommandsChange={handleCustomTrustedCommandsChange}
+                            handleTrustedToolsSave={handleTrustedToolsSave}
+                            handleConfigureMcpChange={handleConfigureMcpChange}
+                            handleApplyProxy={handleApplyProxy}
+                            handleDetectProxy={handleDetectProxy}
+                            t={t}
+                            colors={colors}
+                            themeAccentTextClass={themeAccentTextClass}
+                            themeAccentButtonClass={themeAccentButtonClass}
+                        />
+                    </TabsContent>
 
-                    <div className="mb-3">
-                        <label className={`block text-sm ${colors.textMuted} mb-2`}>{t('settings.browserPath')}</label>
-                        <div className="flex gap-3">
-                            <TextInput
-                                value={browserPath}
-                                onChange={(e) => setBrowserPath(e.currentTarget.value)}
-                                placeholder={t('settings.browserPlaceholder')}
-                                classNames={{
-                                    input: `${colors.text} ${colors.input} ${colors.inputFocus}`
-                                }}
-                                className="flex-1"
-                            />
-                            <button
-                                onClick={handleDetectBrowsers}
-                                className={`btn-icon px-4 py-3 border rounded-xl ${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text} flex items-center gap-2`}
-                                title={t('settings.detectBrowsersTitle')}
-                            >
-                                <Search size={16} />
-                                {t('settings.detect')}
-                            </button>
-                            <button
-                                onClick={handleApplyBrowser}
-                                disabled={savingBrowser || !browserChanged}
-                                className={`btn-icon px-5 py-3 rounded-xl flex items-center gap-2 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed border ${browserChanged
-                                    ? themeAccentButtonClass
-                                    : `${colors.cardSecondary} ${colors.textMuted} ${colors.cardBorder}`
-                                    }`}
-                            >
-                                {savingBrowser ? <RefreshCw size={16} className="animate-spin" /> : <Check size={16} />}
-                                {savingBrowser ? t('settings.saving') : t('settings.apply')}
-                            </button>
-                        </div>
-                    </div>
+                    <TabsContent value="agent">
+                        <SettingsAgent
+                            enableCodebaseIndexing={enableCodebaseIndexing}
+                            setEnableCodebaseIndexing={setEnableCodebaseIndexing}
+                            enableTabAutocomplete={enableTabAutocomplete}
+                            setEnableTabAutocomplete={setEnableTabAutocomplete}
+                            usageSummary={usageSummary}
+                            setUsageSummary={setUsageSummary}
+                            codeReferences={codeReferences}
+                            setCodeReferences={setCodeReferences}
+                            enableDebugLogs={enableDebugLogs}
+                            setEnableDebugLogs={setEnableDebugLogs}
+                            referenceTracker={referenceTracker}
+                            setReferenceTracker={setReferenceTracker}
+                            handleCodebaseIndexingChange={handleCodebaseIndexingChange}
+                            handleTabAutocompleteChange={handleTabAutocompleteChange}
+                            handleUsageSummaryChange={handleUsageSummaryChange}
+                            handleCodeReferencesChange={handleCodeReferencesChange}
+                            handleDebugLogsChange={handleDebugLogsChange}
+                            handleReferenceTrackerChange={handleReferenceTrackerChange}
+                            t={t}
+                            colors={colors}
+                        />
+                    </TabsContent>
 
-                    {/* 检测到的浏览器列表 */}
-                    {showBrowserList && detectedBrowsers.length > 0 && (
-                        <div className={`mt-4 p-4 rounded-xl border ${colors.cardBorder} ${colors.cardSecondary}`}>
-                            <div className="flex items-center justify-between mb-3">
-                                <span className={`text-sm font-medium ${colors.text}`}>{t('settings.detectedBrowsers')}</span>
-                                <button
-                                    onClick={() => setShowBrowserList(false)}
-                                    className={`text-xs ${colors.textMuted} hover:underline`}
-                                >
-                                    {t('settings.close')}
-                                </button>
-                            </div>
-                            <div className="space-y-2">
-                                {detectedBrowsers.map((browser, index) => (
-                                    <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${colors.card} ${colors.cardHover} transition-colors border ${colors.cardBorder}`}>
-                                        <div className="flex-1 min-w-0">
-                                            <div className={`text-sm font-medium ${colors.text}`}>{browser.name}</div>
-                                            <div className={`text-xs ${colors.textMuted} truncate`}>{browser.path}</div>
-                                        </div>
-                                        <div className="flex gap-2 ml-3">
-                                            <button
-                                                onClick={() => handleSelectBrowser(browser, true)}
-                                                className={`btn-icon px-3 py-1.5 text-xs rounded-lg transition-colors border ${themeAccentButtonClass}`}
-                                            >
-                                                {t('settings.selectBrowser')}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <p className={`text-xs ${colors.textMuted} mt-3`}>
-                        {t('settings.browserTip')}
-                    </p>
-                </Card>
-                </div>
-
-                {/* 系统机器码管理 */}
-                <Card
-                    className="card-glow animate-slide-in-left delay-300"
-                    shadow="sm"
-                    padding="lg"
-                    radius="xl"
-                    withBorder
-                    style={{ marginBottom: '1.5rem' }}
-                >
-                    <div className="flex items-center gap-2 mb-1">
-                        <Shield size={18} className="text-orange-500" />
-                        <h2 className={`text-lg font-semibold ${colors.text}`}>{t('settings.systemMachineGuid')}</h2>
-                        {systemMachineInfo?.osType && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${colors.textMuted} border ${colors.cardBorder} ${colors.cardSecondary}`}>
-                                {resolveOsLabel(systemMachineInfo.osType, t('common.unknown'))}
-                            </span>
-                        )}
-                    </div>
-                    <p className={`text-sm ${colors.textMuted} mb-5`}>
-                        {systemMachineInfo?.osType === 'macos'
-                            ? t('settings.machineGuidDescMac')
-                            : systemMachineInfo?.osType === 'linux'
-                                ? t('settings.machineGuidDescLinux')
-                                : t('settings.machineGuidDescWin')}
-                    </p>
-
-                    {/* 当前值 */}
-                    <div className={`rounded-xl p-4 mb-4 border ${colors.cardBorder} ${colors.cardSecondary}`}>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className={`text-sm font-medium ${colors.text}`}>{t('settings.currentMachineGuid')}</span>
-                            <button
-                                onClick={loadSettings}
-                                disabled={loading}
-                                className={`btn-icon p-1.5 rounded-lg ${colors.cardHover} transition-colors`}
-                            >
-                                <RefreshCw size={14} className={`${colors.textMuted} ${loading ? 'animate-spin' : ''}`} />
-                            </button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <code className={`flex-1 text-sm px-3 py-2 rounded-lg font-mono ${colors.text} border ${colors.cardBorder} ${colors.card}`}>
-                                {systemMachineInfo?.machineGuid || t('common.loading')}
-                            </code>
-                            {systemMachineInfo?.machineGuid && (
-                                <button
-                                    onClick={() => copyToClipboard(systemMachineInfo.machineGuid, 'sysMachineGuid')}
-                                    className={`btn-icon p-2 rounded-lg ${colors.cardHover} transition-colors`}
-                                >
-                                    {copiedField === 'sysMachineGuid' ? (
-                                        <Check size={16} className="text-green-500" />
-                                    ) : (
-                                        <Copy size={16} className={colors.textMuted} />
-                                    )}
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 警告提示 - 需要管理员权限时显示 */}
-                    {systemMachineInfo?.requiresAdmin && (
-                        <div className={`flex items-start gap-3 ${colors.warning} rounded-xl p-4 mb-4 border ${colors.warningBorder}`}>
-                            <AlertTriangle size={18} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                                <p className={`font-medium text-orange-500 mb-2 text-sm`}>{t('settings.adminWarningTitle')}</p>
-                                <ul className={`list-disc list-inside space-y-1 mb-3 text-xs ${colors.textMuted}`}>
-                                    <li>{t('settings.adminWarning1')}</li>
-                                    <li>{t('settings.adminWarning2')}</li>
-                                    <li>{t('settings.adminWarning3')}</li>
-                                </ul>
-                                {systemMachineInfo?.osType !== 'macos' && (
-                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-500/20 border border-orange-500/30 rounded-lg mt-1">
-                                        <Shield size={14} className="text-orange-500" />
-                                        <span className="text-xs font-medium text-orange-500">{t('settings.restartAsAdmin')}</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* macOS 提示 */}
-                    {systemMachineInfo?.osType === 'macos' && (
-                        <div className={`flex items-start gap-3 ${colors.info} rounded-xl p-4 mb-4 border ${colors.infoBorder}`}>
-                            <Shield size={18} className={`${themeAccentTextClass} flex-shrink-0 mt-0.5`} />
-                            <div className={`text-xs ${colors.textMuted}`}>
-                                <p className={`font-medium ${themeAccentTextClass} mb-1`}>{t('settings.macOSNote')}</p>
-                                <p>{t('settings.macOSNoteDesc')}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 操作按钮 - 可修改时显示 */}
-                    {systemMachineInfo?.canModify && (
-                        <button
-                            onClick={handleResetSystemMachineGuid}
-                            disabled={machineGuidAction !== null}
-                            className={`w-full btn-icon px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium ${colors.danger} ${colors.dangerHover} disabled:opacity-50`}
-                        >
-                            {machineGuidAction === 'reset' ? <RefreshCw size={16} className="animate-spin" /> : <Shuffle size={16} />}
-                            {t('common.reset')}
-                        </button>
-                    )}
-                </Card>
-
-
+                    <TabsContent value="notifications">
+                        <SettingsNotifications
+                            notifyActionRequired={notifyActionRequired}
+                            setNotifyActionRequired={setNotifyActionRequired}
+                            notifyFailure={notifyFailure}
+                            setNotifyFailure={setNotifyFailure}
+                            notifySuccess={notifySuccess}
+                            setNotifySuccess={setNotifySuccess}
+                            notifyBilling={notifyBilling}
+                            setNotifyBilling={setNotifyBilling}
+                            telemetryContentCollection={telemetryContentCollection}
+                            setTelemetryContentCollection={setTelemetryContentCollection}
+                            telemetryUsageAnalytics={telemetryUsageAnalytics}
+                            setTelemetryUsageAnalytics={setTelemetryUsageAnalytics}
+                            telemetryEditStats={telemetryEditStats}
+                            setTelemetryEditStats={setTelemetryEditStats}
+                            telemetryFeedback={telemetryFeedback}
+                            setTelemetryFeedback={setTelemetryFeedback}
+                            handleNotificationChange={handleNotificationChange}
+                            handleTelemetryChange={handleTelemetryChange}
+                            t={t}
+                            colors={colors}
+                        />
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     )
