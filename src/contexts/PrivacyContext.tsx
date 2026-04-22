@@ -1,20 +1,27 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 
-const PrivacyContext = createContext()
+interface PrivacyContextValue {
+    privacyMode: boolean;
+    setPrivacyMode: (enabled: boolean) => Promise<void>;
+    maskEmail: (email: string) => string;
+    maskNickname: (name: string) => string;
+}
 
-export function PrivacyProvider({ children }) {
+const PrivacyContext = createContext<PrivacyContextValue | null>(null)
+
+export function PrivacyProvider({ children }: { children: ReactNode }) {
   const [privacyMode, setPrivacyModeState] = useState(true) // 默认开启隐私模式
 
   // 从后端加载设置
   useEffect(() => {
-    invoke('get_app_settings').then(settings => {
+    invoke<any>('get_app_settings').then(settings => {
       setPrivacyModeState(settings?.privacyMode ?? true) // 默认 true
     }).catch(() => {})
   }, [])
 
   // 保存设置到后端
-  const setPrivacyMode = useCallback(async (enabled) => {
+  const setPrivacyMode = useCallback(async (enabled: boolean) => {
     setPrivacyModeState(enabled)
     try {
       await invoke('save_app_settings', { settings: { privacyMode: enabled } })
@@ -24,7 +31,7 @@ export function PrivacyProvider({ children }) {
   }, [])
 
   // 邮箱脱敏: user12345@example.com -> us***45@***.com
-  const maskEmail = useCallback((email) => {
+  const maskEmail = useCallback((email: string) => {
     if (!privacyMode || !email) return email
     const [local, domain] = email.split('@')
     if (!domain) return email
@@ -48,7 +55,7 @@ export function PrivacyProvider({ children }) {
   }, [privacyMode])
 
   // 昵称/标签脱敏: MyNickname -> My***me
-  const maskNickname = useCallback((name) => {
+  const maskNickname = useCallback((name: string) => {
     if (!privacyMode || !name) return name
     if (name.length <= 2) return '*'.repeat(name.length)
     if (name.length <= 4) return name[0] + '***'

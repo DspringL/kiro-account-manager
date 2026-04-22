@@ -1,13 +1,18 @@
 import * as React from "react"
 import { Dialog as HeadlessDialog, DialogPanel, DialogTitle, Description, DialogBackdrop, CloseButton } from '@headlessui/react'
-import { X } from "lucide-react"
+import { X, LucideIcon } from "lucide-react"
 import { cn } from "../../lib/utils"
-import { useApp } from "../../hooks/useApp"
+
+interface DialogRootProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}
 
 /**
  * DialogRoot - 弹窗根组件
  */
-const DialogRoot = ({ open, onOpenChange, children }) => {
+const DialogRoot = ({ open, onOpenChange, children }: DialogRootProps) => {
   return (
     <HeadlessDialog 
       open={open}
@@ -19,10 +24,14 @@ const DialogRoot = ({ open, onOpenChange, children }) => {
   )
 }
 
+interface DialogOverlayProps {
+  className?: string;
+}
+
 /**
  * DialogOverlay - 背景遮罩
  */
-const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => {
+const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(({ className, ...props }, ref) => {
   return (
     <DialogBackdrop
       ref={ref}
@@ -40,18 +49,23 @@ const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => {
 })
 DialogOverlay.displayName = "DialogOverlay"
 
+interface DialogContentProps {
+  className?: string;
+  children: React.ReactNode;
+  maxWidth?: string;
+  showClose?: boolean;
+}
+
 /**
  * DialogContent - 弹窗内容容器
  */
-const DialogContent = React.forwardRef(({ 
+const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(({ 
   className, 
   children, 
   maxWidth = "400px",
   showClose = true,
   ...props 
 }, ref) => {
-  
-  
   return (
     <>
       <DialogOverlay />
@@ -85,7 +99,7 @@ const DialogContent = React.forwardRef(({
                 "hover:bg-muted/50"
               )}
             >
-              <X size={18} className={"text-muted-foreground"} />
+              <X size={18} className="text-muted-foreground" />
               <span className="sr-only">关闭</span>
             </CloseButton>
           )}
@@ -96,10 +110,18 @@ const DialogContent = React.forwardRef(({
 })
 DialogContent.displayName = "DialogContent"
 
+interface DialogHeaderProps {
+  className?: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  iconBg?: string;
+  children: React.ReactNode;
+}
+
 /**
  * DialogHeader - 弹窗头部
  */
-const DialogHeader = React.forwardRef(({ 
+const DialogHeader = React.forwardRef<HTMLDivElement, DialogHeaderProps>(({ 
   className, 
   icon: Icon, 
   iconColor, 
@@ -135,12 +157,15 @@ const DialogHeader = React.forwardRef(({
 })
 DialogHeader.displayName = "DialogHeader"
 
+interface DialogTitleProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
 /**
  * DialogTitle - 弹窗标题
  */
-const DialogTitleComponent = React.forwardRef(({ className, ...props }, ref) => {
-  
-  
+const DialogTitleComponent = React.forwardRef<HTMLHeadingElement, DialogTitleProps>(({ className, ...props }, ref) => {
   return (
     <DialogTitle
       ref={ref}
@@ -155,12 +180,15 @@ const DialogTitleComponent = React.forwardRef(({ className, ...props }, ref) => 
 })
 DialogTitleComponent.displayName = "DialogTitle"
 
+interface DialogDescriptionProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
 /**
  * DialogDescription - 弹窗描述
  */
-const DialogDescriptionComponent = React.forwardRef(({ className, ...props }, ref) => {
-  
-  
+const DialogDescriptionComponent = React.forwardRef<HTMLParagraphElement, DialogDescriptionProps>(({ className, ...props }, ref) => {
   return (
     <Description
       ref={ref}
@@ -171,10 +199,17 @@ const DialogDescriptionComponent = React.forwardRef(({ className, ...props }, re
 })
 DialogDescriptionComponent.displayName = "DialogDescription"
 
+interface DialogBodyProps {
+  className?: string;
+  children: React.ReactNode;
+  gap?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+  noPadding?: boolean;
+}
+
 /**
  * DialogBody - 弹窗内容区域
  */
-const DialogBody = React.forwardRef(({ 
+const DialogBody = React.forwardRef<HTMLDivElement, DialogBodyProps>(({ 
   className, 
   gap = "md",
   noPadding = false,
@@ -185,14 +220,15 @@ const DialogBody = React.forwardRef(({
     sm: "space-y-3",
     md: "space-y-4",
     lg: "space-y-6",
-    xl: "space-y-8"}
+    xl: "space-y-8"
+  }
   
   return (
     <div
       ref={ref}
       className={cn(
         !noPadding && "px-6 py-4",
-        "overflow-y-auto flex-1",
+        "overflow-y-auto flex-1 no-scrollbar",
         gapClasses[gap],
         className
       )}
@@ -203,19 +239,22 @@ const DialogBody = React.forwardRef(({
 })
 DialogBody.displayName = "DialogBody"
 
+interface DialogFooterProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
 /**
  * DialogFooter - 弹窗底部
  */
-const DialogFooter = React.forwardRef(({ className, ...props }, ref) => {
-  
-  
+const DialogFooter = React.forwardRef<HTMLDivElement, DialogFooterProps>(({ className, ...props }, ref) => {
   return (
     <div
       ref={ref}
       className={cn(
         "px-6 py-4",
         "flex justify-end gap-3",
-        colors.dialogFooter,
+        "bg-muted/10 border-t border-border/30",
         className
       )}
       {...props}
@@ -225,25 +264,26 @@ const DialogFooter = React.forwardRef(({ className, ...props }, ref) => {
 DialogFooter.displayName = "DialogFooter"
 
 /**
- * DialogClose - 关闭按钮（用于手动关闭）
+ * DialogClose - 关闭按钮
  */
 const DialogClose = CloseButton
 
+interface DialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title?: string;
+  description?: string;
+  children?: React.ReactNode;
+  footer?: React.ReactNode;
+  maxWidth?: string;
+  icon?: LucideIcon;
+  iconColor?: string;
+  iconBg?: string;
+  showClose?: boolean;
+}
+
 /**
  * Dialog - 完整的对话框组件
- * 
- * @param {Object} props
- * @param {boolean} props.open - 是否打开
- * @param {Function} props.onOpenChange - 状态改变回调
- * @param {string} props.title - 标题
- * @param {string} props.description - 描述文本
- * @param {ReactNode} props.children - 内容区域
- * @param {ReactNode} props.footer - 底部按钮区域
- * @param {string} props.maxWidth - 最大宽度
- * @param {Component} props.icon - 图标组件
- * @param {string} props.iconColor - 图标颜色
- * @param {string} props.iconBg - 图标背景
- * @param {boolean} props.showClose - 是否显示关闭按钮
  */
 export function Dialog({
   open,
@@ -256,7 +296,8 @@ export function Dialog({
   icon: Icon,
   iconColor,
   iconBg,
-  showClose = true}) {
+  showClose = true
+}: DialogProps) {
   return (
     <DialogRoot open={open} onOpenChange={onOpenChange}>
       <DialogContent maxWidth={maxWidth} showClose={showClose}>
@@ -288,4 +329,5 @@ export {
   DialogFooter,
   DialogTitleComponent as DialogTitle,
   DialogDescriptionComponent as DialogDescription,
-  DialogBody}
+  DialogBody
+}

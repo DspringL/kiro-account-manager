@@ -90,7 +90,7 @@ export function calcAccountStats(accounts) {
     (getSubType(a).includes('PRO') || getSubPlan(a).includes('PRO')) && 
     !(getSubType(a).includes('PRO+') || getSubPlan(a).includes('PRO+'))
   ).length
-  const usagePercent = totalQuota > 0 ? (totalUsed / totalQuota * 100).toFixed(1) : 0
+  const usagePercent = totalQuota > 0 ? Number((totalUsed / totalQuota * 100).toFixed(1)) : 0
 
   return { 
     total, active, banned, unavailable, proPlus, pro, usagePercent,
