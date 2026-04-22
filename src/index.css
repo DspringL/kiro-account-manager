@@ -65,7 +65,7 @@
   --bg-gradient-2: #f1f5f9;
   --bg-gradient-3-rgb: 255 255 255;
   --bg-gradient-3: #ffffff;
-  --glass-border: rgb(var(--surface-rgb) / 0.62);
+  --glass-border: rgba(15, 23, 42, 0.08); /* 浅色模式用微弱的深色边框 */
 }
 
 /* Themes */
@@ -101,6 +101,7 @@
 
 [data-theme='dark'], [data-theme='dark-one'], [data-theme='tech'] {
   color-scheme: dark;
+  --glass-border: rgba(255, 255, 255, 0.1); /* 深色模式用微弱的亮色边框 */
 }
 
 [data-theme='dark'] { 
