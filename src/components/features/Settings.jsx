@@ -74,6 +74,10 @@ function Settings() {
     const [systemMachineInfo, setSystemMachineInfo] = useState(null)
     const [machineGuidAction, setMachineGuidAction] = useState(null) // 'reset'
 
+    // 自动更新管理
+    const [autoUpdateStatus, setAutoUpdateStatus] = useState(null)
+    const [autoUpdateAction, setAutoUpdateAction] = useState(null) // 'disabling' | 'enabling'
+
     const accountToggleContainerClass = `${colors.card} ${colors.cardHover} border ${colors.cardBorder} ${colors.text}`
     const accent = getThemeAccent(theme)
     const themeAccentBorderClass = `${accent.border} shadow-md ${accent.shadow}`
@@ -93,6 +97,8 @@ function Settings() {
             ])
             setSystemMachineInfo(sysMachine)
 
+            // 加载自动更新状态
+            invoke('get_auto_update_status').then(setAutoUpdateStatus).catch(() => {})
 
             // 从 Kiro IDE 设置读取
             if (kiroSettings) {
@@ -454,13 +460,64 @@ function Settings() {
             await showSuccess(t('settings.resetSuccess'), `${t('settings.newMachineGuid')}: ${newGuid}`)
         } catch (err) {
             await showError(t('settings.resetFailed'), err.toString())
-            setMachineGuidAction(null) // 错误时立即清除状态，允许重试
+        } finally {
+            setMachineGuidAction(null) // 无论成功或失败，都恢复按钮可用状态
+        }
+    }
+
+    // 自动更新管理
+    const handleDisableAutoUpdate = async () => {
+        const confirmed = await showConfirm(
+            t('settings.autoUpdateConfirmDisableTitle'),
+            t('settings.autoUpdateConfirmDisable'),
+            { confirmText: t('settings.disableAutoUpdate'), cancelText: t('common.cancel') }
+        )
+        if (!confirmed) return
+
+        setAutoUpdateAction('disabling')
+        try {
+            const result = await invoke('disable_kiro_auto_update')
+            const status = await invoke('get_auto_update_status')
+            setAutoUpdateStatus(status)
+            if (result.success) {
+                await showSuccess(t('settings.autoUpdateDisableSuccess'), result.details?.join('\n') || '')
+            } else {
+                await showError(t('settings.autoUpdateOperationFailed'), result.message + '\n' + (result.details?.join('\n') || ''))
+            }
+        } catch (err) {
+            await showError(t('settings.autoUpdateOperationFailed'), err.toString())
+        } finally {
+            setAutoUpdateAction(null)
+        }
+    }
+
+    const handleEnableAutoUpdate = async () => {
+        const confirmed = await showConfirm(
+            t('settings.autoUpdateConfirmEnableTitle'),
+            t('settings.autoUpdateConfirmEnable'),
+            { confirmText: t('settings.enableAutoUpdate'), cancelText: t('common.cancel') }
+        )
+        if (!confirmed) return
+
+        setAutoUpdateAction('enabling')
+        try {
+            const result = await invoke('enable_kiro_auto_update')
+            const status = await invoke('get_auto_update_status')
+            setAutoUpdateStatus(status)
+            if (result.success) {
+                await showSuccess(t('settings.autoUpdateEnableSuccess'), result.details?.join('\n') || '')
+            } else {
+                await showError(t('settings.autoUpdateOperationFailed'), result.message + '\n' + (result.details?.join('\n') || ''))
+            }
+        } catch (err) {
+            await showError(t('settings.autoUpdateOperationFailed'), err.toString())
+        } finally {
+            setAutoUpdateAction(null)
         }
     }
 
     const themeIconMap = { Sun, Moon, Palette }
     const themeOptions = buildThemeOptions(t)
-
     // 复制到剪贴板
     const [copiedField, setCopiedField] = useState(null)
     const copiedTimerRef = useRef(null)
@@ -1143,6 +1200,86 @@ function Settings() {
                             {t('common.reset')}
                         </button>
                     )}
+                </Card>
+
+                {/* 自动更新管理 */}
+                <Card
+                    className="card-glow animate-slide-in-left delay-700"
+                    shadow="sm"
+                    padding="lg"
+                    radius="xl"
+                    withBorder
+                    style={{ marginBottom: '1.5rem' }}
+                >
+                    <div className="flex items-center gap-2 mb-1">
+                        <Repeat size={18} className="text-blue-500" />
+                        <h2 className={`text-lg font-semibold ${colors.text}`}>{t('settings.autoUpdate')}</h2>
+                        {autoUpdateStatus && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                                autoUpdateStatus.disabled
+                                    ? 'text-orange-500 border-orange-500/30 bg-orange-500/10'
+                                    : 'text-green-500 border-green-500/30 bg-green-500/10'
+                            }`}>
+                                {autoUpdateStatus.disabled ? t('settings.autoUpdateDisabled') : t('settings.autoUpdateEnabled')}
+                            </span>
+                        )}
+                    </div>
+                    <p className={`text-sm ${colors.textMuted} mb-4`}>{t('settings.autoUpdateHint')}</p>
+
+                    {/* 状态详情 */}
+                    <div className={`rounded-xl p-4 mb-4 border ${colors.cardBorder} ${colors.cardSecondary}`}>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className={`text-sm font-medium ${colors.text}`}>{t('settings.autoUpdateStatus')}</span>
+                            <button
+                                onClick={() => invoke('get_auto_update_status').then(setAutoUpdateStatus).catch(() => {})}
+                                className={`btn-icon p-1.5 rounded-lg ${colors.cardHover} transition-colors`}
+                            >
+                                <RefreshCw size={14} className={colors.textMuted} />
+                            </button>
+                        </div>
+                        {autoUpdateStatus ? (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-xs ${colors.textMuted}`}>{t('settings.autoUpdateUpdaterBlocked')}</span>
+                                    <span className="text-xs">{autoUpdateStatus.updaterBlocked ? t('settings.autoUpdateBlockedYes') : t('settings.autoUpdateBlockedNo')}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-xs ${colors.textMuted}`}>{t('settings.autoUpdateYmlLocked')}</span>
+                                    <span className="text-xs">{autoUpdateStatus.updateYmlLocked ? t('settings.autoUpdateLockedYes') : t('settings.autoUpdateLockedNo')}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className={`text-xs ${colors.textMuted}`}>{t('settings.autoUpdateUrlCleared')}</span>
+                                    <span className="text-xs">{autoUpdateStatus.updateUrlCleared ? t('settings.autoUpdateClearedYes') : t('settings.autoUpdateClearedNo')}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className={`text-xs ${colors.textMuted}`}>{t('settings.autoUpdateChecking')}</p>
+                        )}
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={handleDisableAutoUpdate}
+                            disabled={autoUpdateAction !== null}
+                            className={`btn-icon px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium text-sm ${colors.danger} ${colors.dangerHover} disabled:opacity-50`}
+                        >
+                            {autoUpdateAction === 'disabling'
+                                ? <RefreshCw size={15} className="animate-spin" />
+                                : <EyeOff size={15} />}
+                            {autoUpdateAction === 'disabling' ? t('settings.disablingAutoUpdate') : t('settings.disableAutoUpdate')}
+                        </button>
+                        <button
+                            onClick={handleEnableAutoUpdate}
+                            disabled={autoUpdateAction !== null}
+                            className={`btn-icon px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium text-sm ${themeAccentButtonClass} disabled:opacity-50`}
+                        >
+                            {autoUpdateAction === 'enabling'
+                                ? <RefreshCw size={15} className="animate-spin" />
+                                : <Eye size={15} />}
+                            {autoUpdateAction === 'enabling' ? t('settings.enablingAutoUpdate') : t('settings.enableAutoUpdate')}
+                        </button>
+                    </div>
                 </Card>
 
 

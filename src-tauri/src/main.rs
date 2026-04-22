@@ -99,6 +99,7 @@ use commands::steering_cmd::{
     save_steering_file,
 };
 use commands::update_cmd::check_update;
+use commands::auto_update_cmd::{disable_kiro_auto_update, enable_kiro_auto_update, get_auto_update_status};
 
 use kiro::{get_kiro_local_token, read_kiro_accounts, switch_kiro_account};
 use process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
@@ -415,6 +416,10 @@ fn main() {
             detect_system_proxy,
             // 更新检查命令
             check_update,
+            // 自动更新管理命令
+            get_auto_update_status,
+            disable_kiro_auto_update,
+            enable_kiro_auto_update,
             // 自动注册命令
             check_camoufox_installed,
             install_camoufox,

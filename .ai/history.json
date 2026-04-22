@@ -39,5 +39,63 @@
         "status": "modify"
       }
     ]
+  },
+  {
+    "id": "fix-reset-button-disabled-2026-04-22",
+    "question": "设置中的重置按钮点击后不要禁用",
+    "plan": "将 setMachineGuidAction(null) 从 catch 块移到 finally 块，确保重置操作完成后（无论成功或失败）按钮都恢复可用状态",
+    "created_at": "2026-04-22T10:00:00",
+    "completed_at": "2026-04-22T10:05:00",
+    "ref_file_list": [
+      "src/components/features/Settings.jsx"
+    ],
+    "change_list": [
+      {
+        "file": "src/components/features/Settings.jsx",
+        "change": "handleResetSystemMachineGuid 函数中，将 setMachineGuidAction(null) 从 catch 块移至 finally 块，修复重置成功后按钮永久禁用的问题",
+        "status": "modify"
+      }
+    ]
+  },
+  {
+    "id": "auto-update-manager-2026-04-22",
+    "question": "参考 kiro-auto-update-manager.js，在设置中实现禁用自动更新和解除自动更新功能",
+    "plan": "1. 新建 Rust 命令模块 auto_update_cmd.rs，实现 get_auto_update_status / disable_kiro_auto_update / enable_kiro_auto_update 三个命令\n2. 在 commands/mod.rs 注册模块\n3. 在 main.rs 导入并注册命令\n4. 在 Settings.jsx 添加状态变量、处理函数和 UI 卡片\n5. 在 locales/zh-CN.json 添加翻译键",
+    "created_at": "2026-04-22T10:30:00",
+    "completed_at": "2026-04-22T11:00:00",
+    "ref_file_list": [
+      "src/components/features/Settings.jsx",
+      "src-tauri/src/commands/auto_update_cmd.rs",
+      "src-tauri/src/commands/mod.rs",
+      "src-tauri/src/main.rs",
+      "locales/zh-CN.json"
+    ],
+    "change_list": [
+      {
+        "file": "src-tauri/src/commands/auto_update_cmd.rs",
+        "change": "新建文件，实现 get_auto_update_status / disable_kiro_auto_update / enable_kiro_auto_update 三个 Tauri 命令，跨平台支持 macOS/Windows/Linux",
+        "status": "add"
+      },
+      {
+        "file": "src-tauri/src/commands/mod.rs",
+        "change": "注册 auto_update_cmd 模块",
+        "status": "modify"
+      },
+      {
+        "file": "src-tauri/src/main.rs",
+        "change": "导入并在 invoke_handler 中注册三个自动更新命令",
+        "status": "modify"
+      },
+      {
+        "file": "src/components/features/Settings.jsx",
+        "change": "添加 autoUpdateStatus/autoUpdateAction 状态变量，handleDisableAutoUpdate/handleEnableAutoUpdate 处理函数，以及自动更新管理 UI 卡片（含状态详情和操作按钮）",
+        "status": "modify"
+      },
+      {
+        "file": "locales/zh-CN.json",
+        "change": "添加 settings.autoUpdate* 系列翻译键",
+        "status": "modify"
+      }
+    ]
   }
 ]
