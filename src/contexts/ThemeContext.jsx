@@ -181,7 +181,6 @@ export const themes = {
     cardCurrent: 'border-green-500/50 bg-green-500/5',
     cardBanned: 'border-red-500/50 bg-red-500/5',
     cardWarning: 'border-orange-500/50 bg-orange-500/5',
-    cardNormal: 'border-white/10 backdrop-blur-md hover:border-white/20',
     cardGlowCurrent: 'shadow-green-500/30 hover:shadow-green-500/50',
     cardGlowBanned: 'shadow-red-500/30 hover:shadow-red-500/50',
     cardGlowWarning: 'shadow-orange-500/30 hover:shadow-orange-500/50',
