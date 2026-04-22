@@ -4,22 +4,27 @@ import {
   normalizeAccountStatus,
   isActiveStatus,
   isUnavailableStatus,
-  getAccountStatusMeta} from './accountStatus.js'
+  getAccountStatusMeta
+} from './accountStatus'
 
-const autoRefresh = await readFile(new URL('../hooks/useAutoRefresh.js', import.meta.url), 'utf8')
-const useAccounts = await readFile(new URL('../components/features/AccountManager/hooks/useAccounts.js', import.meta.url), 'utf8')
-const importModal = await readFile(new URL('../components/features/AccountManager/ImportAccountModal.jsx', import.meta.url), 'utf8')
+const autoRefresh = await readFile(new URL('../hooks/useAutoRefresh.ts', import.meta.url), 'utf8')
+const useAccounts = await readFile(new URL('../components/features/AccountManager/hooks/useAccounts.ts', import.meta.url), 'utf8')
+const importModal = await readFile(new URL('../components/features/AccountManager/ImportAccountModal.tsx', import.meta.url), 'utf8')
 
 const cappedAccount = {
   status: 'active',
   usageData: {
     overageConfiguration: {
-      overageStatus: 'DISABLED'},
+      overageStatus: 'DISABLED'
+    },
     usageBreakdownList: [
       {
         currentUsage: 50,
-        usageLimit: 50},
-    ]}}
+        usageLimit: 50
+      },
+    ]
+  }
+}
 
 assert.equal(normalizeAccountStatus(cappedAccount), 'capped')
 assert.equal(isActiveStatus(cappedAccount), false)
@@ -27,7 +32,8 @@ assert.equal(isUnavailableStatus(cappedAccount), true)
 assert.deepEqual(getAccountStatusMeta(cappedAccount), {
   key: 'capped',
   label: '封顶',
-  tone: 'warning'})
+  tone: 'warning'
+})
 
 assert.match(autoRefresh, /isUnavailableStatus/)
 assert.doesNotMatch(autoRefresh, /status !== 'banned'/)
