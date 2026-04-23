@@ -14,6 +14,7 @@ import alipayQR from '../../../assets/donate/alipay.jpg'
 import wechatQR from '../../../assets/donate/wechat.jpg'
 import { isLightTheme as checkIsLightTheme } from '../../../utils/themeMode'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
+import React from 'react'
 
 // 常量定义
 const QQ_NUMBER = '1292548381'
@@ -35,7 +36,7 @@ const QQIcon = () => (
 )
 
 // Logo 组件
-const AppLogo = ({ accent, iconColors }) => (
+const AppLogo = ({ accent, iconColors }: any) => (
   <div className="relative group">
     <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-3xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity duration-300`} />
     <div className={`relative w-20 h-20 bg-gradient-to-br ${accent.gradientFrom} ${accent.gradientTo} rounded-3xl flex items-center justify-center shadow-lg transition-shadow duration-300 group-hover:shadow-xl animate-float`}>
@@ -50,7 +51,7 @@ const AppLogo = ({ accent, iconColors }) => (
 )
 
 // 技术栈徽章组件
-const TechBadge = ({ icon: Icon, value }) => (
+const TechBadge = ({ icon: Icon, value }: any) => (
   <Badge variant="secondary" className="transition-colors duration-200 hover:shadow-md cursor-default px-3 py-1.5 text-sm flex items-center gap-1.5">
     <Icon size={14} />
     {value}
@@ -58,7 +59,7 @@ const TechBadge = ({ icon: Icon, value }) => (
 )
 
 // 链接按钮组件
-const LinkButton = ({ href, icon: Icon, children, fullWidth = false }) => (
+const LinkButton = ({ href, icon: Icon, children, fullWidth = false }: any) => (
   <Button
     asChild
     variant="default"
@@ -72,7 +73,7 @@ const LinkButton = ({ href, icon: Icon, children, fullWidth = false }) => (
 )
 
 // QR 码图片组件
-const QRCodeImage = ({ src, alt, onClick, accent, colors, onKeyDown }) => (
+const QRCodeImage = ({ src, alt, onClick, accent, colors, onKeyDown }: any) => (
   <div
     className="flex flex-col items-center gap-2 cursor-pointer transition-all duration-200 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 rounded-lg p-2"
     onClick={onClick}
@@ -94,7 +95,7 @@ const QRCodeImage = ({ src, alt, onClick, accent, colors, onKeyDown }) => (
 )
 
 // 信息卡片组件
-const InfoCard = ({ title, items, colors }) => (
+const InfoCard = ({ title, items, colors }: any) => (
   <div className={`bg-muted/30 rounded-xl p-4 transition-colors duration-200 hover:shadow-md`}>
     {title && (
       <p className={`text-sm font-medium mb-2 text-foreground`}>
@@ -102,7 +103,7 @@ const InfoCard = ({ title, items, colors }) => (
       </p>
     )}
     <div className={`flex flex-col gap-2 text-foreground`}>
-      {items.map((item, index) => (
+      {items.map((item: any, index: number) => (
         <p key={index} className="text-sm leading-relaxed">
           {item}
         </p>
@@ -116,8 +117,13 @@ function About() {
   const { showUpdate, showInfo, showSuccess } = useDialog()
   const [version, setVersion] = useState('')
   const [checking, setChecking] = useState(false)
-  const [previewImg, setPreviewImg] = useState(null)
+  const [previewImg, setPreviewImg] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
+
+  // 定义色彩系统
+  const colors = useMemo(() => ({
+    inputFocus: 'focus:ring-primary/20 focus:border-primary',
+  }), [])
 
   // 使用 useMemo 缓存主题相关计算
   const accent = useMemo(() => getThemeAccent(theme), [theme])
@@ -163,7 +169,7 @@ function About() {
   const checkUpdate = useCallback(async () => {
     setChecking(true)
     try {
-      const result = await invoke('check_update')
+      const result = await invoke<any>('check_update')
 
       if (result.has_update && result.latest_version) {
         const updateResult = await check()
@@ -186,7 +192,7 @@ function About() {
     }
   }, [showUpdate, showInfo, t])
 
-  const handlePreviewKeyDown = useCallback((event, imageSrc) => {
+  const handlePreviewKeyDown = useCallback((event: any, imageSrc: any) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       setPreviewImg(imageSrc)
@@ -312,7 +318,7 @@ function About() {
                     onClick={() => setPreviewImg(alipayQR)}
                     accent={accent}
                     colors={colors}
-                    onKeyDown={(e) => handlePreviewKeyDown(e, alipayQR)}
+                    onKeyDown={(e: any) => handlePreviewKeyDown(e, alipayQR)}
                   />
                   <QRCodeImage
                     src={wechatQR}
@@ -320,7 +326,7 @@ function About() {
                     onClick={() => setPreviewImg(wechatQR)}
                     accent={accent}
                     colors={colors}
-                    onKeyDown={(e) => handlePreviewKeyDown(e, wechatQR)}
+                    onKeyDown={(e: any) => handlePreviewKeyDown(e, wechatQR)}
                   />
                 </div>
 

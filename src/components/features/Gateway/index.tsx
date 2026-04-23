@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useApp } from '../../../hooks/useApp'
 import { Stack, Group, Badge, Card, Text } from '@/components/shared/layout'
-import { TFunction } from 'i18next'
 import GatewayAdvanced from './GatewayAdvanced'
 import GatewayIntegration from './GatewayIntegration'
 import GatewayObservability from './GatewayObservability'
 import GatewayOverview from './GatewayOverview'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 import { GatewayConfig, GatewayStatus } from './gatewayPageState'
 import { 
   applyGatewayLocalOnlyChange, 
@@ -45,11 +45,7 @@ import {
   hydrateGatewayConfig
 } from './gatewayPageState'
 import { useGatewayPolling } from './useGatewayPolling'
-
-// 定义网关页面使用的色彩系统
-const colors = {
-  inputFocus: 'focus:ring-primary/20 focus:border-primary',
-}
+import React from 'react'
 
 function Alert(props: any) {
   return <AlertPrimitive {...props} />
@@ -67,7 +63,14 @@ function ThemedAlert({ title, children, ...props }: any) {
 }
 
 function GatewayPage() {
-  const { t } = useApp()
+  const { t, theme } = useApp()
+  const accent = useMemo(() => getThemeAccent(theme), [theme])
+
+  // 定义网关页面使用的色彩系统
+  const colors = useMemo(() => ({
+    inputFocus: 'focus:ring-primary/20 focus:border-primary',
+  }), [])
+
   const [config, setConfig] = useState<GatewayConfig>(DEFAULT_GATEWAY_CONFIG)
   const [status, setStatus] = useState<GatewayStatus>(DEFAULT_GATEWAY_STATUS)
   const [errorHistory, setErrorHistory] = useState<any[]>([])
@@ -339,7 +342,7 @@ function GatewayPage() {
     label: "text-foreground",
     description: "text-muted-foreground",
     error: 'text-red-400',
-    section: "text-muted-foreground"}), [])
+    section: "text-muted-foreground"}), [colors.inputFocus])
 
   const selectClassNames = useMemo(() => ({
     ...inputClassNames,

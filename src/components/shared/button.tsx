@@ -2,7 +2,14 @@ import * as React from "react"
 import { cn } from "../../lib/utils"
 import { useApp } from "../../hooks/useApp"
 
-const Button = React.forwardRef(({ 
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "success" | "danger"
+  size?: "default" | "sm" | "lg"
+  loading?: boolean
+  icon?: React.ElementType
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ 
   className, 
   variant = "primary",
   size = "default",
