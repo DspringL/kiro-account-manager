@@ -76,6 +76,15 @@ export function getThemeSurfaceStyles(theme: string) {
   return {
     editorBg: isLight ? '#ffffff' : '#1e1e1e',
     editorText: isLight ? '#000000' : '#d4d4d4',
-    editorBorder: isLight ? '#e5e7eb' : '#333333'
+    editorBorder: isLight ? '#e5e7eb' : '#333333',
+    inputBg: isLight ? '#ffffff' : '#1e1e1e',
+    inputBorder: isLight ? '#e5e7eb' : '#333333',
+    inputText: isLight ? '#000000' : '#d4d4d4',
+    placeholder: isLight ? '#9ca3af' : '#6b7280',
+    dropdownBg: isLight ? '#ffffff' : '#1e1e1e',
+    dropdownBorder: isLight ? '#e5e7eb' : '#333333',
+    pillBg: isLight ? '#f3f4f6' : '#374151',
+    pillText: isLight ? '#1f2937' : '#e5e7eb',
+    pillBorder: isLight ? '#e5e7eb' : '#4b5563'
   };
 }
