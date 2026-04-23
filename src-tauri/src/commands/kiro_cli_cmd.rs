@@ -163,25 +163,14 @@ pub async fn import_from_kiro_cli(
     let token_key = &cli_account.token_key;
     eprintln!("[Kiro CLI Import] 读取到账号: auth_method={auth_method}, token_key={token_key}");
 
-    // 2. 调用 Kiro Portal API 获取配额
-    let portal_client = KiroPortalClient::new()?;
+    // 2. 调用统一的 getUsageLimits API 获取配额
+    let provider = determine_provider(cli_account);
+    let usage_result = get_usage_by_provider(&provider, &cli_account.access_token).await;
 
-    // 判断 idp（根据 auth_method）
-    let idp = if cli_account.auth_method == "social" {
-        "social"
-    } else {
-        "idc"
-    };
-
-    let usage_result = portal_client
-        .get_user_usage_and_limits(&cli_account.access_token, idp)
-        .await;
-
-    let (email, user_id, provider, usage_data) = match usage_result {
-        Ok(usage) => {
-            let (email, user_id) = extract_user_info(&usage);
-            let provider = determine_provider(cli_account);
-            (email, user_id, provider, Some(usage))
+    let (email, user_id, usage_data) = match usage_result {
+        Ok(result) => {
+            let (email, user_id) = extract_user_info(&result.usage_data);
+            (email, user_id, Some(result.usage_data))
         }
         Err(e) => {
             eprintln!("[Kiro CLI Import] 获取配额失败: {e}");

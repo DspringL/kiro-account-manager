@@ -435,11 +435,19 @@ pub async fn verify_account(
         (auth.access_token, auth.refresh_token)
     };
 
-    // 获取 usage_data
-    let client = KiroPortalClient::new()?;
-    let usage_data = client
-        .get_user_usage_and_limits(&new_access_token, &provider)
-        .await?;
+    // 获取 usage_data（使用统一的 getUsageLimits 接口）
+    let store = lock_store(&state.store, "store")?;
+    let account = store
+        .accounts
+        .iter()
+        .find(|a| a.refresh_token.as_ref() == Some(&refresh_token))
+        .ok_or("Account not found")?;
+
+    let mut temp_account = account.clone();
+    temp_account.access_token = Some(new_access_token.clone());
+
+    let usage_result = get_usage_by_account(&temp_account, &new_access_token).await?;
+    let usage_data = usage_result.usage_data;
 
     // 更新数据库
     {
@@ -1279,10 +1287,8 @@ pub async fn get_account_usage(
     provider: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let provider_str = provider.as_deref().unwrap_or("Google");
-    let client = KiroPortalClient::new()?;
-    client
-        .get_user_usage_and_limits(&access_token, provider_str)
-        .await
+    let usage_result = get_usage_by_provider(provider_str, &access_token).await?;
+    Ok(usage_result.usage_data)
 }
 
 #[tauri::command]
