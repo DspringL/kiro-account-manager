@@ -239,7 +239,7 @@ pub fn apply_kiro_runtime_headers(
     auth_method: Option<&str>,
     provider: Option<&str>,
 ) -> reqwest::RequestBuilder {
-    let invocation_id = uuid::Uuid::new_v4().to_string();
+    let invocation_id = Uuid::new_v4().to_string();
 
     let mut builder = builder
         .header(reqwest::header::AUTHORIZATION, format!("Bearer {access_token}"))
@@ -490,5 +490,14 @@ mod tests {
         assert!(request.headers().get("x-amzn-codewhisperer-optout").is_none());
         assert!(request.headers().get("x-amzn-kiro-agent-mode").is_none());
         assert!(request.headers().get("x-amzn-kiro-profile-arn").is_none());
+        // AWS SDK 标准追踪头
+        assert!(request.headers().get("amz-sdk-invocation-id").is_some());
+        assert_eq!(
+            request
+                .headers()
+                .get("amz-sdk-request")
+                .and_then(|value| value.to_str().ok()),
+            Some("attempt=1; max=1")
+        );
     }
 }
