@@ -56,20 +56,18 @@ const ScopeBadge = ({ scope, accent }) => {
 }
 
 function SteeringPanel({ onCountChange, projectDir }) {
-  const { t, theme} = useApp()
+  const { t, theme } = useApp()
+  const accent = useMemo(() => getThemeAccent(theme), [theme])
   const { showConfirm, showSuccess } = useDialog()
   const surface = getThemeSurfaceStyles(theme)
   
-  const [files, setFiles] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [editState, setEditState] = useState({ content: '', inclusion: 'always', filePattern: '', name: '', description: '' })
-  const [saving, setSaving] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [refining, setRefining] = useState(false)
-  const [creatingDefault, setCreatingDefault] = useState(false)
-  const [initializingProject, setInitializingProject] = useState(false)
+  // 定义本地色彩系统
+  const colors = {
+    inputFocus: 'focus:ring-primary/20 focus:border-primary',
+    btnDisabled: 'opacity-50 cursor-not-allowed grayscale',
+    dialogHeader: 'border-b border-border bg-muted/30',
+    info: 'bg-primary/10'
+  }
 
   const loadFiles = useCallback(async () => {
     setLoading(true)
