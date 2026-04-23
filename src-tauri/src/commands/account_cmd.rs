@@ -829,7 +829,7 @@ async fn add_account_by_idc_internal(
         .clone()
         .unwrap_or_else(|| uuid::Uuid::new_v4().to_string().to_lowercase());
 
-    // 先尝试用传入的 access_token 获取配额
+    // 企业账号导入时强制刷新 token（导入时的 access_token 很可能已过期）
     let (
         final_access_token,
         final_refresh_token,
@@ -837,53 +837,39 @@ async fn add_account_by_idc_internal(
         expires_at,
         id_token,
         sso_session_id,
-    ) = if let Some(at) = params.access_token {
+    ) = if is_enterprise || params.access_token.is_none() {
+        // 企业账号或没有 access_token 时，直接刷新
+        let metadata = RefreshMetadata {
+            client_id: Some(params.client_id.clone()),
+            client_secret: Some(params.client_secret.clone()),
+            region: Some(region.clone()),
+            ..Default::default()
+        };
+        let idc_provider = IdcProvider::new(&params.provider_id, &region, start_url.clone());
+        let auth_result = idc_provider
+            .refresh_token(&params.refresh_token, metadata)
+            .await?;
+
         // 企业账号使用多区域探测
-        if is_enterprise {
-            match get_enterprise_usage_with_region_probe(&at, &machine_id).await {
-                Ok((result, _detected_region)) if result.is_auth_error => {
-                    // 401 了，刷新 token
-                    let metadata = RefreshMetadata {
-                        client_id: Some(params.client_id.clone()),
-                        client_secret: Some(params.client_secret.clone()),
-                        region: Some(region.clone()),
-                        ..Default::default()
-                    };
-                    let idc_provider =
-                        IdcProvider::new(&params.provider_id, &region, start_url.clone());
-                    let auth_result = idc_provider
-                        .refresh_token(&params.refresh_token, metadata)
-                        .await?;
-                    let (new_usage, new_detected_region) =
-                        get_enterprise_usage_with_region_probe(&auth_result.access_token, &machine_id).await?;
-                    let expires_at = calc_expires_at(auth_result.expires_in);
-                    // 更新 region 为探测到的区域
-                    region = new_detected_region;
-                    (
-                        auth_result.access_token,
-                        auth_result.refresh_token,
-                        new_usage,
-                        expires_at,
-                        auth_result.id_token,
-                        auth_result.sso_session_id,
-                    )
-                }
-                Ok((result, detected_region)) => {
-                    // access_token 有效，不需要刷新
-                    // 更新 region 为探测到的区域
-                    region = detected_region;
-                    (
-                        at,
-                        params.refresh_token.clone(),
-                        result,
-                        String::new(),
-                        None,
-                        None,
-                    )
-                }
-                Err(e) => return Err(e),
-            }
+        let usage_result = if is_enterprise {
+            let (result, detected_region) = get_enterprise_usage_with_region_probe(&auth_result.access_token, &machine_id).await?;
+            region = detected_region;
+            result
         } else {
+            get_usage_by_provider(&params.provider_id, &auth_result.access_token).await?
+        };
+
+        let expires_at = calc_expires_at(auth_result.expires_in);
+        (
+            auth_result.access_token,
+            auth_result.refresh_token,
+            usage_result,
+            expires_at,
+            auth_result.id_token,
+            auth_result.sso_session_id,
+        )
+    } else if let Some(at) = params.access_token {
+        // BuilderId 且有 access_token 时，先尝试使用
             // BuilderId 使用原有逻辑
             match get_usage_by_provider(&params.provider_id, &at).await {
                 Ok(result) if result.is_auth_error => {

@@ -192,14 +192,14 @@ impl KiroPortalClient {
             let status = response.status();
             let status_code = status.as_u16();
 
-            // 403 表示账号不在这个区域，继续尝试下一个
-            if status_code == 403 {
-                continue;
-            }
-
             // 401 表示 token 过期
             if status_code == 401 {
                 return Err("AUTH_ERROR: Token expired or invalid".to_string());
+            }
+
+            // 403 表示账号不在这个区域，继续尝试下一个
+            if status_code == 403 {
+                continue;
             }
 
             // 423 表示账号被封禁

@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList } from '@/components/ui/tabs'
 import { Stack, Group } from '@/components/shared/layout'
 
 import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Upload, FileJson, AlertCircle, CheckCircle, Loader2, Database, RefreshCw, LogIn } from 'lucide-react'
+import { Alert } from '@/components/ui/alert'
+import { Upload, FileJson, AlertCircle, CheckCircle, Loader2, Database, RefreshCw } from 'lucide-react'
 import { invoke } from '@tauri-apps/api/core'
 import { useApp } from '../../../hooks/useApp'
 
@@ -112,7 +111,17 @@ function validateAccount(item: any, index: number) {
     return { valid: false, errors, type: null }
   }
 
-  // Enterprise 账号不需要额外校验（region 可选，默认 us-east-1）
+  // Enterprise 账号必须提供 region 和 startUrl
+  if (normalizedProvider === 'Enterprise') {
+    if (!item.region || !item.region.trim()) {
+      errors.push(`第 ${index + 1} 条: Enterprise 账号必须提供 region 字段`)
+      return { valid: false, errors, type: null }
+    }
+    if (!item.startUrl || !item.startUrl.trim()) {
+      errors.push(`第 ${index + 1} 条: Enterprise 账号必须提供 startUrl 字段`)
+      return { valid: false, errors, type: null }
+    }
+  }
 
   return { valid: true, errors: [] as string[], type: isSocial ? 'social' : 'idc', inferredProvider: normalizedProvider }
 }
