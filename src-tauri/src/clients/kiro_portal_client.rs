@@ -156,6 +156,99 @@ impl KiroPortalClient {
         Ok(decoded)
     }
 
+    /// 统一的 getUsageLimits 接口（支持所有账号类型）
+    pub async fn get_usage_limits(
+        &self,
+        access_token: &str,
+        machine_id: &str,
+        region: &str,
+        profile_arn: Option<&str>,
+        auth_method: Option<&str>,
+        provider: Option<&str>,
+    ) -> Result<serde_json::Value, String> {
+        let user_agent = crate::clients::http_client::build_kiro_custom_user_agent(machine_id);
+        let mut url = format!(
+            "{}/getUsageLimits?origin=AI_EDITOR&resourceType=AGENTIC_REQUEST&isEmailRequired=true",
+            build_q_service_url(region)
+        );
+
+        // 如果有 profileArn，添加到 URL
+        if let Some(arn) = profile_arn.filter(|s| !s.trim().is_empty()) {
+            url = format!("{}&profileArn={}", url, urlencoding::encode(arn));
+        }
+
+        let mut request = self
+            .client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("x-amz-user-agent", &user_agent)
+            .header("amz-sdk-invocation-id", uuid::Uuid::new_v4().to_string())
+            .header("amz-sdk-request", "attempt=1; max=1")
+            .header("User-Agent", &user_agent)
+            .header("Accept", "application/json");
+
+        // 添加 TokenType 和 redirect-for-internal 头（如果需要）
+        if crate::clients::http_client::is_external_idp_auth_method(auth_method) {
+            request = request.header("TokenType", "EXTERNAL_IDP");
+        }
+        if crate::clients::http_client::should_add_redirect_for_internal(provider) {
+            request = request.header("redirect-for-internal", "true");
+        }
+
+        let response = request
+            .send()
+            .await
+            .map_err(|e| format!("getUsageLimits 请求失败: {}", e))?;
+
+        let status = response.status();
+        let status_code = status.as_u16();
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+
+            // 401 表示 token 过期
+            if status_code == 401 {
+                return Err("AUTH_ERROR: Token expired or invalid".to_string());
+            }
+
+            // 403 需要检查 reason 字段
+            if status_code == 403 {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body) {
+                    let reason = parsed.get("reason").and_then(|r| r.as_str()).unwrap_or("");
+                    let message = parsed
+                        .get("message")
+                        .and_then(|m| m.as_str())
+                        .unwrap_or("账号已被封禁");
+
+                    // 403 + reason 为 TEMPORARILY_SUSPENDED → 封禁
+                    if reason == "TEMPORARILY_SUSPENDED" {
+                        return Err(format!("BANNED: {}", message));
+                    }
+                }
+                // 403 + 其他情况 → 可能是账号不在这个区域
+                return Err(format!("AUTH_ERROR: getUsageLimits 403: {}", body));
+            }
+
+            // 423 表示账号被封禁
+            if status_code == 423 {
+                return Err("BANNED: Account suspended".to_string());
+            }
+
+            return Err(format!(
+                "getUsageLimits failed - HTTP {}: {}",
+                status_code, body
+            ));
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| format!("Failed to read response: {}", e))?;
+
+        serde_json::from_slice(&bytes)
+            .map_err(|e| format!("Failed to parse JSON: {}", e))
+    }
+
     /// 多区域探测获取企业账号的 usage 数据（直接调用 AWS getUsageLimits API）
     /// 返回 (usage_data, detected_region)
     pub async fn get_enterprise_usage_with_region_probe(

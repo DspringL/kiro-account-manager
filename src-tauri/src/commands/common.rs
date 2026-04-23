@@ -82,18 +82,61 @@ pub async fn refresh_token_by_provider(account: &Account) -> Result<RefreshResul
     }
 }
 
-/// 根据 provider 获取 usage 数据（统一使用 Web Portal 接口）
+/// 统一使用 getUsageLimits 接口获取 usage 数据（支持所有账号类型）
+pub async fn get_usage_by_account(
+    account: &crate::core::account::Account,
+    access_token: &str,
+) -> Result<UsageResult, String> {
+    use crate::clients::http_client::resolve_kiro_upstream_region;
+    use crate::commands::machine_guid::get_machine_id;
+
+    let machine_id = account
+        .machine_id
+        .clone()
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(get_machine_id);
+
+    let region = resolve_kiro_upstream_region(
+        account.profile_arn.as_deref(),
+        account.region.as_deref(),
+        "us-east-1",
+    );
+
+    let client = KiroPortalClient::new()?;
+    let usage_call = client
+        .get_usage_limits(
+            access_token,
+            &machine_id,
+            &region,
+            account.profile_arn.as_deref(),
+            account.auth_method.as_deref(),
+            account.provider.as_deref(),
+        )
+        .await;
+    parse_usage_result(usage_call)
+}
+
+/// 根据 provider 获取 usage 数据（兼容旧接口，内部调用 getUsageLimits）
 pub async fn get_usage_by_provider(
     provider: &str,
     access_token: &str,
 ) -> Result<UsageResult, String> {
-    // 统一使用 KiroPortalClient 的 GetUserUsageAndLimits 接口
-    // provider 即 idp: Google / Github / BuilderId
-    let client = KiroPortalClient::new()?;
-    let usage_call = client
-        .get_user_usage_and_limits(access_token, provider)
-        .await;
-    parse_usage_result(usage_call)
+    use crate::commands::machine_guid::get_machine_id;
+
+    // 为了兼容旧调用，创建一个临时账号对象
+    let mut temp_account = crate::core::account::Account::new(
+        String::new(),
+        String::new(),
+    );
+    temp_account.provider = Some(provider.to_string());
+    temp_account.machine_id = Some(get_machine_id());
+
+    // BuilderId 需要特殊处理 auth_method
+    if provider == "BuilderId" {
+        temp_account.auth_method = Some("IdC".to_string());
+    }
+
+    get_usage_by_account(&temp_account, access_token).await
 }
 
 /// 为企业账号获取 usage 数据（多区域探测）
