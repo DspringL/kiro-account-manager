@@ -15,6 +15,7 @@ const PRESET_COLORS = [
 // 标签选择器（用于账号编辑）
 export function TagSelector({ selectedTagIds, onChange, allTags }) {
   const { t, theme } = useApp()
+  const { colors, accent } = theme
   
   const [newTagName, setNewTagName] = useState('')
   const [tags, setTags] = useState(allTags || [])
@@ -59,7 +60,7 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
     } else {
       const color = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]
       try {
-        const newTag = await invoke('add_tag', { name: trimmed, color })
+        const newTag = await invoke('add_tag', { name: trimmed, color }) as { id: string; name: string; color: string }
         setTags([...actualTags, newTag])
         onChange([...selectedTagIds, newTag.id])
       } catch (e) {
@@ -155,7 +156,8 @@ export function TagSelector({ selectedTagIds, onChange, allTags }) {
 // 标签管理弹窗（全局标签和分组管理）
 function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
   const { t, theme } = useApp()
-  
+  const { colors, accent } = theme
+
   const { showError, showConfirm } = useDialog()
   
   const [activeTab, setActiveTab] = useState(defaultTab)
@@ -174,7 +176,7 @@ function GroupTagManager({ onClose, onSuccess, defaultTab = 'tags' }) {
 
   const loadData = async () => {
     try {
-      const [tagsData, groupsData] = await Promise.all([getTags(), getGroups()])
+      const [tagsData, groupsData] = await Promise.all([getTags(), getGroups()]) as [any[], any[]]
       setTags(tagsData)
       setGroups(groupsData)
     } catch (e) {

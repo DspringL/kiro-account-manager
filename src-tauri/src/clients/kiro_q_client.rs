@@ -1,5 +1,5 @@
 // AWS Q Service 客户端 - 统一的 REST API 接口
-// 支持 getUsageLimits 和 ListAvailableModels
+// 支持 getUsageLimits、ListAvailableModels 和 MCP
 
 use crate::clients::http_client::{
     apply_kiro_runtime_headers, build_http_client, build_kiro_custom_user_agent,
@@ -168,7 +168,17 @@ impl KiroQClient {
             }
 
             if status_code == 403 {
-                return Err(format!("BANNED: ListAvailableModels 403 封禁: {}", body));
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body) {
+                    let reason = parsed.get("reason").and_then(|r| r.as_str());
+                    if reason == Some("TEMPORARILY_SUSPENDED") {
+                        let message = parsed
+                            .get("message")
+                            .and_then(|m| m.as_str())
+                            .unwrap_or("账号已被封禁");
+                        return Err(format!("BANNED: {}", message));
+                    }
+                }
+                return Err(format!("AUTH_ERROR: ListAvailableModels 403: {}", body));
             }
 
             if status_code == 423 {
@@ -179,6 +189,84 @@ impl KiroQClient {
                 "ListAvailableModels failed - HTTP {}: {}",
                 status_code, body
             ));
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse JSON: {}", e))
+    }
+
+    /// MCP 接口 - JSON-RPC 2.0 格式
+    pub async fn call_mcp(
+        &self,
+        access_token: &str,
+        machine_id: &str,
+        region: &str,
+        profile_arn: Option<&str>,
+        auth_method: Option<&str>,
+        provider: Option<&str>,
+        json_rpc_request: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let user_agent = build_kiro_custom_user_agent(machine_id);
+        let url = format!("{}/mcp", build_q_service_url(region));
+
+        let mut request = self
+            .client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("authorization", format!("Bearer {}", access_token))
+            .header("x-amz-user-agent", &user_agent);
+
+        if let Some(arn) = profile_arn.filter(|s| !s.trim().is_empty()) {
+            request = request.header("x-amzn-kiro-profilearn", arn);
+        }
+
+        if let Some(method) = auth_method.filter(|s| !s.trim().is_empty()) {
+            request = request.header("x-amzn-kiro-authmethod", method);
+        }
+
+        if let Some(prov) = provider.filter(|s| !s.trim().is_empty()) {
+            request = request.header("x-amzn-kiro-provider", prov);
+        }
+
+        let response = request
+            .json(&json_rpc_request)
+            .send()
+            .await
+            .map_err(|e| format!("MCP 请求失败: {}", e))?;
+
+        let status = response.status();
+        let status_code = status.as_u16();
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+
+            if status_code == 401 {
+                return Err("AUTH_ERROR: MCP failed (401)".to_string());
+            }
+
+            if status_code == 403 {
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&body) {
+                    let reason = parsed.get("reason").and_then(|r| r.as_str()).unwrap_or("");
+                    let message = parsed
+                        .get("message")
+                        .and_then(|m| m.as_str())
+                        .unwrap_or("账号已被封禁");
+
+                    if reason == "TEMPORARILY_SUSPENDED" {
+                        return Err(format!("BANNED: {}", message));
+                    }
+                }
+                return Err(format!("AUTH_ERROR: MCP 403: {}", body));
+            }
+
+            if status_code == 423 {
+                return Err("BANNED: Account suspended".to_string());
+            }
+
+            return Err(format!("MCP failed - HTTP {}: {}", status_code, body));
         }
 
         response

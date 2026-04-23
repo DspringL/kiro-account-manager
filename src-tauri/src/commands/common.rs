@@ -2,7 +2,7 @@
 
 use crate::core::account::Account;
 use crate::auth::providers::{
-    AuthProvider, IdcProvider, KiroPortalClient, RefreshMetadata, SocialProvider,
+    AuthProvider, IdcProvider, RefreshMetadata, SocialProvider,
 };
 
 pub async fn run_blocking_task<T, F>(task: F) -> Result<T, String>

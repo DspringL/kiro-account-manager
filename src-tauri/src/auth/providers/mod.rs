@@ -9,5 +9,3 @@ pub use base::{AuthProvider, AuthResult, RefreshMetadata};
 pub use factory::*;
 pub use idc::{cancel_pending_login as cancel_pending_idc_login, IdcProvider};
 pub use social::SocialProvider;
-// KiroPortalClient 用于获取配额（GetUserUsageAndLimits）
-pub use crate::clients::kiro_portal_client::KiroPortalClient;

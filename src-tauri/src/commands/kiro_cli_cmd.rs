@@ -1,9 +1,8 @@
 #![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递参数
 
 use crate::core::account::Account;
-use crate::commands::common::extract_user_info;
+use crate::commands::common::{extract_user_info, get_usage_by_provider};
 use crate::kiro::cli::read_kiro_cli_accounts;
-use crate::clients::kiro_portal_client::KiroPortalClient;
 use crate::state::AppState;
 use serde::Serialize;
 use std::sync::{Mutex, MutexGuard};

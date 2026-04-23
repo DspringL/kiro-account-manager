@@ -11,10 +11,10 @@ use crate::commands::account_models::{
 };
 use crate::commands::common::{
     calc_expires_at, calc_status, extract_user_info, find_existing_account_idx,
-    get_enterprise_usage_with_region_probe, get_usage_by_provider, is_auth_error_message,
-    refresh_token_by_provider, RefreshResult,
+    get_enterprise_usage_with_region_probe, get_usage_by_account, get_usage_by_provider,
+    is_auth_error_message, refresh_token_by_provider, RefreshResult,
 };
-use crate::auth::providers::{AuthProvider, IdcProvider, KiroPortalClient, RefreshMetadata};
+use crate::auth::providers::{AuthProvider, IdcProvider, RefreshMetadata};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
@@ -436,15 +436,18 @@ pub async fn verify_account(
     };
 
     // 获取 usage_data（使用统一的 getUsageLimits 接口）
-    let store = lock_store(&state.store, "store")?;
-    let account = store
-        .accounts
-        .iter()
-        .find(|a| a.refresh_token.as_ref() == Some(&refresh_token))
-        .ok_or("Account not found")?;
+    let temp_account = {
+        let store = lock_store(&state.store, "store")?;
+        let account = store
+            .accounts
+            .iter()
+            .find(|a| a.refresh_token.as_ref() == Some(&refresh_token))
+            .ok_or("Account not found")?;
 
-    let mut temp_account = account.clone();
-    temp_account.access_token = Some(new_access_token.clone());
+        let mut temp_account = account.clone();
+        temp_account.access_token = Some(new_access_token.clone());
+        temp_account
+    }; // MutexGuard 在这里被释放
 
     let usage_result = get_usage_by_account(&temp_account, &new_access_token).await?;
     let usage_data = usage_result.usage_data;
