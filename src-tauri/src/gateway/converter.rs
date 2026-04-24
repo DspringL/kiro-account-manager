@@ -787,9 +787,11 @@ fn extract_anthropic_tool_result_id(content: &Value) -> Option<String> {
         } else {
             None
         }
-    fn images_option(images: Vec<ImageBlock>) -> Option<Vec<ImageBlock>> {
     })
 }
+
+
+
 
 fn merge_adjacent_messages(messages: &[&NormalizedMessage]) -> Vec<NormalizedMessage> {
     let mut merged: Vec<NormalizedMessage> = Vec::new();

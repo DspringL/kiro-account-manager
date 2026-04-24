@@ -123,11 +123,16 @@ pub struct UserInputMessage {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[derive(Debug, Clone, Serialize)]
 pub struct ImageBlock {
     pub format: String,
     pub source: ImageSource,
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ImageSource {
+    #[serde(rename = "type")]
+    pub source_type: String,
+    pub data: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
