@@ -5,6 +5,8 @@ use crate::clients::http_client::{
     apply_kiro_runtime_headers, build_http_client, build_kiro_custom_user_agent,
     build_q_service_url, get_usage_probe_regions,
 };
+use serde_json::json;
+use uuid::Uuid;
 
 pub struct KiroQClient {
     client: reqwest::Client,
@@ -36,6 +38,7 @@ impl KiroQClient {
             url = format!("{}&profileArn={}", url, urlencoding::encode(arn));
         }
 
+        let invocation_id = Uuid::new_v4().to_string();
         let request = apply_kiro_runtime_headers(
             self.client.get(&url),
             access_token,
@@ -43,7 +46,9 @@ impl KiroQClient {
             "application/json",
             auth_method,
             provider,
-        );
+        )
+        .header("amz-sdk-invocation-id", invocation_id)
+        .header("amz-sdk-request", "attempt=1; max=1");
 
         let response = request
             .send()
@@ -114,6 +119,7 @@ impl KiroQClient {
     }
 
     /// ListAvailableModels 接口
+    #[allow(dead_code)]
     pub async fn list_available_models(
         &self,
         access_token: &str,
@@ -143,6 +149,7 @@ impl KiroQClient {
             url = format!("{}&nextToken={}", url, urlencoding::encode(token));
         }
 
+        let invocation_id = Uuid::new_v4().to_string();
         let request = apply_kiro_runtime_headers(
             self.client.get(&url),
             access_token,
@@ -150,7 +157,9 @@ impl KiroQClient {
             "application/json",
             auth_method,
             provider,
-        );
+        )
+        .header("amz-sdk-invocation-id", invocation_id)
+        .header("amz-sdk-request", "attempt=1; max=1");
 
         let response = request
             .send()
@@ -198,6 +207,7 @@ impl KiroQClient {
     }
 
     /// MCP 接口 - JSON-RPC 2.0 格式
+    #[allow(dead_code)]
     pub async fn call_mcp(
         &self,
         access_token: &str,

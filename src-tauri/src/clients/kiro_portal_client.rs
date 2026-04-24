@@ -10,6 +10,7 @@ pub fn cbor_encode<T: Serialize>(value: &T) -> Result<Vec<u8>, String> {
     serde_cbor::to_vec(value).map_err(|e| format!("CBOR encode error: {e}"))
 }
 
+#[allow(dead_code)]
 pub fn cbor_decode<T: for<'de> serde::Deserialize<'de>>(data: &[u8]) -> Result<T, String> {
     serde_cbor::from_slice(data).map_err(|e| format!("CBOR decode error: {e}"))
 }
@@ -19,6 +20,7 @@ pub fn cbor_decode<T: for<'de> serde::Deserialize<'de>>(data: &[u8]) -> Result<T
 // ============================================================
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 struct GetUserUsageAndLimitsRequest {
     #[serde(rename = "isEmailRequired")]
     is_email_required: bool,
@@ -29,12 +31,14 @@ struct GetUserUsageAndLimitsRequest {
 // KiroPortalClient
 // ============================================================
 
+#[allow(dead_code)]
 pub struct KiroPortalClient {
     client: reqwest::Client,
     endpoint: String,
 }
 
 impl KiroPortalClient {
+    #[allow(dead_code)]
     pub fn new() -> Result<Self, String> {
         let client = build_http_client()?;
 
@@ -45,6 +49,7 @@ impl KiroPortalClient {
     }
 
     /// 获取用户配额和用量信息（直接返回 JSON Value）
+    #[allow(dead_code)]
     pub async fn get_user_usage_and_limits(
         &self,
         access_token: &str,
