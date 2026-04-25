@@ -1,8 +1,11 @@
 import { RefreshCw } from 'lucide-react'
+import { useMemo } from 'react'
 import { useApp } from '../../../hooks/useApp'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 function RefreshProgressModal({ refreshProgress }) {
   const { t, theme } = useApp()
+  const accent = useMemo(() => getThemeAccent(theme), [theme])
   
   if (!refreshProgress || refreshProgress.total === 0) return null
 

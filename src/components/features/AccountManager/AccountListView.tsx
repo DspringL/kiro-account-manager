@@ -9,7 +9,27 @@ import { getAccountStatusMeta, isBannedStatus, isUnavailableStatus } from '../..
 import { getProviderDisplayName, isGitHubProvider } from '../../../utils/accountProvider'
 import ContextMenu from './ContextMenu'
 import { buildAccountListMaps } from './utils/accountListMaps'
+import type { Account, TagDefinition, GroupDefinition } from '../../../types/account'
 
+interface ListRowProps {
+  account: Account
+  isSelected: boolean
+  isCurrent: boolean
+  isRefreshing: boolean
+  isSwitching: boolean
+  tagMap: Map<string, any>
+  groupMap: Map<string, any>
+  t: (key: string) => string
+  maskEmail: (email: string) => string
+  onSelectOne: (id: string, checked: any) => void
+  onSwitch: (account: Account) => void
+  onRefresh: (id: string) => void
+  onEdit: (account: Account) => void
+  onEditLabel: (account: Account) => void
+  onDelete: (id: string) => void
+  onDeleteRemote?: (account: Account) => void
+  onCopy: (text: string, id: string) => void
+}
 
 const ListRow = memo(function ListRow({
   account,
@@ -28,7 +48,7 @@ const ListRow = memo(function ListRow({
   onEditLabel,
   onDelete,
   onDeleteRemote,
-  onCopy}) {
+  onCopy}: ListRowProps) {
   const [contextMenu, setContextMenu] = useState(null)
   const used = getUsed(account)
   const limit = getQuota(account)
@@ -167,7 +187,7 @@ const ListRow = memo(function ListRow({
       </div>
     </div>
   )
-}, (prev, next) => (
+}, (prev: ListRowProps, next: ListRowProps) => (
   prev.account === next.account &&
   prev.isSelected === next.isSelected &&
   prev.isCurrent === next.isCurrent &&
@@ -176,6 +196,30 @@ const ListRow = memo(function ListRow({
   prev.tagMap === next.tagMap &&
   prev.groupMap === next.groupMap
 ))
+
+interface AccountListViewProps {
+  accounts: Account[]
+  totalCount: number
+  selectedIds: string[]
+  selectedIdsSet?: Set<string>
+  onSelectAll: (checked: any) => void
+  onSelectOne: (id: string, checked: any) => void
+  onSwitch: (account: Account) => void
+  onRefresh: (id: string) => void
+  onEdit: (account: Account) => void
+  onEditLabel: (account: Account) => void
+  onDelete: (id: string) => void
+  onDeleteRemote?: (account: Account) => void
+  onCopy: (text: string, id: string) => void
+  onAdd: () => void
+  accountRowStateById?: Record<string, { isRefreshing?: boolean; isSwitching?: boolean }>
+  localToken?: { refreshToken?: string } | null
+  tagDefinitions?: TagDefinition[]
+  groupDefinitions?: GroupDefinition[]
+  sortBy?: string
+  onSortChange?: (sort: string) => void
+  [key: string]: any
+}
 
 function AccountListView({
   accounts,
@@ -197,7 +241,7 @@ function AccountListView({
   tagDefinitions = [],
   groupDefinitions = [],
   sortBy,
-  onSortChange}) {
+  onSortChange}: AccountListViewProps) {
   const { t } = useApp()
   const { maskEmail } = usePrivacy()
   const scrollRef = useRef(null)

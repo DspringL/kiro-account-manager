@@ -51,7 +51,7 @@ function GroupSelector({ groups, value, onChange, onGroupsChange }: GroupSelecto
     }
     const color = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)]
     try {
-      const newGroup = await addGroup(trimmed, color)
+      const newGroup = await addGroup(trimmed, color) as GroupDefinition
       onGroupsChange([...groups, newGroup])
       onChange(newGroup.id)
       setNewGroupName('')

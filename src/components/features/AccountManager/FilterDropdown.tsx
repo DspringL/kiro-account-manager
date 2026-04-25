@@ -41,14 +41,17 @@ const USAGE_RANGE_OPTIONS = [
 ]
 
 interface FilterDropdownProps {
-  filters: any;
-  onFiltersChange: (filters: any) => void;
-  allGroups?: any[];
-  selectedGroup?: any;
-  onGroupFilter?: (group: any) => void;
-  allTags?: any[];
-  selectedTag?: any;
-  onTagFilter: (tag: any) => void;
+filters: any;
+onFiltersChange: (filters: any) => void;
+allGroups?: any[];
+selectedGroup?: any;
+onGroupFilter?: (group: any) => void;
+allTags?: any[];
+selectedTag?: any;
+onTagFilter: (tag: any) => void;
+selectedStatus?: any;
+onStatusFilter?: (status: any) => void;
+defaultGroupCollapsed?: boolean;
 }
 
 function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {

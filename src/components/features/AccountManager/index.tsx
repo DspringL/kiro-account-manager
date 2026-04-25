@@ -87,7 +87,7 @@ function AccountManager({ onNavigate }: AccountManagerProps) {
   const loadTagDefinitions = useCallback(() => {
     getTags()
       .then(tags => {
-        setTagDefinitions(tags)
+        setTagDefinitions(tags as any[])
       })
       .catch(() => {
         // 静默处理

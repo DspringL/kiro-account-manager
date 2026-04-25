@@ -2,8 +2,25 @@ import { memo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useApp } from '../../../hooks/useApp'
 
+interface ContextMenuItem {
+  divider?: boolean
+  icon?: React.ElementType
+  label?: React.ReactNode
+  onClick?: () => void
+  disabled?: boolean
+  danger?: boolean
+  shortcut?: string
+}
+
+interface ContextMenuProps {
+  x: number
+  y: number
+  onClose: () => void
+  items: ContextMenuItem[]
+}
+
 // 右键菜单组件（使用 Portal 渲染到 body）
-const ContextMenu = memo(function ContextMenu({ x, y, onClose, items }) {
+const ContextMenu = memo(function ContextMenu({ x, y, onClose, items }: ContextMenuProps) {
   
   const menuRef = useRef(null)
   const [position, setPosition] = useState({ x, y })

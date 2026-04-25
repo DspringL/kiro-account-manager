@@ -32,7 +32,7 @@ interface AccountHeaderProps {
   advancedFilters?: any;
   onAdvancedFiltersChange: (filters: any) => void;
   totalCount?: number;
-  onSelectAll: () => void;
+  onSelectAll: (checked?: boolean) => void;
   onDeselectAll: () => void;
 }
 
@@ -262,7 +262,7 @@ function AccountHeader({
             <>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={onSelectAll}
+                  onClick={() => onSelectAll()}
                   className={`cursor-pointer p-2.5 rounded-lg glass-card border border-border hover:bg-muted/50 transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 ${accent.ring}`}
                   title="全选"
                 >

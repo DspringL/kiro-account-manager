@@ -10,6 +10,18 @@ import { getAccountStatusMeta, isUnavailableStatus } from '../../../../utils/acc
  * @param {Function} onLocalTokenChange - 本地 token 变化回调
  * @returns {Object} 切换相关状态和方法
  */
+interface InstallationInfo {
+  cli_installed?: boolean
+  cliInstalled?: boolean
+  ide_installed?: boolean
+  ideInstalled?: boolean
+  installed?: boolean
+}
+
+interface SyncResult {
+  account: any
+}
+
 export function useSwitchAccount(onLocalTokenChange) {
   const { t } = useApp()
   const { settings: appSettings } = useAppSettings()
@@ -21,12 +33,12 @@ export function useSwitchAccount(onLocalTokenChange) {
 
   // 检测 CLI 和 IDE 安装状态
   useEffect(() => {
-    invoke('check_cli_installation').then(info => {
+    invoke<InstallationInfo>('check_cli_installation').then(info => {
       const installed = info?.cli_installed ?? info?.cliInstalled ?? info?.installed
       setCliInstalled(Boolean(installed))
     }).catch(() => setCliInstalled(false))
 
-    invoke('check_ide_installation').then(info => {
+    invoke<InstallationInfo>('check_ide_installation').then(info => {
       const installed = info?.ide_installed ?? info?.ideInstalled ?? info?.installed
       setIdeInstalled(Boolean(installed))
     }).catch(() => setIdeInstalled(false))
@@ -72,7 +84,7 @@ export function useSwitchAccount(onLocalTokenChange) {
     try {
       // 如果选择 CLI，先检测 CLI 2.0 安装状态
       if (switchTarget === 'cli') {
-        const cliInfo = await invoke('check_cli_installation')
+        const cliInfo = await invoke<InstallationInfo>('check_cli_installation')
         const installed = cliInfo?.cli_installed ?? cliInfo?.cliInstalled ?? cliInfo?.installed
         if (!installed) {
           setSwitchDialog({
@@ -87,7 +99,7 @@ export function useSwitchAccount(onLocalTokenChange) {
 
       // 如果选择 IDE，先检测 IDE 安装状态
       if (switchTarget === 'ide') {
-        const ideInfo = await invoke('check_ide_installation')
+        const ideInfo = await invoke<InstallationInfo>('check_ide_installation')
         const installed = ideInfo?.ide_installed ?? ideInfo?.ideInstalled ?? ideInfo?.installed
         if (!installed) {
           setSwitchDialog({
@@ -99,9 +111,9 @@ export function useSwitchAccount(onLocalTokenChange) {
           return
         }
       }
-      
+
       // 先同步账号（刷新 token + 获取最新配额）
-      const syncResult = await invoke('sync_account', { id: account.id })
+      const syncResult = await invoke<SyncResult>('sync_account', { id: account.id })
       let refreshedAccount = syncResult.account
       
       const settings = appSettings || {}

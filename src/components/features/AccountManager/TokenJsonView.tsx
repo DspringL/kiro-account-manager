@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Copy, Check, ChevronDown, Key, Clock } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
+import { getThemeAccent } from '../KiroConfig/themeAccent'
 
 // 构建凭证 JSON 对象（直接使用整个账号对象）
 function buildCredentialsJson(account) {
@@ -78,6 +79,10 @@ function JsonRenderer({ json, colors, accent, indent = 0 }) {
 // Token JSON 视图（只读）
 export function TokenJsonView({ account, defaultExpanded = false }) {
   const { t, theme } = useApp()
+  const accent = useMemo(() => getThemeAccent(theme), [theme])
+  const colors = useMemo(() => ({
+    inputFocus: 'focus:ring-primary/20 focus:border-primary'
+  }), [])
     const [expanded, setExpanded] = useState(defaultExpanded)
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef(null)

@@ -14,7 +14,7 @@ const PRESET_COLORS = [
 ]
 
 // 标签选择器（用于账号编辑）
-export function TagSelector({ selectedTagIds, onChange, allTags }) {
+export function TagSelector({ selectedTagIds, onChange, allTags = null }) {
   const { t, theme } = useApp()
   const accent = useMemo(() => getThemeAccent(theme), [theme])
   const colors = useMemo(() => ({
