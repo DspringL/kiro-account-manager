@@ -396,9 +396,7 @@ function SkillsPanel({ onCountChange, projectDir }: any) {
                   value={editState.name}
                   onChange={(e) => updateEditState('name', e.target.value)}
                   placeholder={t('skills.fmNamePlaceholder')}
-                  classNames={{
-                    input: `text-foreground bg-background border-input ${colors.inputFocus}`
-                  }}
+                  className={`text-foreground bg-background border-input ${colors.inputFocus}`}
                   style={{ width: '140px', borderRadius: '0.5rem', height: '1.5rem', padding: '0 0.5rem', fontSize: '0.75rem' }}
                 />
               </div>
@@ -408,9 +406,7 @@ function SkillsPanel({ onCountChange, projectDir }: any) {
                   value={editState.description}
                   onChange={(e) => updateEditState('description', e.target.value)}
                   placeholder={t('skills.fmDescriptionPlaceholder')}
-                  classNames={{
-                    input: `text-foreground bg-background border-input ${colors.inputFocus}`
-                  }}
+                  className={`text-foreground bg-background border-input ${colors.inputFocus}`}
                   style={{ flex: 1, minWidth: '200px', borderRadius: '0.5rem', height: '1.5rem', padding: '0 0.5rem', fontSize: '0.75rem' }}
                 />
               </div>
@@ -429,9 +425,7 @@ function SkillsPanel({ onCountChange, projectDir }: any) {
                 value={editState.body}
                 onChange={(e) => updateEditState('body', e.target.value)}
                 placeholder={t('skills.contentPlaceholder')}
-                classNames={{
-                  input: `${colors.inputFocus}`
-                }}
+                className={`${colors.inputFocus}`}
                 styles={{
                   root: { height: '100%', display: 'flex', flexDirection: 'column' },
                   wrapper: { flex: 1, display: 'flex' },
@@ -521,9 +515,7 @@ function CreateSkillModal({ onCreate, onClose, accent, accentGradientButtonClass
               placeholder={t('skills.skillNamePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              classNames={{
-                input: `text-foreground bg-background border-input ${colors.inputFocus}`
-              }}
+              className={`text-foreground bg-background border-input ${colors.inputFocus}`}
               style={{ borderRadius: '0.5rem' }}
             />
             <p className={`text-xs text-muted-foreground mt-1`}>{t('skills.skillNameHint')}</p>
@@ -535,9 +527,7 @@ function CreateSkillModal({ onCreate, onClose, accent, accentGradientButtonClass
               placeholder={t('skills.fmDescriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              classNames={{
-                input: `text-foreground bg-background border-input ${colors.inputFocus}`
-              }}
+              className={`text-foreground bg-background border-input ${colors.inputFocus}`}
               style={{ borderRadius: '0.5rem' }}
             />
             <p className={`text-xs text-muted-foreground mt-1`}>{t('skills.fmDescriptionHint')}</p>
@@ -605,7 +595,7 @@ function ImportGithubSkillModal({ onImport, onClose, accent, accentGradientButto
               placeholder="https://github.com/owner/repo"
               value={repoUrl}
               onChange={(e) => setRepoUrl(e.target.value)}
-              classNames={{ input: `text-foreground bg-background border-input ${colors.inputFocus}` }}
+              className={`text-foreground bg-background border-input ${colors.inputFocus}`}
               style={{ borderRadius: '0.5rem' }}
             />
           </div>
@@ -616,7 +606,7 @@ function ImportGithubSkillModal({ onImport, onClose, accent, accentGradientButto
               placeholder={t('skills.githubPathPlaceholder')}
               value={pathInRepo}
               onChange={(e) => setPathInRepo(e.target.value)}
-              classNames={{ input: `text-foreground bg-background border-input ${colors.inputFocus}` }}
+              className={`text-foreground bg-background border-input ${colors.inputFocus}`}
               style={{ borderRadius: '0.5rem' }}
             />
           </div>
@@ -628,7 +618,7 @@ function ImportGithubSkillModal({ onImport, onClose, accent, accentGradientButto
                 placeholder="main"
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
-                classNames={{ input: `text-foreground bg-background border-input ${colors.inputFocus}` }}
+                className={`text-foreground bg-background border-input ${colors.inputFocus}`}
                 style={{ borderRadius: '0.5rem' }}
               />
             </div>
@@ -638,7 +628,7 @@ function ImportGithubSkillModal({ onImport, onClose, accent, accentGradientButto
                 placeholder={t('skills.importTargetNamePlaceholder')}
                 value={targetName}
                 onChange={(e) => setTargetName(e.target.value)}
-                classNames={{ input: `text-foreground bg-background border-input ${colors.inputFocus}` }}
+                className={`text-foreground bg-background border-input ${colors.inputFocus}`}
                 style={{ borderRadius: '0.5rem' }}
               />
             </div>
