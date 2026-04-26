@@ -4,7 +4,7 @@
 
 ## 🚫 盗用代码 + 恶意辱骂
 
-### 用户：xxxxr453er / hj01857655 (QQ: 372510145)
+### 用户：xxxxr453er (QQ: 372510145)
 - **盗用仓库**：https://github.com/xxxxr453er/Kiro-Account-Manager-copy-main
 - **恶意行为**：https://github.com/hj01857655/kiro-account-manager/issues/58
 - **违规事实**：
