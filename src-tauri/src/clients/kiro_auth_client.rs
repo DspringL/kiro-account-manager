@@ -22,7 +22,7 @@ impl KiroAuthServiceClient {
 
     fn login_url(&self) -> String {
         let endpoint = &self.endpoint;
-        format!("{endpoint}/oauth/authorize")
+        format!("{endpoint}/login")
     }
 
     fn create_token_url(&self) -> String {
@@ -44,13 +44,11 @@ impl KiroAuthServiceClient {
         code_challenge: &str,
         state: &str,
     ) -> Result<(), String> {
-        // 参考 Codex-Manager 的实现，使用标准 OAuth 参数
         let login_url = format!(
-            "{}?response_type=code&client_id={}&redirect_uri={}&scope={}&code_challenge={}&code_challenge_method=S256&state={}",
+            "{}?idp={}&redirect_uri={}&code_challenge={}&code_challenge_method=S256&state={}",
             self.login_url(),
-            "app_EMoamEEZ73f0CkXaXp7hrann", // 使用 Codex-Manager 的 client_id
+            provider,
             urlencoding::encode(redirect_uri),
-            urlencoding::encode("openid profile email offline_access"),
             code_challenge,
             state,
         );
