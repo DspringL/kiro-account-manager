@@ -28,8 +28,13 @@ export function useAutoRefresh(appSettings: AppSettings | null, settingsLoading:
       const accounts = await invoke<Account[]>('get_accounts')
       if (!accounts?.length) return
 
-      // 只同步可用账号，失效/过期/封禁都应跳过
-      const validAccounts = accounts.filter(acc => !isUnavailableStatus(acc))
+      // 只跳过封禁和封顶的账号，失效/过期的账号需要刷新 Token
+      const validAccounts = accounts.filter(acc => {
+        const status = acc.status?.toLowerCase() || ''
+        // 跳过封禁和封顶状态
+        return status !== 'banned' && status !== '封禁' && status !== '已封禁' && 
+               status !== 'capped' && status !== '封顶'
+      })
       if (!validAccounts.length) {
         return
       }

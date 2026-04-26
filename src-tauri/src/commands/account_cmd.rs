@@ -271,30 +271,27 @@ pub async fn sync_account(
     let mut store = lock_store(&state.store, "store")?;
     let result = if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
         // 如果刷新了 token，更新 token 相关字段
-        if let Some(result) = refresh_result {
+        if let Some(ref result) = refresh_result {
             clear_available_models_cache(a);
             // 直接移动所有权，避免 clone
             // 刷新 Token 成功，更新账号信息
-            a.access_token = Some(result.access_token);
-            if let Some(refresh_token) = result.refresh_token {
-                a.refresh_token = Some(refresh_token);
+            a.access_token = Some(result.access_token.clone());
+            if let Some(ref refresh_token) = result.refresh_token {
+                a.refresh_token = Some(refresh_token.clone());
             }
-            a.profile_arn = result.profile_arn;
-            a.id_token = result.id_token;
-            a.sso_session_id = result.sso_session_id;
+            a.profile_arn = result.profile_arn.clone();
+            a.id_token = result.id_token.clone();
+            a.sso_session_id = result.sso_session_id.clone();
             a.expires_at = Some(calc_expires_at(result.expires_in));
+        }
 
-            // Token 刷新成功，默认设置为 active（后续获取配额时可能会更新为其他状态）
-            a.status = "active".to_string();
-    }
-
-    // 如果探测到了新的区域，更新账户的 region 字段
-    if let Some(region) = detected_region {
+        // 如果探测到了新的区域，更新账户的 region 字段
+        if let Some(region) = detected_region {
             a.region = Some(region);
-    }
+        }
 
-    // 只有成功获取配额时才更新 usage_data
-    if let Some(usage_data) = usage {
+        // 只有成功获取配额时才更新 usage_data 和 status
+        if let Some(usage_data) = usage {
             // 直接移动所有权，避免 clone
             a.usage_data = Some(usage_data.usage_data);
             a.status = calc_status(usage_data.is_banned, usage_data.is_auth_error);
@@ -308,6 +305,12 @@ pub async fn sync_account(
                 if let Some(user_id) = user_info.get("userId").and_then(|v| v.as_str()) {
                     a.user_id = Some(user_id.to_string());
                 }
+            }
+        } else if refresh_result.is_some() {
+            // 获取配额失败，但 token 刷新成功了，说明 token 是有效的
+            // 将状态设置为 active（避免显示为失效状态）
+            if !matches!(a.status.as_str(), "banned" | "封禁" | "已封禁") {
+                a.status = "active".to_string();
             }
         }
 
