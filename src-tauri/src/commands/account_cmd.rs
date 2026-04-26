@@ -274,25 +274,30 @@ pub async fn sync_account(
         if let Some(result) = refresh_result {
             clear_available_models_cache(a);
             // 直接移动所有权，避免 clone
+            // 刷新 Token 成功，更新账号信息
             a.access_token = Some(result.access_token);
-            a.refresh_token = result.refresh_token;
+            if let Some(refresh_token) = result.refresh_token {
+                a.refresh_token = Some(refresh_token);
+            }
             a.profile_arn = result.profile_arn;
             a.id_token = result.id_token;
             a.sso_session_id = result.sso_session_id;
             a.expires_at = Some(calc_expires_at(result.expires_in));
-        }
 
-        // 如果探测到了新的区域，更新账户的 region 字段
-        if let Some(region) = detected_region {
+            // Token 刷新成功，默认设置为 active（后续获取配额时可能会更新为其他状态）
+            a.status = "active".to_string();
+    }
+
+    // 如果探测到了新的区域，更新账户的 region 字段
+    if let Some(region) = detected_region {
             a.region = Some(region);
-        }
+    }
 
-        // 只有成功获取配额时才更新 usage_data
-        if let Some(usage_data) = usage {
+    // 只有成功获取配额时才更新 usage_data
+    if let Some(usage_data) = usage {
             // 直接移动所有权，避免 clone
             a.usage_data = Some(usage_data.usage_data);
             a.status = calc_status(usage_data.is_banned, usage_data.is_auth_error);
-
             // 从 usage_data 中提取并更新 email 和 user_id
             if let Some(user_info) = a.usage_data.as_ref().and_then(|d| d.get("userInfo")) {
                 if let Some(email) = user_info.get("email").and_then(|v| v.as_str()) {
