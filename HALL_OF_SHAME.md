@@ -1,4 +1,4 @@
-1# 耻辱柱 / Hall of Shame
+# 耻辱柱 / Hall of Shame
 
 本项目遵循 MIT 协议开源，欢迎合法使用。但以下行为违反开源精神和基本道德：
 
@@ -8,9 +8,10 @@
 - **盗用仓库**：https://github.com/xxxxr453er/Kiro-Account-Manager-copy-main
 - **恶意行为**：https://github.com/hj01857655/kiro-account-manager/issues/58
 - **违规事实**：
-  1. 完整复制本项目代码，未遵守 MIT 协议署名要求
-  2. 在 issue 中使用侮辱性语言攻击原作者
-  3. 违反 GitHub 社区准则和基本礼仪
+  1. Fork 后删除 fork 标识，伪装为原创项目
+  2. 未遵守 MIT 协议署名要求，移除原作者版权声明
+  3. 在 issue 中发表人身攻击言论，使用侮辱性语言
+  4. 违反 GitHub 社区准则（Code of Conduct）
 
 ### 证据存档
 - 盗用时间：2026-04-26
