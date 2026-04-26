@@ -626,6 +626,30 @@ return (
                   <FileButton onChange={handleFileSelect} accept=".json">
                     {(props: any) => <LegacyButton {...props} leftSection={<FileJson size={16} />}>{t('import.selectFile')}</LegacyButton>}
                   </FileButton>
+                  <LegacyButton
+                    color="blue"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        const parsed = JSON.parse(jsonText)
+                        const formatted = JSON.stringify(parsed, null, 2)
+                        setJsonText(formatted)
+                        parseJson(formatted)
+                      } catch {
+                        // 如果解析失败，尝试格式化为数组
+                        try {
+                          const text = jsonText.trim()
+                          if (text && !text.startsWith('[')) {
+                            const formatted = JSON.stringify([JSON.parse(text)], null, 2)
+                            setJsonText(formatted)
+                            parseJson(formatted)
+                          }
+                        } catch {}
+                      }
+                    }}
+                  >
+                    格式化
+                  </LegacyButton>
                   <LegacyButton color="blue" size="sm" onClick={() => { const text = JSON.stringify([{ refreshToken: "", provider: "Google" }], null, 2); setJsonText(text); parseJson(text) }}>
                     Social 模板
                   </LegacyButton>
