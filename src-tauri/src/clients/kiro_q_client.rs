@@ -28,14 +28,18 @@ impl KiroQClient {
         provider: Option<&str>,
     ) -> Result<serde_json::Value, String> {
         let user_agent = build_kiro_custom_user_agent(machine_id);
+
+        // 构建 URL，参数顺序对齐 Kiro IDE 源码
         let mut url = format!(
-            "{}/getUsageLimits?origin=AI_EDITOR&resourceType=AGENTIC_REQUEST&isEmailRequired=true",
+            "{}/getUsageLimits?isEmailRequired=true&origin=AI_EDITOR",
             build_q_service_url(region)
         );
 
         if let Some(arn) = profile_arn.filter(|s| !s.trim().is_empty()) {
             url = format!("{}&profileArn={}", url, urlencoding::encode(arn));
         }
+
+        url = format!("{}&resourceType=AGENTIC_REQUEST", url);
 
         let invocation_id = Uuid::new_v4().to_string();
         let request = apply_kiro_runtime_headers(
