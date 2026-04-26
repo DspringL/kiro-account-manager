@@ -33,7 +33,7 @@
 **本项目遵循 MIT 协议开源，但请遵守署名要求。违规行为将被记录在 [耻辱柱](HALL_OF_SHAME.md)。**
 
 已记录违规用户：
-- **xxxxr453er** - 盗用代码 + 恶意辱骂 ([证据](https://github.com/hj01857655/kiro-account-manager/issues/58))
+- **xxxxr453er (QQ: 372510145)** - 盗用代码 + 恶意辱骂 ([证据](https://github.com/hj01857655/kiro-account-manager/issues/58))
 
 ---
 
