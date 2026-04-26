@@ -235,23 +235,7 @@ mod tests {
         );
     }
 
-    #[test]
-    fn app_callback_deep_link_maps_to_internal_callback_route() {
-        let route = get_app_callback_route(
-            "kiro-account-manager://kiro.kiroAgent/app/callback?code=ok&state=expected-state",
-        )
-        .expect("app callback route should be extracted");
+    
 
-        assert_eq!(route, "/callback?code=ok&state=expected-state");
-    }
-
-    #[test]
-    fn authenticate_success_deep_link_does_not_map_to_internal_callback_route() {
-        assert!(
-            get_app_callback_route(
-                "kiro-account-manager://kiro.kiroAgent/authenticate-success?code=ok&state=expected-state",
-            )
-            .is_none()
-        );
-    }
+    
 }

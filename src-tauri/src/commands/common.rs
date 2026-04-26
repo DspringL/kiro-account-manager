@@ -254,33 +254,37 @@ fn read_non_empty_string_field(
             .map(std::string::ToString::to_string)
     })
 }
-
 /// 从 `usage_data` 中提取 `email` 和 `user_id`
 /// 兼容 `userInfo.email/userInfo.userId` 与顶层 `email/userId`
 pub fn extract_user_info(usage_data: &serde_json::Value) -> (Option<String>, Option<String>) {
     let email = read_non_empty_string_field(usage_data, &["userInfo", "email"], "email");
     let user_id = read_non_empty_string_field(usage_data, &["userInfo", "userId"], "userId");
-
     (email, user_id)
 }
 
 /// 查找已存在的账号索引
-/// 仅使用 `user_id` 去重
+/// 优先用 `user_id` 去重，其次用 `refresh_token`（BuilderId 可能没有 userId）
 pub fn find_existing_account_idx(
     accounts: &[Account],
     _email: Option<&String>,
     _provider: &str,
-    _refresh_token: &str,
+    refresh_token: &str,
     user_id: Option<&String>,
 ) -> Option<usize> {
     if let Some(uid) = user_id {
-        return accounts
-            .iter()
-            .position(|a| a.user_id.as_ref() == Some(uid));
+        if let Some(idx) = accounts.iter().position(|a| a.user_id.as_ref() == Some(uid)) {
+            return Some(idx);
+        }
     }
-
-    None
+    // 如果没有 userId，用 refreshToken 去重
+    accounts
+        .iter()
+        .position(|a| a.refresh_token.as_ref() == Some(&refresh_token.to_string()))
 }
+
+
+    
+
 
 #[cfg(test)]
 mod tests {

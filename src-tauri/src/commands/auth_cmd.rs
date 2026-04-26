@@ -51,7 +51,6 @@ fn resolve_idc_login_email(
 
 fn social_callback_redirect_uri() -> String {
     crate::core::deep_link_handler::DeepLinkCallbackWaiter::get_redirect_uri()
-        .replace("/authenticate-success", "/app/callback")
 }
 
 fn prepare_pending_social_login(provider: &str, machineid: String) -> crate::state::PendingLogin {
@@ -445,10 +444,10 @@ mod tests {
     }
 
     #[test]
-    fn social_callback_redirect_uri_uses_app_callback_path() {
+    fn social_callback_redirect_uri_uses_authenticate_success_path() {
         let redirect_uri = social_callback_redirect_uri();
 
         assert!(redirect_uri.starts_with("kiro-account-manager://"));
-        assert!(redirect_uri.ends_with("/app/callback"));
+        assert!(redirect_uri.ends_with("/authenticate-success"));
     }
 }

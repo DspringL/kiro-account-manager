@@ -531,17 +531,10 @@ pub async fn add_account_by_social(
 
     let (new_email, user_id) = extract_user_info(&usage_result.usage_data);
 
-    // BuilderId 账号允许使用 userId 或 email
-    let user_id_or_email = new_email
+    // BuilderId 账号允许使用 userId 或 email，如果都没有则用 refreshToken 作为标识
+    let final_email = new_email
         .or(user_id.clone())
-        .ok_or_else(|| {
-            format!(
-                "BuilderId 账号缺少 userId 或 email。API 返回的数据：{}",
-                serde_json::to_string_pretty(&usage_result.usage_data).unwrap_or_else(|_| "无法序列化".to_string())
-            )
-        })?;
-    
-    let final_email = user_id_or_email;
+        .unwrap_or_else(|| format!("builderid_{}", &params.refresh_token[..8]));
 
     // 根据邮箱推断最终 provider
     let idp = provider.unwrap_or_else(|| {
@@ -1049,13 +1042,7 @@ async fn add_account_by_idc_internal(
         save_store(&store)?;
         Ok(AddAccountResult { account, is_new })
     } else {
-        // BuilderId 账号：优先使用 user_id 去重，如果都没有则报错
-        if user_id.is_none() && new_email.is_none() {
-            return Err(format!(
-                "BuilderId 账号缺少 userId 或 email。API 返回的数据：\n{}",
-                serde_json::to_string_pretty(&usage_result.usage_data).unwrap_or_default()
-            ));
-        }
+        // BuilderId 账号：允许没有 userId/email，用 refreshToken 去重
 
         // 计算 client_id_hash（可选）
         let client_id_hash = Some(resolve_builder_client_id_hash(
