@@ -427,7 +427,7 @@ pub fn check_cli_installation() -> CliInstallationInfo {
     let db_path = detect_cli_database();
 
     let cli_installed = cli_path.is_some();
-    let db_exists = db_path.as_ref().map_or(false, |p| std::path::Path::new(p).exists());
+    let db_exists = db_path.as_ref().is_some_and(|p| std::path::Path::new(p).exists());
 
     CliInstallationInfo {
         cli_installed,

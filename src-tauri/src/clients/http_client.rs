@@ -264,34 +264,6 @@ pub fn should_add_redirect_for_internal(provider: Option<&str>) -> bool {
     provider.is_some_and(|value| value.trim().eq_ignore_ascii_case("Internal"))
 }
 
-pub fn apply_kiro_runtime_headers(
-    builder: reqwest::RequestBuilder,
-    access_token: &str,
-    user_agent: &str,
-    accept: &str,
-    auth_method: Option<&str>,
-    provider: Option<&str>,
-) -> reqwest::RequestBuilder {
-    let invocation_id = Uuid::new_v4().to_string();
-
-    let mut builder = builder
-        .header(reqwest::header::AUTHORIZATION, format!("Bearer {access_token}"))
-        .header(reqwest::header::ACCEPT, accept)
-        .header(reqwest::header::USER_AGENT, user_agent)
-        .header("x-amz-user-agent", user_agent)
-        .header("amz-sdk-invocation-id", invocation_id)
-        .header("amz-sdk-request", "attempt=1; max=1");
-
-    if is_external_idp_auth_method(auth_method) {
-        builder = builder.header("TokenType", "EXTERNAL_IDP");
-    }
-    if should_add_redirect_for_internal(provider) {
-        builder = builder.header("redirect-for-internal", "true");
-    }
-
-    builder
-}
-
 /// 获取 Kiro IDE 设置中的代理
 fn get_proxy_from_kiro_settings() -> Option<String> {
     read_kiro_settings_json().and_then(|json| {
@@ -443,74 +415,5 @@ mod tests {
         assert!(should_add_redirect_for_internal(Some("internal")));
         assert!(!should_add_redirect_for_internal(Some("Enterprise")));
         assert!(!should_add_redirect_for_internal(Some("BuilderId")));
-    }
-
-    #[test]
-    fn apply_kiro_runtime_headers_only_adds_runtime_bucket_headers() {
-        let request = apply_kiro_runtime_headers(
-            reqwest::Client::new().get("https://q.us-east-1.amazonaws.com/ListAvailableModels"),
-            "token-1",
-            "KiroIDE 0.11.34 machine-123",
-            "application/json",
-            Some("external_idp"),
-            Some("Internal"),
-        )
-        .build()
-        .expect("request should build");
-
-        assert_eq!(
-            request
-                .headers()
-                .get(reqwest::header::AUTHORIZATION)
-                .and_then(|value| value.to_str().ok()),
-            Some("Bearer token-1")
-        );
-        assert_eq!(
-            request
-                .headers()
-                .get(reqwest::header::USER_AGENT)
-                .and_then(|value| value.to_str().ok()),
-            Some("KiroIDE 0.11.34 machine-123")
-        );
-        assert_eq!(
-            request
-                .headers()
-                .get("x-amz-user-agent")
-                .and_then(|value| value.to_str().ok()),
-            Some("KiroIDE 0.11.34 machine-123")
-        );
-        assert_eq!(
-            request
-                .headers()
-                .get(reqwest::header::ACCEPT)
-                .and_then(|value| value.to_str().ok()),
-            Some("application/json")
-        );
-        assert_eq!(
-            request
-                .headers()
-                .get("TokenType")
-                .and_then(|value| value.to_str().ok()),
-            Some("EXTERNAL_IDP")
-        );
-        assert_eq!(
-            request
-                .headers()
-                .get("redirect-for-internal")
-                .and_then(|value| value.to_str().ok()),
-            Some("true")
-        );
-        assert!(request.headers().get("x-amzn-codewhisperer-optout").is_none());
-        assert!(request.headers().get("x-amzn-kiro-agent-mode").is_none());
-        assert!(request.headers().get("x-amzn-kiro-profile-arn").is_none());
-        // AWS SDK 标准追踪头
-        assert!(request.headers().get("amz-sdk-invocation-id").is_some());
-        assert_eq!(
-            request
-                .headers()
-                .get("amz-sdk-request")
-                .and_then(|value| value.to_str().ok()),
-            Some("attempt=1; max=1")
-        );
     }
 }

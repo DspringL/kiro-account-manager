@@ -73,7 +73,7 @@ function AccountQuotaDetail({
           t={t}
         />
 
-      <CardContent className="p-6 flex flex-col gap-4">
+      <CardContent className="p-6 flex flex-col gap-6">
         {/* 本月用量进度 */}
         <MonthlyUsageProgress
           currentPercent={currentPercent}
@@ -85,7 +85,7 @@ function AccountQuotaDetail({
         />
 
         {/* 两列布局 */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-6">
           {subInfo && (
             <SubscriptionDetails
               subInfo={subInfo}
@@ -124,7 +124,7 @@ function AccountQuotaDetail({
 // 账号头部
 function AccountHeader({ currentAccount, userInfo, subInfo, daysUntilReset, refreshingAccount, handleRefreshCurrentAccount, maskEmail, colors, t, accent }) {
   return (
-    <div className={`flex items-center justify-between p-4 border-b border-border`}>
+    <div className={`flex items-center justify-between p-6 border-b border-border`}>
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0 ${
           currentAccount.provider === 'Google' ? 'bg-gradient-to-br from-red-500 to-orange-500' :
@@ -192,9 +192,7 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, accen
 
   return (
     <Card
-      padding="md"
-      radius="lg"
-      className={"bg-muted/30"}
+      className={"bg-muted/30 p-6 rounded-xl"}
     >
       <Group justify="space-between" className="mb-xs">
         <Text size="sm" fw={500} className={"text-foreground"}>
@@ -225,9 +223,7 @@ function MonthlyUsageProgress({ currentPercent, currentUsed, currentQuota, accen
 function SubscriptionDetails({ subInfo, overageConfig, colors, t }) {
   return (
     <Card
-      padding="sm"
-      radius="md"
-      className={"bg-muted/30"}
+      className={"bg-muted/30 p-6 rounded-xl"}
     >
       <Text
         size="10px"
@@ -280,9 +276,7 @@ function SubscriptionDetails({ subInfo, overageConfig, colors, t }) {
 function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, accent, colors, t }) {
   return (
     <Card
-      padding="sm"
-      radius="md"
-      className={"bg-muted/30"}
+      className={"bg-muted/30 p-6 rounded-xl"}
     >
       <Text
         size="10px"
@@ -329,9 +323,7 @@ function AccountInfo({ currentAccount, userInfo, breakdown, nextDateReset, accen
 function QuotaBreakdown({ mainUsed, mainLimit, mainPercent, freeTrial, bonuses, accent, colors, t }) {
   return (
     <Card
-      padding="sm"
-      radius="md"
-      className={"bg-muted/30"}
+      className={"bg-muted/30 p-6 rounded-xl"}
     >
       <Text size="10px" fw={500} tt="uppercase" className="mb-xs text-foreground">
         {t('home.quotaDetails')}

@@ -2,7 +2,7 @@
 // 支持 getUsageLimits、ListAvailableModels 和 MCP
 
 use crate::clients::http_client::{
-    apply_kiro_runtime_headers, build_http_client, build_kiro_custom_user_agent,
+    build_http_client, build_kiro_custom_user_agent,
     build_q_service_url, get_usage_probe_regions,
 };
 use uuid::Uuid;
@@ -131,8 +131,6 @@ impl KiroQClient {
         machine_id: &str,
         region: &str,
         profile_arn: Option<&str>,
-        auth_method: Option<&str>,
-        provider: Option<&str>,
         model_provider: Option<&str>,
         next_token: Option<&str>,
     ) -> Result<serde_json::Value, String> {
@@ -155,16 +153,16 @@ impl KiroQClient {
         }
 
         let invocation_id = Uuid::new_v4().to_string();
-        let request = apply_kiro_runtime_headers(
-            self.client.get(&url),
-            access_token,
-            &user_agent,
-            "application/json",
-            auth_method,
-            provider,
-        )
-        .header("amz-sdk-invocation-id", invocation_id)
-        .header("amz-sdk-request", "attempt=1; max=1");
+        
+        // 手动构建 headers，与其他接口保持一致
+        let request = self.client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", access_token))
+            .header("accept", "application/json")
+            .header("user-agent", &user_agent)
+            .header("x-amz-user-agent", &user_agent)
+            .header("amz-sdk-invocation-id", &invocation_id)
+            .header("amz-sdk-request", "attempt=1; max=1");
 
         let response = request
             .send()
@@ -219,8 +217,6 @@ impl KiroQClient {
         machine_id: &str,
         region: &str,
         profile_arn: Option<&str>,
-        auth_method: Option<&str>,
-        provider: Option<&str>,
         json_rpc_request: serde_json::Value,
     ) -> Result<serde_json::Value, String> {
         let user_agent = build_kiro_custom_user_agent(machine_id);
@@ -236,14 +232,6 @@ impl KiroQClient {
 
         if let Some(arn) = profile_arn.filter(|s| !s.trim().is_empty()) {
             request = request.header("x-amzn-kiro-profilearn", arn);
-        }
-
-        if let Some(method) = auth_method.filter(|s| !s.trim().is_empty()) {
-            request = request.header("x-amzn-kiro-authmethod", method);
-        }
-
-        if let Some(prov) = provider.filter(|s| !s.trim().is_empty()) {
-            request = request.header("x-amzn-kiro-provider", prov);
         }
 
         let response = request

@@ -115,7 +115,7 @@ function Home({ onNavigate }: HomeProps) {
         </div>
 
         {/* 统计卡片 */}
-        <div className="grid grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-5 gap-6 mb-6">
           {statCards.map((card, index) => (
             <StatCard key={index} {...card} />
           ))}

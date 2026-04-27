@@ -563,7 +563,7 @@ function GatewayPage() {
   return (
     <div className={`h-full overflow-y-auto p-6 glass-main`}>
       <Stack gap="md">
-        <Card withBorder radius="md" className={`glass-card border-border`}>
+        <Card className={`glass-card border border-border rounded-xl p-6`}>
           <Stack gap="sm">
             <Group justify="space-between" align="flex-start">
               <Stack gap={6}>
@@ -578,9 +578,9 @@ function GatewayPage() {
               </Group>
             </Group>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {consoleHighlights.map((item) => (
-                <Card key={item.label} withBorder radius="md">
+                <Card key={item.label} className="border rounded-xl p-6">
                   <Text size="xs" className={"text-muted-foreground"}>{item.label}</Text>
                   <Text fw={700} className={"text-foreground"} mt={4}>{item.value}</Text>
                   <Text size="sm" className={"text-muted-foreground"} mt={6}>{item.detail}</Text>
@@ -590,7 +590,7 @@ function GatewayPage() {
           </Stack>
         </Card>
 
-        <Card withBorder radius="md" className={`glass-card border-border`}>
+        <Card className={`glass-card border border-border rounded-xl p-6`}>
           <Stack gap="sm">
             <Group justify="space-between" align="flex-start">
               <Stack gap={4}>
@@ -648,22 +648,22 @@ function GatewayPage() {
               </Group>
             </Group>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Card withBorder radius="md">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="border rounded-xl p-6">
                 <Text size="xs" className={"text-muted-foreground"}>运行快照</Text>
                 <Text fw={700} className={"text-foreground"}>{statusSummary.listen}</Text>
                 <Text size="sm" className={"text-muted-foreground"} mt={4}>
                   {statusSummary.routing} · {statusSummary.region}
                 </Text>
               </Card>
-              <Card withBorder radius="md">
+              <Card className="border rounded-xl p-6">
                 <Text size="xs" className={"text-muted-foreground"}>接入与鉴权</Text>
                 <Text fw={700} className={"text-foreground"}>{integrationSummary.endpointLabel}</Text>
                 <Text size="sm" className={"text-muted-foreground"} mt={4}>
                   {integrationSummary.authLabel}
                 </Text>
               </Card>
-              <Card withBorder radius="md">
+              <Card className="border rounded-xl p-6">
                 <Text size="xs" className={"text-muted-foreground"}>最新风险</Text>
                 <Text fw={700} className={"text-foreground"}>
                   {latestErrorEntry ? '最近有错误请求' : '最近未发现错误'}

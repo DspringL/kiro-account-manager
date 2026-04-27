@@ -96,7 +96,6 @@ pub fn handle_window_event<R: Runtime>(_window: &Window<R>, event: &WindowEvent)
     #[cfg(debug_assertions)]
     {
         let _ = (event,); // 避免未使用警告
-        return;
     }
     
     #[cfg(not(debug_assertions))]

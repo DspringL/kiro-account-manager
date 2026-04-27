@@ -96,7 +96,7 @@ function GatewayOverview({
               </Group>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {operationsChecklist.map((item) => (
-                  <Card key={item.label} withBorder radius="md">
+                  <Card key={item.label} className="border rounded-xl p-6">
                     <Stack gap={6}>
                       <Group justify="space-between" align="flex-start">
                         <Text size="xs" className={"text-muted-foreground"}>{item.label}</Text>

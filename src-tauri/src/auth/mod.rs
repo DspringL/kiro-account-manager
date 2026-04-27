@@ -1,6 +1,7 @@
 // 认证相关模块
 
-pub mod auth;
+#[allow(clippy::module_inception)]
+mod auth;
 pub mod auth_social;
 pub mod providers;
 

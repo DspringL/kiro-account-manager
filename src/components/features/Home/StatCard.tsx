@@ -28,7 +28,7 @@ function StatCard({
   return (
     <Card
       onClick={onClick}
-      className={`card-glow animate-scale-in ${delay} ${onClick ? `cursor-pointer hover:bg-muted/50 transition-colors duration-200` : ''} rounded-3xl p-4`}
+      className={`card-glow animate-scale-in ${delay} ${onClick ? `cursor-pointer hover:bg-muted/50 transition-colors duration-200` : ''} rounded-3xl p-6`}
       style={warning ? { borderColor: 'rgba(249, 115, 22, 0.5)', borderWidth: '2px' } : undefined}
     >
       <div className="flex gap-4 items-center flex-nowrap">

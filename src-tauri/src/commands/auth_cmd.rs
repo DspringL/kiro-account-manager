@@ -3,6 +3,7 @@
 #![allow(clippy::needless_pass_by_value)] // Tauri 命令需要按值传递 State
 
 use crate::core::account::Account;
+use crate::core::protocol_registry;
 use crate::auth::User;
 use crate::auth::auth_social;
 use crate::commands::common::{
@@ -139,6 +140,9 @@ async fn login_social(
     state: State<'_, AppState>,
     config: &crate::auth::providers::ProviderConfig,
 ) -> Result<String, String> {
+    // 确保协议注册指向当前应用（解决多版本/移动应用的问题）
+    protocol_registry::ensure_protocol_registration()?;
+    
     let provider_id = config.provider_id.clone();
     let pending = prepare_pending_social_login(&provider_id, get_machine_id());
     let redirect_uri = social_callback_redirect_uri();

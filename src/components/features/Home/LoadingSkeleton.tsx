@@ -19,7 +19,7 @@ function LoadingSkeleton({ colors }) {
         </div>
 
         {/* 统计卡片骨架 */}
-        <div className="grid grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-5 gap-6 mb-8">
           {[...Array(5)].map((_, i) => (
             <Card
               key={i}
@@ -29,7 +29,7 @@ function LoadingSkeleton({ colors }) {
                 borderColor: "border-border"
               }}
             >
-              <div className="flex gap-4 items-center p-4">
+              <div className="flex gap-4 items-center p-6">
                 <Skeleton className="w-9 h-9 rounded-lg" />
                 <div className="flex flex-col gap-2 flex-1">
                   <Skeleton className="w-3/5 h-7" />
