@@ -1,10 +1,8 @@
 //! HTTP 客户端公共模块
 //! 提供统一的 HTTP 客户端构建，支持代理配置
-
 use reqwest::{Client, Proxy};
 use serde_json::Value;
 use std::{path::PathBuf, time::Duration};
-use uuid::Uuid;
 
 const KIRO_APP_VERSION_FALLBACK: &str = "0.0.0";
 const SUPPORTED_KIRO_REGIONS: &[&str] = &[

@@ -87,7 +87,6 @@ pub fn create_tray_icon<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<TrayIco
     if let Some(icon) = app.default_window_icon().cloned() {
         builder = builder.icon(icon);
     }
-
     builder.build(app)
 }
 
@@ -95,9 +94,11 @@ pub fn handle_window_event<R: Runtime>(_window: &Window<R>, event: &WindowEvent)
     // 开发模式下直接退出，不隐藏到托盘
     #[cfg(debug_assertions)]
     {
-        let _ = (event,); // 避免未使用警告
+        let _ = event;
+        return;
     }
-    
+
+    // Release 模式下隐藏到托盘
     #[cfg(not(debug_assertions))]
     if let WindowEvent::CloseRequested { api, .. } = event {
         if should_hide_window_on_close(_window.label(), tray_is_ready(_window)) {

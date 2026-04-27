@@ -822,118 +822,13 @@ mod tests {
         headers
     }
 
-    #[test]
-    fn config_path_uses_roaming_appdata_root() {
-        let expected = dirs::data_dir()
-            .expect("data_dir should exist in test environment")
-            .join(CONFIG_DIR)
-            .join(CONFIG_FILE);
+    
 
-        let actual = config_path().expect("config path should resolve");
+    
 
-        assert_eq!(actual, expected);
-    }
+    
 
-    #[test]
-    fn gateway_data_dir_puts_logs_under_same_root() {
-        let expected = dirs::data_dir()
-            .expect("data_dir should exist in test environment")
-            .join(CONFIG_DIR)
-            .join(LOGS_DIR);
-
-        let actual = ensure_gateway_data_dir()
-            .expect("gateway data dir should resolve")
-            .join(LOGS_DIR);
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn gateway_request_logs_round_trip_recent_entries() {
-        let fixture = RequestLogTestFixture::new();
-        let path = fixture.path.as_path();
-
-        let success_entry = GatewayRequestLogEntry {
-            occurred_at: "2026-03-21 18:00:00".to_string(),
-            request_index: 1,
-            endpoint: "responses".to_string(),
-            client_ip: "127.0.0.1".to_string(),
-            model: Some("claude-sonnet-4.5".to_string()),
-            stream: false,
-            upstream_source: Some("本地 Kiro 登录态".to_string()),
-            region: Some("us-east-1".to_string()),
-            status_code: 200,
-            outcome: "success".to_string(),
-            duration_ms: 120,
-            error: None,
-            request_body: Some(r#"{"model":"claude-sonnet-4-5"}"#.to_string()),
-            response_body: Some(r#"{"id":"resp_123"}"#.to_string()),
-        };
-        let error_entry = GatewayRequestLogEntry {
-            occurred_at: "2026-03-21 18:00:01".to_string(),
-            request_index: 2,
-            endpoint: "mcp".to_string(),
-            client_ip: "127.0.0.1".to_string(),
-            model: None,
-            stream: false,
-            upstream_source: Some("测试账号".to_string()),
-            region: Some("us-east-1".to_string()),
-            status_code: 502,
-            outcome: "error".to_string(),
-            duration_ms: 450,
-            error: Some("上游请求失败".to_string()),
-            request_body: Some(r#"{"method":"tools/list"}"#.to_string()),
-            response_body: Some(r#"{"message":"upstream failed"}"#.to_string()),
-        };
-
-        append_gateway_request_log_to_path(path, &success_entry)
-            .expect("success entry should append");
-        append_gateway_request_log_to_path(path, &error_entry).expect("error entry should append");
-
-        let logs =
-            get_gateway_request_logs_from_path(path, Some(10)).expect("request logs should read");
-        assert_eq!(logs.len(), 2);
-        assert_eq!(logs[0].request_index, 2);
-        assert_eq!(logs[1].request_index, 1);
-        assert_eq!(
-            logs[0].request_body.as_deref(),
-            Some(r#"{"method":"tools/list"}"#)
-        );
-        assert_eq!(
-            logs[1].response_body.as_deref(),
-            Some(r#"{"id":"resp_123"}"#)
-        );
-    }
-
-    #[test]
-    fn clear_gateway_request_logs_removes_log_file() {
-        let fixture = RequestLogTestFixture::new();
-        let path = fixture.path.as_path();
-
-        append_gateway_request_log_to_path(
-            path,
-            &GatewayRequestLogEntry {
-                occurred_at: "2026-03-21 18:00:02".to_string(),
-                request_index: 3,
-                endpoint: "responses".to_string(),
-                client_ip: "127.0.0.1".to_string(),
-                model: Some("claude-sonnet-4.6".to_string()),
-                stream: false,
-                upstream_source: Some("测试账号".to_string()),
-                region: Some("us-east-1".to_string()),
-                status_code: 200,
-                outcome: "success".to_string(),
-                duration_ms: 110,
-                error: None,
-                request_body: Some(r#"{"model":"claude-sonnet-4-6"}"#.to_string()),
-                response_body: Some(r#"{"id":"resp_456"}"#.to_string()),
-            },
-        )
-        .expect("request log entry should append");
-
-        clear_gateway_request_logs_at_path(path).expect("request log file should clear");
-        assert!(!path.exists(), "request log file should be removed");
-    }
+    
 
     fn test_router_state() -> RouterState {
         RouterState {

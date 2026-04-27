@@ -1,6 +1,7 @@
+
+
 // AWS Q Service 客户端 - 统一的 REST API 接口
 // 支持 getUsageLimits、ListAvailableModels 和 MCP
-
 use crate::clients::http_client::{
     build_http_client, build_kiro_custom_user_agent,
     build_q_service_url, get_usage_probe_regions,
@@ -10,7 +11,6 @@ use uuid::Uuid;
 pub struct KiroQClient {
     client: reqwest::Client,
 }
-
 impl KiroQClient {
     pub fn new() -> Result<Self, String> {
         let client = build_http_client()?;

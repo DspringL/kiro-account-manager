@@ -1188,6 +1188,7 @@ fn with_kiro_upstream_headers(
         .header("Authorization", format!("Bearer {}", upstream.access_token))
         .header("Content-Type", "application/json")
         .header("Accept", accept)
+        .header("host", format!("q.{}.amazonaws.com", upstream.region))
         .header(header::USER_AGENT, upstream.user_agent.clone())
         .header("x-amz-user-agent", upstream.user_agent.clone())
         .header("amz-sdk-invocation-id", invocation_id)
@@ -1207,9 +1208,6 @@ fn with_kiro_upstream_headers(
         {
             builder = builder.header("x-amzn-kiro-profile-arn", profile_arn);
         }
-    }
-    if is_external_idp_auth_method(upstream.auth_method.as_deref()) {
-        builder = builder.header("TokenType", "EXTERNAL_IDP");
     }
     if should_add_redirect_for_internal(upstream.provider.as_deref()) {
         builder = builder.header("redirect-for-internal", "true");
