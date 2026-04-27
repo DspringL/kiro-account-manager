@@ -17,6 +17,64 @@ use crate::state::AppState;
 use std::sync::{Mutex, MutexGuard};
 use tauri::{Emitter, State};
 
+/// 确保 kiro:// 协议指向当前运行的应用
+/// 
+/// 这个函数在每次社交登录时调用，确保注册表中的协议处理程序指向当前 exe。
+/// 这解决了以下问题：
+/// - 用户从不同位置运行应用（开发版 vs 发布版）
+/// - 应用被移动到其他位置
+/// - 多个版本的 KAM 同时存在
+#[cfg(windows)]
+fn ensure_kiro_protocol_points_to_current_app() -> Result<(), String> {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+
+    let exe_path = std::env::current_exe()
+        .map_err(|e| format!("Failed to get current exe path: {e}"))?
+        .display()
+        .to_string();
+    
+    let command = format!("\"{exe_path}\" \"%1\"");
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+
+    // 注册 kiro:// 和 kiro-account-manager:// 两个协议
+    for scheme in ["kiro", "kiro-account-manager"] {
+        let class_path = format!("Software\\Classes\\{scheme}");
+        
+        // 创建协议键
+        let (class_key, _) = hkcu
+            .create_subkey(&class_path)
+            .map_err(|e| format!("Failed to create registry key for {scheme}: {e}"))?;
+        
+        // 设置协议描述
+        class_key
+            .set_value("", &format!("URL:{scheme} Protocol"))
+            .map_err(|e| format!("Failed to set protocol description for {scheme}: {e}"))?;
+        
+        // 标记为 URL 协议
+        class_key
+            .set_value("URL Protocol", &"")
+            .map_err(|e| format!("Failed to set URL Protocol flag for {scheme}: {e}"))?;
+
+        // 设置命令处理程序
+        let (cmd_key, _) = hkcu
+            .create_subkey(format!("{class_path}\\shell\\open\\command"))
+            .map_err(|e| format!("Failed to create command key for {scheme}: {e}"))?;
+        
+        cmd_key
+            .set_value("", &command)
+            .map_err(|e| format!("Failed to set command for {scheme}: {e}"))?;
+    }
+
+    Ok(())
+}
+
+/// 非 Windows 平台不需要注册表操作
+#[cfg(not(windows))]
+fn ensure_kiro_protocol_points_to_current_app() -> Result<(), String> {
+    Ok(())
+}
+
 fn lock_state<'a, T>(mutex: &'a Mutex<T>, label: &str) -> Result<MutexGuard<'a, T>, String> {
     mutex
         .lock()
@@ -139,6 +197,9 @@ async fn login_social(
     state: State<'_, AppState>,
     config: &crate::auth::providers::ProviderConfig,
 ) -> Result<String, String> {
+    // 确保协议注册指向当前应用（解决多版本/移动应用的问题）
+    ensure_kiro_protocol_points_to_current_app()?;
+    
     let provider_id = config.provider_id.clone();
     let pending = prepare_pending_social_login(&provider_id, get_machine_id());
     let redirect_uri = social_callback_redirect_uri();
