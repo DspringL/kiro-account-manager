@@ -546,4 +546,4 @@ src-tauri/src/        Rust + Tauri 后端
 
 <p align="center">Made with ❤️ by hj01857655</p>
 
-<p align="center"><sub>最后更新：2026-04-10 | 版本：v1.8.3</sub></p>
+<p align="center"><sub>最后更新：2026-04-27 | 版本：v1.8.5</sub></p>
