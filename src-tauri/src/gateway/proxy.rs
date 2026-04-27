@@ -1,4 +1,5 @@
 
+
 use axum::{
     body::{Body, Bytes},
     http::{header, HeaderMap, HeaderValue, StatusCode},
@@ -40,7 +41,7 @@ use super::{
         build_kiro_payload, get_available_models, normalize_anthropic_request,
         normalize_responses_request,
     },
-    eventstream::try_decode_message,
+    eventstream::decode_message,
     effective_client_api_keys,
     models::{
         AnthropicContentBlock, AnthropicMessagesRequest, AnthropicMessagesResponse, AnthropicUsage,
@@ -2514,10 +2515,10 @@ fn stream_proxy_response(
                 Ok(bytes) => {
                     // 累积二进制数据
                     raw_buffer.extend_from_slice(&bytes);
-
                     // 逐个解码 EventStream 消息
                     loop {
-                        match try_decode_message(&raw_buffer) {
+                        match decode_message(&raw_buffer) {
+                        match decode_message(&raw_buffer) {
                             Ok(Some((msg, consumed_bytes))) => {
                                 // 成功解码一个消息
                                 let message_type = msg.headers.get(":message-type").map(String::as_str);
@@ -3121,7 +3122,7 @@ fn stream_proxy_response(
                         tool_calls: None,
                     },
                     Some(finish_reason.to_string()),
-                    Some(crate::gateway::models::OpenAIUsage {
+                    Some(crate::gateway::models::OpenAIChatUsage {
                         prompt_tokens: input_tokens,
                         completion_tokens: output_tokens,
                         total_tokens: input_tokens + output_tokens,
@@ -3132,7 +3133,7 @@ fn stream_proxy_response(
                 send_data(&tx, "[DONE]").await;
             }
         }
-    });
+    }); // tokio::spawn 闭合
 
     Response::builder()
         .status(StatusCode::OK)

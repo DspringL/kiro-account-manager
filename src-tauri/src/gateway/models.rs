@@ -1,3 +1,4 @@
+
 use serde::{Deserialize, Serialize};
 
 #[allow(dead_code)]
@@ -179,6 +180,127 @@ pub struct KiroToolResultContent {
     pub text: String,
 }
 
+// AWS EventStream 响应事件类型
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistantResponseEvent {
+    pub content: String,
+    pub conversation_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_continuation_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolUseEvent {
+    pub tool_use_id: String,
+    pub name: String,
+    pub input: String,
+    pub conversation_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageMetadataEvent {
+    pub conversation_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_continuation_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<UsageInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageInfo {
+    pub input_tokens: i32,
+    pub output_tokens: i32,
+}
+
+// ============================================================================
+// OpenAI Responses API 结构体
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OpenAIResponsesRequest {
+    pub model: String,
+    pub input: Vec<NormalizedMessage>,
+    #[serde(default)]
+    pub stream: bool,
+    pub max_output_tokens: Option<i32>,
+    pub temperature: Option<f32>,
+    pub top_p: Option<f32>,
+    pub tools: Option<Vec<Tool>>,
+    pub tool_choice: Option<serde_json::Value>,
+    #[serde(default)]
+    pub previous_response_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OpenAIResponsesResponse {
+    pub id: String,
+    pub object: String,
+    pub created: i64,
+    pub model: String,
+    pub output: Vec<ResponseOutputItem>,
+    pub usage: OpenAIChatUsage,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum ResponseOutputItem {
+    #[serde(rename = "message")]
+    Message {
+        role: String,
+        content: Vec<ResponseContent>,
+    },
+    #[serde(rename = "tool_use")]
+    ToolUse {
+        id: String,
+        name: String,
+        input: serde_json::Value,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum ResponseContent {
+    #[serde(rename = "text")]
+    Text { text: String },
+}
+
+// Responses API 流式事件
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "event")]
+pub enum ResponsesStreamEvent {
+    #[serde(rename = "response.created")]
+    ResponseCreated {
+        id: String,
+        object: String,
+        created: i64,
+    },
+    #[serde(rename = "response.output_item.added")]
+    OutputItemAdded {
+        item_index: i32,
+        item: ResponseOutputItem,
+    },
+    #[serde(rename = "response.output_text.delta")]
+    OutputTextDelta {
+        item_index: i32,
+        content_index: i32,
+        delta: String,
+    },
+    #[serde(rename = "response.output_item.done")]
+    OutputItemDone { item_index: i32 },
+    #[serde(rename = "response.completed")]
+    ResponseCompleted { usage: OpenAIChatUsage },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OpenAIUsage {
+    pub input_tokens: i32,
+    pub output_tokens: i32,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
 pub enum HistoryItem {
@@ -328,8 +450,9 @@ pub struct OpenAIResponseToolCall {
     pub function: OpenAIToolCallFunction,
 }
 
+// OpenAI Chat Completions API 使用量统计
 #[derive(Debug, Clone, Serialize)]
-pub struct OpenAIUsage {
+pub struct OpenAIChatUsage {
     pub prompt_tokens: i32,
     pub completion_tokens: i32,
     pub total_tokens: i32,
@@ -343,7 +466,7 @@ pub struct OpenAIChatChunk {
     pub model: String,
     pub choices: Vec<OpenAIChatChunkChoice>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub usage: Option<OpenAIUsage>,
+    pub usage: Option<OpenAIChatUsage>,
 }
 
 #[derive(Debug, Clone, Serialize)]

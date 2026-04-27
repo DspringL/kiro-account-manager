@@ -405,11 +405,7 @@ fn convert_web_search_tool(
     Tool {
         tool_type: tool_type.to_string(),
         function: ToolFunction {
-            name: if name.trim().is_empty() {
-                WEB_SEARCH_TOOL_NAME.to_string()
-            } else {
-                name.to_string()
-            },
+            name: WEB_SEARCH_TOOL_NAME.to_string(),
             description: Some(
                 description.unwrap_or_else(|| WEB_SEARCH_TOOL_DESCRIPTION.to_string()),
             ),
@@ -425,7 +421,7 @@ fn convert_web_search_tool(
 }
 
 fn is_web_search_tool_type(tool_type: &str) -> bool {
-    tool_type.starts_with("web_search_")
+    tool_type.starts_with("web_search_") || tool_type == "remote_web_search"
 }
 
 fn web_search_input_schema() -> Value {

@@ -1,3 +1,4 @@
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum KiroEvent {
     Text(String),
@@ -386,7 +387,7 @@ fn ensure_citation_target_supported(target: &serde_json::Value) -> Option<()> {
 
 use crate::gateway::models::{
     OpenAIChatChunk, OpenAIChatChunkChoice, OpenAIChatDelta, OpenAIChatResponse,
-    OpenAIChatChoice, OpenAIChatResponseMessage, OpenAIResponseToolCall, OpenAIUsage,
+    OpenAIChatChoice, OpenAIChatResponseMessage, OpenAIResponseToolCall, OpenAIChatUsage,
     OpenAIToolCallFunction,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -398,7 +399,7 @@ pub fn build_openai_chunk(
     model: &str,
     delta: OpenAIChatDelta,
     finish_reason: Option<String>,
-    usage: Option<OpenAIUsage>,
+    usage: Option<OpenAIChatUsage>,
 ) -> OpenAIChatChunk {
     OpenAIChatChunk {
         id: completion_id.to_string(),
@@ -462,12 +463,12 @@ pub fn build_openai_response(
             index: 0,
             message,
             finish_reason: Some(finish_reason),
-        }],
-        usage: OpenAIUsage {
+            }],
+            usage: OpenAIChatUsage {
             prompt_tokens: aggregated.input_tokens,
             completion_tokens: aggregated.output_tokens,
             total_tokens: aggregated.input_tokens + aggregated.output_tokens,
-        },
+            },
     }
 }
 

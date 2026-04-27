@@ -28,13 +28,13 @@ fn crc32(data: &[u8]) -> u32 {
 
 const MINIMUM_MESSAGE_LENGTH: usize = 16;
 
-/// 尝试从缓冲区解码单个 EventStream 消息
+/// 从缓冲区解码单个 EventStream 消息
 ///
 /// 返回：
 /// - Ok(Some((message, consumed_bytes))): 成功解码一个消息
 /// - Ok(None): 缓冲区数据不足，需要更多数据
 /// - Err(error): 解码失败
-pub fn try_decode_message(buffer: &[u8]) -> Result<Option<(EventStreamMessage, usize)>, String> {
+pub fn decode_message(buffer: &[u8]) -> Result<Option<(EventStreamMessage, usize)>, String> {
     // 检查最小长度
     if buffer.len() < MINIMUM_MESSAGE_LENGTH {
         return Ok(None);
@@ -167,17 +167,17 @@ mod tests {
     }
 
     #[test]
-    fn test_try_decode_incomplete() {
+    fn test_decode_incomplete() {
         // 只有 8 字节，不足一个完整消息
-        let result = try_decode_message(&[0, 0, 0, 20, 0, 0, 0, 0]);
+        let result = decode_message(&[0, 0, 0, 20, 0, 0, 0, 0]);
         assert!(result.is_ok());
         assert!(result.unwrap().is_none());
     }
 
     #[test]
-    fn test_try_decode_invalid_length() {
+    fn test_decode_invalid_length() {
         // 消息长度小于最小值
-        let result = try_decode_message(&[0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let result = decode_message(&[0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
         assert!(result.is_err());
     }
 }
