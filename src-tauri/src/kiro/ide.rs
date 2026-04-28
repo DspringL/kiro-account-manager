@@ -339,9 +339,7 @@ pub async fn switch_kiro_account(
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IdeInstallationInfo {
     pub ide_installed: bool,
-    pub config_dir_exists: bool,
     pub ide_path: Option<String>,
-    pub config_dir: Option<String>,
 }
 
 /// 检测 Kiro IDE 是否安装
@@ -349,21 +347,16 @@ pub struct IdeInstallationInfo {
 pub async fn check_ide_installation() -> IdeInstallationInfo {
     tokio::task::spawn_blocking(|| {
         let (ide_path, ide_exists) = detect_kiro_ide_executable();
-        let (config_dir, config_dir_exists) = detect_kiro_config_dir();
 
         IdeInstallationInfo {
-            ide_installed: ide_exists || config_dir_exists,
-            config_dir_exists,
+            ide_installed: ide_exists,
             ide_path,
-            config_dir,
         }
     })
     .await
     .unwrap_or(IdeInstallationInfo {
         ide_installed: false,
-        config_dir_exists: false,
         ide_path: None,
-        config_dir: None,
     })
 }
 
@@ -374,19 +367,6 @@ fn detect_kiro_ide_executable() -> (Option<String>, bool) {
         if path.exists() {
             return (Some(path.to_string_lossy().to_string()), true);
         }
-    }
-    (None, false)
-}
-
-/// 检测 IDE 配置文件目录 (.aws/sso/cache)
-fn detect_kiro_config_dir() -> (Option<String>, bool) {
-    if let Ok(home) = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")) {
-        let path = std::path::Path::new(&home)
-            .join(".aws")
-            .join("sso")
-            .join("cache");
-        let exists = path.exists();
-        return (Some(path.to_string_lossy().to_string()), exists);
     }
     (None, false)
 }
