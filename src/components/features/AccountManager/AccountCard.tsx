@@ -263,6 +263,12 @@ const AccountCard = memo(function AccountCard({
               </div>
             )}
           <div className="flex items-center gap-1">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.viewDetails')}>
+              <Eye size={16} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.editRemark')}>
+              <Edit2 size={16} />
+            </button>
             <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
               <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
             </button>
