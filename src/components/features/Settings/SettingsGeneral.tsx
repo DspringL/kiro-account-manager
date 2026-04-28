@@ -307,7 +307,8 @@ function SettingsGeneral({
             <label className="block text-sm text-muted-foreground mb-2">{t('settings.customKiroPath')}</label>
             <div className="flex gap-3">
               <Input
-                value={customKiroPath || t('settings.useDefaultPath')}
+                value={customKiroPath || ''}
+                placeholder={t('settings.useDefaultPath')}
                 readOnly
                 className="text-foreground bg-background border-border flex-1"
               />

@@ -395,15 +395,7 @@ fn detect_kiro_config_dir() -> (Option<String>, bool) {
 pub fn get_kiro_ide_paths() -> Vec<std::path::PathBuf> {
     let mut paths = Vec::new();
 
-    // 1. 优先检查自定义路径
-    if let Ok(settings) = crate::commands::app_settings_cmd::get_app_settings_inner() {
-        if let Some(custom_path) = settings.custom_kiro_path {
-            let path_buf = std::path::PathBuf::from(&custom_path);
-            paths.push(path_buf);
-        }
-    }
-
-    // 2. 添加默认路径作为备选
+    // 1. 优先检查默认路径
     if cfg!(target_os = "windows") {
         if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
             paths.push(
@@ -427,6 +419,14 @@ pub fn get_kiro_ide_paths() -> Vec<std::path::PathBuf> {
                     .join("bin")
                     .join("kiro"),
             );
+        }
+    }
+
+    // 2. 如果设置了自定义路径，添加为备选
+    if let Ok(settings) = crate::commands::app_settings_cmd::get_app_settings_inner() {
+        if let Some(custom_path) = settings.custom_kiro_path {
+            let path_buf = std::path::PathBuf::from(&custom_path);
+            paths.push(path_buf);
         }
     }
 

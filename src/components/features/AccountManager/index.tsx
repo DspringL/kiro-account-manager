@@ -73,11 +73,7 @@ function AccountManager({ onNavigate }: AccountManagerProps) {
     switchDialog,
     handleSwitchAccount,
     confirmSwitch,
-    closeSwitchDialog,
-    switchTarget,
-    setSwitchTarget,
-    cliInstalled,
-    ideInstalled} = useSwitchAccount(setLocalToken)
+    closeSwitchDialog} = useSwitchAccount(setLocalToken)
   
   useEffect(() => {
     invoke<any>('get_kiro_local_token').then(setLocalToken).catch(() => setLocalToken(null))
@@ -661,43 +657,7 @@ function AccountManager({ onNavigate }: AccountManagerProps) {
           onConfirm={switchDialog.type === 'confirm' ? confirmSwitch : closeSwitchDialog}
           onCancel={closeSwitchDialog}
           confirmText={switchDialog.type === 'confirm' ? t('switch.confirmBtn') : t('common.ok')}
-          customContent={switchDialog.type === 'confirm' ? (
-            <div className="mt-4">
-              <div className="text-sm font-medium mb-2" style={{ color: "text-foreground" }}>{t('switch.switchTarget')}</div>
-              <div className="space-y-2">
-                <label className={`flex items-center gap-2 ${ideInstalled ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-                  <input
-                    type="radio"
-                    name="switchTarget"
-                    value="ide"
-                    checked={switchTarget === 'ide'}
-                    onChange={(e) => setSwitchTarget(e.target.value)}
-                    disabled={!ideInstalled}
-                    className="w-4 h-4"
-                  />
-                  <span style={{ color: "text-foreground" }}>
-                    IDE
-                    {!ideInstalled && ' (未安装，请先安装 Kiro IDE)'}
-                  </span>
-                </label>
-                <label className={`flex items-center gap-2 ${cliInstalled ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-                  <input
-                    type="radio"
-                    name="switchTarget"
-                    value="cli"
-                    checked={switchTarget === 'cli'}
-                    onChange={(e) => setSwitchTarget(e.target.value)}
-                    disabled={!cliInstalled}
-                    className="w-4 h-4"
-                  />
-                  <span style={{ color: "text-foreground" }}>
-                    CLI 2.0
-                    {!cliInstalled && ' (未安装，请先安装 Kiro CLI)'}
-                  </span>
-                </label>
-              </div>
-            </div>
-          ) : null}
+          customContent={null}
         />
       )}
       </div>
