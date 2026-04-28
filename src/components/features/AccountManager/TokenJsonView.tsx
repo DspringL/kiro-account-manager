@@ -37,8 +37,11 @@ function CollapsibleValue({ value, colors, threshold = 50 }) {
         {expanded ? '收起' : `展开 +${value.length - threshold}`}
       </button>
     </span>
-  // JSON 渲染（带折叠，支持嵌套对象和数组）
-  function JsonRenderer({ json, colors, accent, indent = 0 }) {
+  )
+}
+
+// JSON 渲染（带折叠，支持嵌套对象和数组）
+function JsonRenderer({ json, colors, accent, indent = 0 }) {
     const entries = Object.entries(json).filter(([_, value]) => value !== undefined)
     const pad = '  '.repeat(indent)
     const padInner = '  '.repeat(indent + 1)
@@ -81,7 +84,7 @@ export function TokenJsonView({ account, defaultExpanded = false }) {
   const colors = useMemo(() => ({
     inputFocus: 'focus:ring-primary/20 focus:border-primary'
   }), [])
-    const [expanded, setExpanded] = useState(defaultExpanded)
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const [copied, setCopied] = useState(false)
   const copiedTimerRef = useRef(null)
   
