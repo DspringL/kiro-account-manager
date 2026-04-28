@@ -47,5 +47,3 @@ src-tauri/clippy_warnings.txt
 .tmp/
 
 .breezell/
-scratch/
-artifacts/test_api_multi.py

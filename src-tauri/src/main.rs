@@ -10,6 +10,8 @@ mod clients;
 mod commands;
 mod gateway;
 mod kiro;
+mod models;
+mod services;
 mod utils;
 
 use core::account::{AccountStore, GroupTagStore};
@@ -17,6 +19,7 @@ use auth::AuthState;
 use state::AppState;
 use std::sync::Mutex;
 use tauri::Listener;
+use services::session_storage::SessionStorage;
 
 // 导入命令
 use utils::browser::{detect_installed_browsers};
@@ -77,6 +80,9 @@ use commands::custom_agents_cmd::{
     save_custom_agent,
 };
 use commands::hooks_cmd::{create_hook, delete_hook, get_hook, get_hooks, save_hook};
+use commands::session_manager::{
+    list_workspaces, list_sessions, load_session, delete_session, delete_workspace, export_session, search_sessions,
+};
 
 
 //代理
@@ -240,6 +246,7 @@ fn main() {
             pending_login: Mutex::new(None),
             gateway: Mutex::new(None),
         })
+        .manage(SessionStorage::new().expect("Failed to initialize SessionStorage"))
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
             // 账号命令
@@ -396,7 +403,15 @@ fn main() {
             install_power,
             uninstall_power,
             get_power_registries,
-            get_recommended_powers
+            get_recommended_powers,
+            // Session Manager 命令
+            list_workspaces,
+            list_sessions,
+            load_session,
+            delete_session,
+            delete_workspace,
+            export_session,
+            search_sessions
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

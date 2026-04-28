@@ -49,6 +49,7 @@ async-trait = "0.1"
 dirs = "5"
 ipnet = "2"
 rusqlite = { version = "0.32", features = ["bundled"] }
+anyhow = "1.0"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 

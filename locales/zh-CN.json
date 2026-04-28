@@ -1,6 +1,7 @@
 {
   "nav.home": "仪表盘",
   "nav.accounts": "账号管理",
+  "nav.sessions": "会话管理",
   "nav.kiroConfig": "规则管理",
   "nav.desktopOAuth": "在线登入",
   "nav.socialIdC": "Social/IdC",

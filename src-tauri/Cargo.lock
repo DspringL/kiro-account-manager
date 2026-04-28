@@ -2312,6 +2312,7 @@ dependencies = [
 name = "kiro-account-manager"
 version = "1.8.5"
 dependencies = [
+ "anyhow",
  "async-trait",
  "axum",
  "base64 0.22.1",

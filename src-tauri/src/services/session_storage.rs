@@ -1,0 +1,250 @@
+use std::path::PathBuf;
+use std::fs;
+use anyhow::{Result, Context};
+use crate::models::ide_session::{IdeSession, SessionSummary};
+
+pub struct SessionStorage {
+    base_path: PathBuf,
+}
+
+impl SessionStorage {
+    pub fn new() -> Result<Self> {
+        let base_path = Self::get_storage_path()?;
+        Ok(Self { base_path })
+    }
+    
+    fn get_storage_path() -> Result<PathBuf> {
+        #[cfg(target_os = "windows")]
+        {
+            let appdata = std::env::var("APPDATA")
+                .context("Failed to get APPDATA environment variable")?;
+            Ok(PathBuf::from(appdata)
+                .join("Kiro")
+                .join("User")
+                .join("globalStorage")
+                .join("kiro.kiroagent")
+                .join("workspace-sessions"))
+        }
+        
+        #[cfg(target_os = "macos")]
+        {
+            let home = std::env::var("HOME")
+                .context("Failed to get HOME environment variable")?;
+            Ok(PathBuf::from(home)
+                .join("Library")
+                .join("Application Support")
+                .join("Kiro")
+                .join("User")
+                .join("globalStorage")
+                .join("kiro.kiroagent")
+                .join("workspace-sessions"))
+        }
+        
+        #[cfg(target_os = "linux")]
+        {
+            let home = std::env::var("HOME")
+                .context("Failed to get HOME environment variable")?;
+            Ok(PathBuf::from(home)
+                .join(".config")
+                .join("Kiro")
+                .join("User")
+                .join("globalStorage")
+                .join("kiro.kiroagent")
+                .join("workspace-sessions"))
+        }
+    }
+    
+    /// 列出所有 workspace
+    pub fn list_workspaces(&self) -> Result<Vec<String>> {
+        let mut workspaces = Vec::new();
+        
+        if !self.base_path.exists() {
+            return Ok(workspaces);
+        }
+        
+        // 收集工作区及其修改时间
+        let mut workspace_with_time: Vec<(String, std::time::SystemTime)> = Vec::new();
+        
+        for entry in fs::read_dir(&self.base_path)
+            .context("Failed to read workspace-sessions directory")? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                let modified = entry.metadata()?.modified()?;
+                workspace_with_time.push((name, modified));
+            }
+        }
+        
+        // 按修改时间倒序排序（最近使用的在前）
+        workspace_with_time.sort_by(|a, b| b.1.cmp(&a.1));
+        
+        // 只返回名称
+        workspaces = workspace_with_time.into_iter().map(|(name, _)| name).collect();
+        
+        Ok(workspaces)
+    }
+    
+    /// 列出指定 workspace 的所有 sessions
+    pub fn list_sessions(&self, workspace_hash: &str) -> Result<Vec<SessionSummary>> {
+        let workspace_path = self.base_path.join(workspace_hash);
+        let mut sessions = Vec::new();
+        
+        if !workspace_path.exists() {
+            log::warn!("Workspace directory does not exist: {}", workspace_hash);
+            return Ok(sessions);
+        }
+        
+        for entry in fs::read_dir(&workspace_path)
+            .context(format!("Failed to read workspace directory: {}", workspace_hash))? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            // 只处理 .json 文件
+            if path.extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+            
+            // 跳过 sessions.json（索引文件）
+            if let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
+                if filename == "sessions.json" {
+                    continue;
+                }
+            }
+            
+            match self.load_session_summary(&path, workspace_hash) {
+                Ok(summary) => sessions.push(summary),
+                Err(e) => {
+                    log::error!("Failed to load session from {:?}: {}", path, e);
+                    // 继续处理其他文件
+                }
+            }
+        }
+        
+        // 按修改时间倒序排序
+        sessions.sort_by(|a, b| {
+            b.modified_at.unwrap_or(0).cmp(&a.modified_at.unwrap_or(0))
+        });
+        
+        Ok(sessions)
+    }
+    
+    /// 加载 session 摘要
+    fn load_session_summary(&self, path: &PathBuf, workspace_hash: &str) -> Result<SessionSummary> {
+        let metadata = fs::metadata(path)
+            .context(format!("Failed to read metadata for {:?}", path))?;
+        let content = fs::read_to_string(path)
+            .context(format!("Failed to read file {:?}", path))?;
+        
+        let session: IdeSession = serde_json::from_str(&content)
+            .map_err(|e| {
+                log::error!("JSON parse error for {:?}: {}", path, e);
+                // 打印前 500 个字符帮助调试
+                log::error!("File content preview: {}", &content.chars().take(500).collect::<String>());
+                e
+            })
+            .context(format!("Failed to parse JSON from {:?}", path))?;
+        
+        Ok(SessionSummary {
+            session_id: session.session_id,
+            title: session.title,
+            session_type: session.session_type,
+            workspace_directory: session.workspace_directory,
+            workspace_hash: workspace_hash.to_string(),
+            message_count: session.history.len(),
+            file_size: metadata.len(),
+            created_at: metadata.created().ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs() as i64),
+            modified_at: metadata.modified().ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs() as i64),
+        })
+    }
+    
+    /// 加载完整 session
+    pub fn load_session(&self, workspace_hash: &str, session_id: &str) -> Result<IdeSession> {
+        let path = self.base_path
+            .join(workspace_hash)
+            .join(format!("{}.json", session_id));
+        
+        let content = fs::read_to_string(&path)
+            .context(format!("Failed to read session file: {}", session_id))?;
+        let session = serde_json::from_str(&content)
+            .context("Failed to parse session JSON")?;
+        Ok(session)
+    }
+    
+    /// 删除 session
+    pub fn delete_session(&self, workspace_hash: &str, session_id: &str) -> Result<()> {
+        let path = self.base_path
+            .join(workspace_hash)
+            .join(format!("{}.json", session_id));
+        
+        fs::remove_file(&path)
+            .context(format!("Failed to delete session: {}", session_id))?;
+        
+        Ok(())
+    }
+    
+    /// 删除整个工作区目录
+    pub fn delete_workspace(&self, workspace_hash: &str) -> Result<()> {
+        let workspace_path = self.base_path.join(workspace_hash);
+        
+        if workspace_path.exists() {
+            fs::remove_dir_all(&workspace_path)
+                .context(format!("Failed to delete workspace: {}", workspace_hash))?;
+        }
+        
+        Ok(())
+    }
+    
+    /// 导出 session
+    pub fn export_session(
+        &self,
+        workspace_hash: &str,
+        session_id: &str,
+        format: ExportFormat,
+    ) -> Result<String> {
+        let session = self.load_session(workspace_hash, session_id)?;
+        
+        match format {
+            ExportFormat::Json => {
+                serde_json::to_string_pretty(&session)
+                    .context("Failed to serialize session to JSON")
+            }
+            ExportFormat::Markdown => {
+                Ok(self.session_to_markdown(&session))
+            }
+        }
+    }
+    
+    fn session_to_markdown(&self, session: &IdeSession) -> String {
+        let mut md = String::new();
+        md.push_str(&format!("# {}\n\n", session.title));
+        md.push_str(&format!("- **Session ID**: {}\n", session.session_id));
+        md.push_str(&format!("- **Type**: {}\n", session.session_type));
+        md.push_str(&format!("- **Workspace**: {}\n", session.workspace_directory));
+        md.push_str(&format!("- **Messages**: {}\n\n", session.history.len()));
+        md.push_str("---\n\n");
+        
+        for (i, item) in session.history.iter().enumerate() {
+            md.push_str(&format!("## Message {}\n\n", i + 1));
+            md.push_str(&format!("**{}**:\n\n", 
+                if item.message.role == "user" { "User" } else { "Assistant" }
+            ));
+            
+            for content in &item.message.content {
+                md.push_str(&format!("{}\n\n", content.text));
+            }
+            
+            md.push_str("---\n\n");
+        }
+        
+        md
+    }
+}
+
+pub enum ExportFormat {
+    Json,
+    Markdown,
+}
