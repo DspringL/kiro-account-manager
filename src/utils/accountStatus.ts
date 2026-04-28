@@ -84,7 +84,7 @@ export function isExpiredStatus(statusOrAccount: string | Account | any, usageDa
 
 export function isUnavailableStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
   const normalized = normalizeAccountStatus(statusOrAccount, usageData)
-  return normalized === 'capped' || normalized === 'banned' || normalized === 'invalid' || normalized === 'expired'
+  return normalized === 'banned' || normalized === 'invalid' || normalized === 'expired'
 }
 
 export function isAvailableStatus(statusOrAccount: string | Account | any, usageData?: AccountUsageData): boolean {
