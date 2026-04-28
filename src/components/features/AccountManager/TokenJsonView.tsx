@@ -42,40 +42,40 @@ function CollapsibleValue({ value, colors, threshold = 50 }) {
 
 // JSON 渲染（带折叠，支持嵌套对象和数组）
 function JsonRenderer({ json, colors, accent, indent = 0 }) {
-    const entries = Object.entries(json).filter(([_, value]) => value !== undefined)
-    const pad = '  '.repeat(indent)
-    const padInner = '  '.repeat(indent + 1)
+  const entries = Object.entries(json).filter(([_, value]) => value !== undefined)
+  const pad = '  '.repeat(indent)
+  const padInner = '  '.repeat(indent + 1)
 
-    return (
-      <div className="text-sm font-mono leading-relaxed">
-        <span className={"text-muted-foreground"}>{'{'}</span>
-        {entries.map(([key, value], i) => (
-          <div key={key} className="py-0.5">
-            <span className={"text-muted-foreground"}>{padInner}</span>
-            <span className={`${accent.text} font-semibold`}>"{key}"</span>
-            <span className={"text-muted-foreground"}>: </span>
-            {typeof value === 'string' ? (
-              <CollapsibleValue value={value} colors={colors} />
-            ) : value === null || value === undefined ? (
-              <span className="text-orange-500 font-medium">null</span>
-            ) : typeof value === 'boolean' ? (
-              <span className={`${accent.text} font-medium`}>{String(value)}</span>
-            ) : typeof value === 'number' ? (
-              <span className="text-amber-500 font-medium">{value}</span>
-            ) : Array.isArray(value) ? (
-              <span className="text-emerald-500">[{value.length > 0 ? '...' : ''}]</span>
-            ) : typeof value === 'object' ? (
-              <span className="text-emerald-500">{'{...}'}</span>
-            ) : (
-              <span className="text-emerald-500">{JSON.stringify(value)}</span>
-            )}
-            {i < entries.length - 1 && <span className={"text-muted-foreground"}>,</span>}
-          </div>
-        ))}
-        <span className={"text-muted-foreground"}>{pad}{'}'}</span>
-      </div>
-    )
-  }
+  return (
+    <div className="text-sm font-mono leading-relaxed">
+      <span className={"text-muted-foreground"}>{'{'}</span>
+      {entries.map(([key, value], i) => (
+        <div key={key} className="py-0.5">
+          <span className={"text-muted-foreground"}>{padInner}</span>
+          <span className={`${accent.text} font-semibold`}>"{key}"</span>
+          <span className={"text-muted-foreground"}>: </span>
+          {typeof value === 'string' ? (
+            <CollapsibleValue value={value} colors={colors} />
+          ) : value === null || value === undefined ? (
+            <span className="text-orange-500 font-medium">null</span>
+          ) : typeof value === 'boolean' ? (
+            <span className={`${accent.text} font-medium`}>{String(value)}</span>
+          ) : typeof value === 'number' ? (
+            <span className="text-amber-500 font-medium">{value}</span>
+          ) : Array.isArray(value) ? (
+            <span className="text-emerald-500">[{value.length > 0 ? '...' : ''}]</span>
+          ) : typeof value === 'object' ? (
+            <span className="text-emerald-500">{'{...}'}</span>
+          ) : (
+            <span className="text-emerald-500">{JSON.stringify(value)}</span>
+          )}
+          {i < entries.length - 1 && <span className={"text-muted-foreground"}>,</span>}
+        </div>
+      ))}
+      <span className={"text-muted-foreground"}>{pad}{'}'}</span>
+    </div>
+  )
+}
 
 // Token JSON 视图（只读）
 export function TokenJsonView({ account, defaultExpanded = false }) {
