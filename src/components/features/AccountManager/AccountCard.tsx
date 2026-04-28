@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { Layers3, Copy, Check, Repeat, Key, Eye, Package, LogIn, LogOut, Edit, Trash2 } from 'lucide-react'
+import { Eye, Copy, Check,Edit2, Repeat, Key, Package, LogIn, LogOut, Trash2 } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { DialogRoot, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../shared/dialog'
@@ -262,22 +262,12 @@ const AccountCard = memo(function AccountCard({
                 </button>
               </div>
             )}
-          </div>
           <div className="flex items-center gap-1">
-            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.viewDetails')}>
-              <Eye size={16} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.editRemark')}>
-              <Edit size={16} />
-            </button>
             <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
               <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onRefresh(account.id) }} disabled={isRefreshing} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshQuota')}>
               <Repeat size={16} className={isRefreshing ? 'animate-spin' : ''} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
-              <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
             </button>
             {isCurrentAccount ? (
               <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching} className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50" title={t('accountCard.LogOut')}>
@@ -291,6 +281,7 @@ const AccountCard = memo(function AccountCard({
             <button onClick={(e) => { e.stopPropagation(); onDelete(account.id) }} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title={t('accountCard.delete')}>
               <Trash2 size={16} />
             </button>
+          </div>
             </div>
         </div>
       </div>

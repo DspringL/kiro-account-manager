@@ -57,6 +57,7 @@ const VirtualRow = memo(function VirtualRow({
             onRefresh={onRefresh}
             onRefreshToken={onRefreshToken}
             onEdit={onEdit}
+            onDelete={onDelete}
             isRefreshing={Boolean(accountRowStateById?.[item.id]?.isRefreshing)}
             isRefreshingToken={Boolean(accountRowStateById?.[item.id]?.isRefreshingToken)}
             isSwitching={Boolean(accountRowStateById?.[item.id]?.isSwitching)}
