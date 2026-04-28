@@ -3,7 +3,6 @@
 // 核心模块
 mod core;
 mod state;
-mod tray_behavior;
 
 // 功能模块
 mod auth;
@@ -16,9 +15,8 @@ mod utils;
 use core::account::{AccountStore, GroupTagStore};
 use auth::AuthState;
 use state::AppState;
-use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
-use tauri::{Listener, Manager};
+use tauri::Listener;
 
 // 导入命令
 use utils::browser::{detect_installed_browsers};
@@ -213,45 +211,16 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-use crate::tray_behavior::TRAY_ICON_ID;
-
-    // 先移除旧的托盘图标（如果存在）
-    let _ = app.remove_tray_by_id(TRAY_ICON_ID);
-    
-    match tray_behavior::create_tray_icon(app.handle()) {
-        Ok(tray_icon) => {
-            let state = app.state::<AppState>();
-            state
-                .tray_icon
-                .lock()
-                .expect("tray icon mutex poisoned")
-                .replace(tray_icon);
-            state
-                .tray_ready
-                .store(true, std::sync::atomic::Ordering::Relaxed);
-        }
-        Err(err) => {
-            app.state::<AppState>()
-                .tray_ready
-                .store(false, std::sync::atomic::Ordering::Relaxed);
-            log::warn!("系统托盘初始化失败，将继续启动但不启用关闭到托盘: {err}");
-        }
-    }
+    // 不创建托盘图标，关闭窗口直接退出应用
 
     // 主窗口由前端首屏 ready 后通过命令触发显示，避免 setup 阶段过早白屏
 
     Ok(())
 }
-//
-#[tauri::command]
-fn reveal_main_window(app: tauri::AppHandle) {
-    tray_behavior::show_main_window(&app);
-}
 
 #[allow(clippy::too_many_lines)] // Tauri 框架要求在 main 中注册所有命令，无法拆分
 fn main() {
     tauri::Builder::default()
-        .on_window_event(tray_behavior::handle_window_event)
         .plugin(setup_log_plugin().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -270,8 +239,6 @@ fn main() {
             auth: AuthState::new(),
             pending_login: Mutex::new(None),
             gateway: Mutex::new(None),
-            tray_ready: AtomicBool::new(false),
-            tray_icon: Mutex::new(None),
         })
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
@@ -323,7 +290,6 @@ fn main() {
             kiro_login,
             get_supported_providers,
             handle_kiro_social_callback,
-            reveal_main_window,
             check_ide_installation,
             check_kiro_config_files,
             get_kiro_local_token,

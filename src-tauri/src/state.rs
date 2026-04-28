@@ -3,10 +3,7 @@
 use crate::core::account::{AccountStore, GroupTagStore};
 use crate::auth::AuthState;
 use crate::gateway::GatewayRuntime;
-use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
-use tauri::tray::TrayIcon;
-use tauri::Wry;
 
 #[derive(Clone)]
 pub struct PendingLogin {
@@ -22,6 +19,4 @@ pub struct AppState {
     pub auth: AuthState,
     pub pending_login: Mutex<Option<PendingLogin>>,
     pub gateway: Mutex<Option<GatewayRuntime>>,
-    pub tray_ready: AtomicBool,
-    pub tray_icon: Mutex<Option<TrayIcon<Wry>>>,
 }

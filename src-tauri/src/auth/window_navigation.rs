@@ -38,5 +38,10 @@ pub fn handle_incoming_deep_link(app_handle: &tauri::AppHandle, url: &str) {
         let (_handled, _should_navigate) = crate::core::deep_link_handler::handle_deep_link(url);
     }
 
-    crate::tray_behavior::show_main_window(app_handle);
+    // 显示主窗口
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
