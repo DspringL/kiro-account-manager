@@ -148,7 +148,7 @@ function ImportAccountModal({ onClose, onSuccess, onNavigate }: ImportAccountMod
   const [kiroResult, setKiroResult] = useState<any>(null)
 
   // 从 kiro-cli 导入相关状态
-  // 在线登录相关状态
+  // 在线登入相关状态
   const [onlineLoginPending, setOnlineLoginPending] = useState(false)
   const [onlineLoginError, setOnlineLoginError] = useState('')
   const [showWaitingModal, setShowWaitingModal] = useState(false)

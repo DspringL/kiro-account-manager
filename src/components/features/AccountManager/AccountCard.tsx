@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { Layers3, Copy, Check, Repeat, Key, Eye, Package, LogIn, LogOut } from 'lucide-react'
+import { Layers3, Copy, Check, Repeat, Key, Eye, Package, LogIn, LogOut, Edit, Trash2 } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { DialogRoot, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../shared/dialog'
@@ -20,6 +20,7 @@ interface AccountCardProps {
   onRefresh: (id: string) => void;
   onRefreshToken?: (id: string) => void;
   onEdit: (account: Account) => void;
+  onDelete: (id: string) => void;
   isRefreshing?: boolean;
   isRefreshingToken?: boolean;
   isSwitching?: boolean;
@@ -44,6 +45,7 @@ const AccountCard = memo(function AccountCard({
   onRefresh,
   onRefreshToken,
   onEdit,
+  onDelete,
   isRefreshing = false,
   isRefreshingToken = false,
   isSwitching = false,
@@ -141,18 +143,18 @@ const AccountCard = memo(function AccountCard({
 
       <div className="absolute top-3 right-3 flex items-center gap-2">
         <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${statusMeta.key === 'active'
-            ? "bg-green-500/10 text-green-500 border border-green-500/20"
-            : statusMeta.tone === 'danger'
-              ? "bg-red-500/10 text-red-500 border border-red-500/20"
-              : "bg-orange-500/10 text-orange-500 border border-orange-500/20"
+          ? "bg-green-500/10 text-green-500 border border-green-500/20"
+          : statusMeta.tone === 'danger'
+            ? "bg-red-500/10 text-red-500 border border-red-500/20"
+            : "bg-orange-500/10 text-orange-500 border border-orange-500/20"
           }`}>{statusMeta.label}</span>
       </div>
 
       <div className="p-4 pt-9 flex-1 flex flex-col gap-3">
         <div className="flex items-start gap-3">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold shadow-sm border border-border/50 ${account.provider === 'Google' ? "bg-red-500/10 text-red-500" :
-              isGitHubProvider(account.provider) ? "bg-slate-500/10 text-slate-500" :
-                "bg-primary/10 text-primary"
+            isGitHubProvider(account.provider) ? "bg-slate-500/10 text-slate-500" :
+              "bg-primary/10 text-primary"
             }`}>
             {getAccountDisplayName(account)[0].toUpperCase()}
           </div>
@@ -176,10 +178,10 @@ const AccountCard = memo(function AccountCard({
 
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${(subPlan.toUpperCase().includes('ENTERPRISE'))
-              ? 'bg-orange-500 text-white'
-              : (subPlan.includes('PRO'))
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground'
+            ? 'bg-orange-500 text-white'
+            : (subPlan.includes('PRO'))
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
             }`}>
             {subPlan || 'Free'}
           </span>
@@ -265,11 +267,17 @@ const AccountCard = memo(function AccountCard({
             <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.viewDetails')}>
               <Eye size={16} />
             </button>
+            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.edit')}>
+              <Edit size={16} />
+            </button>
             <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
               <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onRefresh(account.id) }} disabled={isRefreshing} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshQuota')}>
               <Repeat size={16} className={isRefreshing ? 'animate-spin' : ''} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
+              <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
             </button>
             {isCurrentAccount ? (
               <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching} className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50" title={t('accountCard.LogOut')}>
@@ -280,10 +288,10 @@ const AccountCard = memo(function AccountCard({
                 <LogIn size={16} className={isSwitching ? 'animate-spin' : ''} />
               </button>
             )}
-            <button >
-
+            <button onClick={(e) => { e.stopPropagation(); onDelete(account.id) }} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title={t('accountCard.delete')}>
+              <Trash2 size={16} />
             </button>
-          </div>
+            </div>
         </div>
       </div>
 
