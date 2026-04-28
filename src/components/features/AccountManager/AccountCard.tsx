@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { Eye, Copy, Check,Edit2, Repeat, Key, Package, LogIn, LogOut, Trash2 } from 'lucide-react'
+import { Eye, Copy, Check,Edit2, RefreshCcw, Key, Package, LogIn, LogOut, Trash2 } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { DialogRoot, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../shared/dialog'
@@ -242,7 +242,7 @@ const AccountCard = memo(function AccountCard({
             </div>
             <div className="flex items-center gap-1.5">
               {availableModelsLoading ? (
-                <Repeat size={12} className="animate-spin text-primary" />
+                <RefreshCcw size={12} className="animate-spin text-primary" />
               ) : (
                 <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">
                   {hasLoadedAvailableModels ? (resolvedAvailableModels as any[]).length : '--'}
@@ -273,7 +273,7 @@ const AccountCard = memo(function AccountCard({
               <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onRefresh(account.id) }} disabled={isRefreshing} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshQuota')}>
-              <Repeat size={16} className={isRefreshing ? 'animate-spin' : ''} />
+              <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
             {isCurrentAccount ? (
               <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching} className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50" title={t('accountCard.LogOut')}>

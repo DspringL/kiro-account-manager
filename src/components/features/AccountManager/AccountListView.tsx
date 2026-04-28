@@ -230,6 +230,7 @@ function AccountListView({
   onSelectOne,
   onSwitch,
   onRefresh,
+  onRefreshToken,
   onEdit,
   onEditLabel,
   onDelete,
@@ -342,6 +343,7 @@ function AccountListView({
                   onSelectOne={onSelectOne}
                   onSwitch={onSwitch}
                   onRefresh={onRefresh}
+                   on
                   onEdit={onEdit}
                   onEditLabel={onEditLabel}
                   onDelete={onDelete}
