@@ -371,6 +371,41 @@ fn detect_kiro_ide_executable() -> (Option<String>, bool) {
     (None, false)
 }
 
+/// 检测配置文件是否存在（用于切换账号前验证）
+#[tauri::command]
+pub async fn check_kiro_config_files(auth_method: String, client_id_hash: Option<String>) -> Result<bool, String> {
+    tokio::task::spawn_blocking(move || {
+        let home = std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOME"))
+            .map_err(|_| "无法获取用户目录".to_string())?;
+
+        let cache_dir = std::path::Path::new(&home)
+            .join(".aws")
+            .join("sso")
+            .join("cache");
+
+        // 检查主 token 文件
+        let token_file = cache_dir.join("kiro-auth-token.json");
+        if !token_file.exists() {
+            return Ok(false);
+        }
+
+        // 如果是 IdC 账号，还需检查 client registration 文件
+        if auth_method == "idc" {
+            if let Some(hash) = client_id_hash {
+                let client_file = cache_dir.join(format!("{}.json", hash));
+                if !client_file.exists() {
+                    return Ok(false);
+                }
+            }
+        }
+
+        Ok(true)
+    })
+    .await
+    .map_err(|e| format!("Task failed: {e}"))?
+}
+
 /// 获取 Kiro IDE 候选路径
 pub fn get_kiro_ide_paths() -> Vec<std::path::PathBuf> {
     let mut paths = Vec::new();

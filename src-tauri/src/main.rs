@@ -21,35 +21,44 @@ use std::sync::Mutex;
 use tauri::{Listener, Manager};
 
 // 导入命令
-use utils::browser::detect_installed_browsers;
+use utils::browser::{detect_installed_browsers};
+
+//账号管理页面
 use commands::account_cmd::{
     add_account_by_idc, add_account_by_social, add_local_kiro_account, delete_account,
     delete_account_remote, delete_accounts, export_accounts, get_account_usage, get_accounts,
     get_accounts_by_group, get_accounts_by_tag, get_available_accounts, import_accounts,
     list_available_models, refresh_account_token, sync_account, update_account, verify_account,
 };
+//应用设置
 use commands::app_settings_cmd::{
     bind_machine_id_to_account, get_all_bound_machine_ids, get_app_settings, get_bound_machine_id,
     get_usage_history, save_app_settings, save_usage_history_entry, unbind_machine_id_from_account,
     get_custom_kiro_path, set_custom_kiro_path, clear_custom_kiro_path,
 };
+//授权相关
 use commands::auth_cmd::{
     cancel_kiro_login, get_current_user, get_supported_providers, handle_kiro_social_callback,
     kiro_login, logout,
 };
+
+//网关反代
 use commands::gateway_cmd::{
     clear_gateway_request_logs, get_gateway_config, get_gateway_log_dir, get_gateway_request_logs,
     get_gateway_status, open_gateway_log_dir, save_gateway_config, start_gateway, stop_gateway,
 };
+//分组
 use commands::group_tag_cmd::{
     add_group, add_tag, add_tag_to_account, delete_group, delete_tag, get_groups, get_tags,
     remove_account_tags, remove_tag_from_account, reorder_groups, set_account_group,
     set_account_tags, update_group, update_tag,
 };
+//kiro-cli
 use commands::kiro_cli_cmd::{
     check_cli_installation, get_kiro_cli_default_path, import_from_kiro_cli,
     read_cli_db_snapshot, rollback_cli_switch, switch_to_cli_account,
 };
+//kiroshe
 use commands::kiro_settings_cmd::{
     get_kiro_settings, set_kiro_agent_autonomy, set_kiro_code_references,
     set_kiro_codebase_indexing, set_kiro_configure_mcp, set_kiro_debug_logs, set_kiro_model,
@@ -70,26 +79,36 @@ use commands::custom_agents_cmd::{
     save_custom_agent,
 };
 use commands::hooks_cmd::{create_hook, delete_hook, get_hook, get_hooks, save_hook};
+
+
+//代理
+use commands::proxy_cmd::detect_system_proxy;
+
+//Powers
 use commands::powers_cmd::{
     get_power, get_power_registries, get_powers, get_recommended_powers, install_power,
     uninstall_power,
 };
-use commands::proxy_cmd::detect_system_proxy;
-use commands::skills_cmd::{
-    create_skill, delete_skill, get_skill, get_skills, import_skill_from_github,
-    import_skill_local, save_skill,
-};
+//Steering
 use commands::steering_cmd::{
     create_default_steering_file, create_initial_project_steering, create_steering_file,
     delete_steering_file, get_steering_file, get_steering_files, refine_steering_file,
     save_steering_file,
 };
-use commands::update_cmd::check_update;
-
-use kiro::ide::{
-    check_ide_installation, get_kiro_local_token, read_kiro_accounts, switch_kiro_account,
+//Skills
+use commands::skills_cmd::{
+    create_skill, delete_skill, get_skill, get_skills, import_skill_from_github,
+    import_skill_local, save_skill,
 };
-use kiro::process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
+//Kiro IDE
+use crate::kiro::ide::{
+    check_ide_installation, check_kiro_config_files,
+    get_kiro_local_token, read_kiro_accounts, switch_kiro_account,
+};
+//Kiro进程
+use crate::kiro::process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
+
+use commands::update_cmd::check_update;
 
 /// 配置日志插件
 fn setup_log_plugin() -> tauri_plugin_log::Builder {
@@ -112,43 +131,6 @@ fn setup_log_plugin() -> tauri_plugin_log::Builder {
         })
 }
 
-fn navigate_main_window_to_route(app_handle: &tauri::AppHandle, route: &str) {
-    let Some(window) = app_handle.get_webview_window("main") else {
-        log::warn!("收到 deep link，但未找到主窗口");
-        return;
-    };
-
-    let (path, query) = route
-        .split_once('?')
-        .map_or((route, None), |(path, query)| (path, Some(query)));
-
-    let navigation = || -> Result<(), String> {
-        let mut url = window
-            .url()
-            .map_err(|e| format!("获取主窗口 URL 失败: {e}"))?;
-        url.set_path(path);
-        url.set_query(query);
-        window
-            .navigate(url)
-            .map_err(|e| format!("跳转主窗口到 {route} 失败: {e}"))?;
-        Ok(())
-    };
-
-    if let Err(err) = navigation() {
-        log::error!("{err}");
-    }
-}
-fn handle_incoming_deep_link(app_handle: &tauri::AppHandle, url: &str) {
-    if let Some(route) = core::deep_link_handler::get_app_callback_route(url) {
-        navigate_main_window_to_route(app_handle, &route);
-    } else {
-        // Social OAuth 回调由后端 login_social 的 wait_for_callback 处理
-        // 不需要前端导航到 /callback 页面
-        let (_handled, _should_navigate) = core::deep_link_handler::handle_deep_link(url);
-    }
-
-    tray_behavior::show_main_window(app_handle);
-}
 /// 配置单实例插件回调
 #[allow(clippy::needless_pass_by_value)] // Tauri 框架要求回调签名为 Vec<String>
 fn setup_single_instance_callback(app: &tauri::AppHandle, argv: Vec<String>, _cwd: String) {
@@ -159,7 +141,7 @@ fn setup_single_instance_callback(app: &tauri::AppHandle, argv: Vec<String>, _cw
     );
     for arg in &argv {
         if arg.starts_with(&protocol_prefix) {
-            handle_incoming_deep_link(app, arg);
+            auth::handle_incoming_deep_link(app, arg);
         }
     }
 }
@@ -260,7 +242,7 @@ use crate::tray_behavior::TRAY_ICON_ID;
 
     Ok(())
 }
-
+//
 #[tauri::command]
 fn reveal_main_window(app: tauri::AppHandle) {
     tray_behavior::show_main_window(&app);
@@ -343,13 +325,13 @@ fn main() {
             handle_kiro_social_callback,
             reveal_main_window,
             check_ide_installation,
+            check_kiro_config_files,
             get_kiro_local_token,
             read_kiro_accounts,
             switch_kiro_account,
             set_custom_kiro_path,
             get_custom_kiro_path,
             clear_custom_kiro_path,
-            read_kiro_accounts,
             // 进程管理命令
             close_kiro_ide,
             start_kiro_ide,
