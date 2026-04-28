@@ -1,8 +1,9 @@
 // Token 凭证 JSON 视图组件
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Copy, Check, ChevronDown, Key, Clock } from 'lucide-react'
+import { Copy, Check, ChevronDown, Key, Clock, Package } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
+import { resolveAvailableModels } from './utils/availableModelsState'
 
 // 构建凭证 JSON 对象（直接使用整个账号对象）
 function buildCredentialsJson(account) {
