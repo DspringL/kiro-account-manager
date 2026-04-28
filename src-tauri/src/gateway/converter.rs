@@ -616,6 +616,8 @@ pub async fn build_kiro_payload(
     };
     let current_images = extract_images(client, current_message.content.as_ref()).await;
 
+    // 始终设置 agent_continuation_id 和 agent_task_type
+    // 根据抓包验证，Kiro API 在所有情况下都接受这两个字段
     Ok(KiroPayload {
         conversation_state: ConversationState {
             chat_trigger_type: "MANUAL".to_string(),
