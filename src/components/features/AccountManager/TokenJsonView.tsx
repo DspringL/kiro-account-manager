@@ -45,7 +45,7 @@ function JsonRenderer({ json, colors, accent, indent = 0 }) {
   const entries = Object.entries(json).filter(([_, value]) => value !== undefined)
   const pad = '  '.repeat(indent)
   const padInner = '  '.repeat(indent + 1)
-  
+
   return (
     <div className="text-sm font-mono leading-relaxed">
       <span className={"text-muted-foreground"}>{'{'}</span>
@@ -73,6 +73,9 @@ function JsonRenderer({ json, colors, accent, indent = 0 }) {
         </div>
       ))}
       <span className={"text-muted-foreground"}>{pad}{'}'}</span>
+    </div>
+  )
+}
     </div>
   )
 }
