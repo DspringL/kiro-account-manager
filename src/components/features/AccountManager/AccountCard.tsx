@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react'
-import { Eye, Copy, Check,Edit2, RefreshCcw, Key, Package, LogIn, LogOut, Trash2 } from 'lucide-react'
+import { Eye, Copy, Check, Edit2, RefreshCcw, Key, Package, LogIn, LogOut, Trash2 } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { usePrivacy } from '../../../contexts/PrivacyContext'
 import { DialogRoot, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../shared/dialog'
@@ -262,33 +262,33 @@ const AccountCard = memo(function AccountCard({
                 </button>
               </div>
             )}
-          <div className="flex items-center gap-1">
-            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.viewDetails')}>
-              <Eye size={16} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.editRemark')}>
-              <Edit2 size={16} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
-              <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onRefresh(account.id) }} disabled={isRefreshing} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshQuota')}>
-              <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
-            </button>
-            {isCurrentAccount ? (
-              <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching} className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50" title={t('accountCard.LogOut')}>
-                <LogOut size={16} className={isSwitching ? 'animate-spin' : ''} />
+            <div className="flex items-center gap-1">
+              <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.viewDetails')}>
+                <Eye size={16} />
               </button>
-            ) : (
-              <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching || isUnavailable} className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50" title={t('accountCard.LogIn')}>
-                <LogIn size={16} className={isSwitching ? 'animate-spin' : ''} />
+              <button onClick={(e) => { e.stopPropagation(); onEdit(account) }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={t('accountCard.editRemark')}>
+                <Edit2 size={16} />
               </button>
-            )}
-            <button onClick={(e) => { e.stopPropagation(); onDelete(account.id) }} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title={t('accountCard.delete')}>
-              <Trash2 size={16} />
-            </button>
-          </div>
+              <button onClick={(e) => { e.stopPropagation(); onRefreshToken?.(account.id) }} disabled={isRefreshingToken} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshToken')}>
+                <Key size={16} className={isRefreshingToken ? 'animate-spin' : ''} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onRefresh(account.id) }} disabled={isRefreshing} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors disabled:opacity-50" title={t('accountCard.refreshQuota')}>
+                <RefreshCcw size={16} className={isRefreshing ? 'animate-spin' : ''} />
+              </button>
+              {isCurrentAccount ? (
+                <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching} className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50" title={t('accountCard.LogOut')}>
+                  <LogOut size={16} className={isSwitching ? 'animate-spin' : ''} />
+                </button>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); onSwitch(account) }} disabled={isSwitching || isUnavailable} className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50" title={t('accountCard.LogIn')}>
+                  <LogIn size={16} className={isSwitching ? 'animate-spin' : ''} />
+                </button>
+              )}
+              <button onClick={(e) => { e.stopPropagation(); onDelete(account.id) }} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title={t('accountCard.delete')}>
+                <Trash2 size={16} />
+              </button>
             </div>
+          </div>
         </div>
       </div>
 
@@ -300,7 +300,7 @@ const AccountCard = memo(function AccountCard({
           </DialogHeader>
           <DialogBody className="py-6">
             {availableModelsLoading ? (
-              <div className="flex justify-center py-12"><Repeat className="animate-spin text-primary" size={32} /></div>
+              <div className="flex justify-center py-12"><RefreshCcw className="animate-spin text-primary" size={32} /></div>
             ) : availableModelsError ? (
               <div className="text-center py-12 text-red-500">{availableModelsError}</div>
             ) : hasLoadedAvailableModels ? (

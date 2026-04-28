@@ -335,6 +335,7 @@ function AccountListView({
                   isSelected={_selectedIdsSet.has(acc.id)}
                   isCurrent={localRefreshToken && acc.refreshToken === localRefreshToken}
                   isRefreshing={accountRowStateById[acc.id]?.isRefreshing ?? false}
+                  isRefreshingToken={accountRowStateById[acc.id]?.isRefreshingToken ?? false}
                   isSwitching={accountRowStateById[acc.id]?.isSwitching ?? false}
                   tagMap={tagMap}
                   groupMap={groupMap}
