@@ -200,13 +200,13 @@ pub async fn sync_account(
     let access_token = account.access_token.as_ref().ok_or("No access token")?;
     let is_enterprise = provider_str == "Enterprise";
 
-    // 如果是企业版账号且缺少 machine_id，生成一个
+    // 如果账号缺少 machine_id，自动生成一个（所有账号都需要）
     let mut account = account.clone();
-    if is_enterprise && account.machine_id.is_none() {
+    if account.machine_id.is_none() {
         use crate::commands::machine_guid::get_machine_id;
         let machine_id = get_machine_id();
         account.machine_id = Some(machine_id);
-        log::info!("Generated machine_id for Enterprise account: {}", account.id);
+        log::info!("Generated machine_id for account: {}", account.id);
     }
 
     // 先尝试用现有 token 获取配额
@@ -279,10 +279,10 @@ pub async fn sync_account(
 
     let mut store = lock_store(&state.store, "store")?;
     let result = if let Some(a) = store.accounts.iter_mut().find(|a| a.id == id) {
-        // 如果生成了新的 machine_id，保存它
+        // 如果生成了新的 machine_id，保存它（所有账号都需要）
         if account.machine_id.is_some() && a.machine_id.is_none() {
             a.machine_id = account.machine_id.clone();
-            log::info!("Saved machine_id for Enterprise account: {}", a.id);
+            log::info!("Saved machine_id for account: {}", a.id);
         }
 
         // 如果刷新了 token，更新 token 相关字段
