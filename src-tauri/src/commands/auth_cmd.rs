@@ -319,6 +319,12 @@ async fn login_idc(
         account.profile_arn = auth_result.profile_arn;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned, usage_result.is_auth_error);
+        
+        // 为所有新账号生成 machine_id
+        use crate::commands::machine_guid::get_machine_id;
+        account.machine_id = Some(get_machine_id());
+        log::info!("Generated machine_id for new {} account", provider_id);
+        
         store.accounts.insert(0, account.clone());
         account
     };
@@ -429,6 +435,12 @@ pub async fn handle_kiro_social_callback(
         account.user_id = user_id;
         account.usage_data = Some(usage_result.usage_data);
         account.status = calc_status(usage_result.is_banned, usage_result.is_auth_error);
+        
+        // 为所有新账号生成 machine_id
+        use crate::commands::machine_guid::get_machine_id;
+        account.machine_id = Some(get_machine_id());
+        log::info!("Generated machine_id for new {} account", pending.provider);
+        
         store.accounts.insert(0, account.clone());
         account
     };
