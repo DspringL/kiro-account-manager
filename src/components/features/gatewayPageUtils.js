@@ -193,7 +193,12 @@ export const mergeErrorHistory = (history, message, seenAt, limit = 8) => {
 }
 
 export const buildClientSamples = (baseUrl, apiKey) => {
-  const safeKey = apiKey || 'sk-your-gateway-api-key'
+  // 支持多行多个 key，取第一个非空的真实 key
+  const firstKey = String(apiKey || '')
+    .split(/[\n,]+/)
+    .map(k => k.trim())
+    .find(k => k.length > 0)
+  const safeKey = firstKey || 'sk-your-gateway-api-key'
   const anthropicEnv = `ANTHROPIC_BASE_URL=${baseUrl}\nANTHROPIC_API_KEY=${safeKey}`
   const openaiEnv = `OPENAI_BASE_URL=${baseUrl}\nOPENAI_API_KEY=${safeKey}`
   const openaiResponsesCurl = [
@@ -345,7 +350,12 @@ export const buildGatewaySecuritySummary = ({ config }) => {
 }
 
 export const buildGatewayIntegrationSummary = ({ baseUrl, apiKey, logDir, errorHistory }) => {
-  const safeKey = apiKey || 'sk-your-gateway-api-key'
+  // 支持多行多个 key，取第一个非空的真实 key
+  const firstKey = String(apiKey || '')
+    .split(/[\n,]+/)
+    .map(k => k.trim())
+    .find(k => k.length > 0)
+  const safeKey = firstKey || 'sk-your-gateway-api-key'
   const errorCount = Array.isArray(errorHistory) ? errorHistory.length : 0
   const errorHits = Array.isArray(errorHistory) ? errorHistory.reduce((sum, item) => sum + Number(item.count || 0), 0) : 0
 

@@ -191,5 +191,22 @@
         "status": "modify"
       }
     ]
+  },
+  {
+    "id": "gateway-api-key-full-display-2026-05-08",
+    "question": "Kiro API 网关中的 ANTHROPIC_API_KEY 显示全部不要隐藏部分，取真实的包括 curl 中的也是，有多个 key 时取第一个真实的",
+    "plan": "修改 gatewayPageUtils.js 中的 buildClientSamples 和 buildGatewayIntegrationSummary，将 apiKey 按换行/逗号分割后取第一个非空值，完整显示在 ANTHROPIC_API_KEY、OPENAI_API_KEY 和 curl 的 Authorization 头中",
+    "created_at": "2026-05-08T12:00:00",
+    "completed_at": "2026-05-08T12:05:00",
+    "ref_file_list": [
+      "src/components/features/gatewayPageUtils.js"
+    ],
+    "change_list": [
+      {
+        "file": "src/components/features/gatewayPageUtils.js",
+        "change": "buildClientSamples 和 buildGatewayIntegrationSummary 中，将 apiKey 按换行/逗号分割取第一个非空 key 完整显示，不再截断；多个 key 时取第一个",
+        "status": "modify"
+      }
+    ]
   }
 ]
