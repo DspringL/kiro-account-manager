@@ -39,13 +39,15 @@ impl BrowserAutomation {
         admin_password: &str,
         proxy_url: Option<&str>,
         account_password: Option<&str>,
+        slow_mode: bool,
         app_handle: Option<&tauri::AppHandle>,
     ) -> Result<Value, String> {
         let input = json!({
             "api_url": api_url,
             "admin_password": admin_password,
             "proxy_url": proxy_url,
-            "account_password": account_password
+            "account_password": account_password,
+            "slow_mode": slow_mode
         });
         let input_bytes = input.to_string().into_bytes();
 

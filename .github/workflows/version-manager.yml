@@ -70,15 +70,19 @@ jobs:
             # 更新 package.json
             npm version $VERSION --no-git-tag-version
             
-            # 更新 tauri.conf.json
+            # 更新 tauri.conf.json（开发配置）
             if command -v jq &> /dev/null; then
-              jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+              jq ".version = \"$VERSION-dev\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
               mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
             else
-              npm install -g jq
-              jq ".version = \"$VERSION\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+              sudo apt-get install -y jq
+              jq ".version = \"$VERSION-dev\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
               mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
             fi
+            
+            # 更新 tauri.conf.prod.json（生产配置）
+            jq ".version = \"$VERSION\"" src-tauri/tauri.conf.prod.json > src-tauri/tauri.conf.prod.json.tmp
+            mv src-tauri/tauri.conf.prod.json.tmp src-tauri/tauri.conf.prod.json
             
             # 更新 Cargo.toml
             sed -i "s/^version = .*/version = \"$VERSION\"/" src-tauri/Cargo.toml
@@ -93,8 +97,25 @@ jobs:
             echo "📦 使用 standard-version 更新版本 (${{ inputs.version_type }})..."
             npm run release:${{ inputs.version_type }}
             
-            # 获取最新标签
-            TAG=$(git describe --tags --abbrev=0)
+            # 获取最新标签（standard-version 跳过了 tag，需要从 package.json 读取）
+            VERSION=$(node -p "require('./package.json').version")
+            TAG="v$VERSION"
+            
+            # 更新 tauri.conf.json（开发配置）
+            jq ".version = \"$VERSION-dev\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+            mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+            
+            # 更新 tauri.conf.prod.json（生产配置）
+            jq ".version = \"$VERSION\"" src-tauri/tauri.conf.prod.json > src-tauri/tauri.conf.prod.json.tmp
+            mv src-tauri/tauri.conf.prod.json.tmp src-tauri/tauri.conf.prod.json
+            
+            # 更新 Cargo.toml
+            sed -i "s/^version = .*/version = \"$VERSION\"/" src-tauri/Cargo.toml
+            
+            # 创建 git tag（standard-version 配置了 skip.tag=true，需手动创建）
+            git add src-tauri/tauri.conf.json src-tauri/tauri.conf.prod.json src-tauri/Cargo.toml
+            git commit --amend --no-edit
+            git tag "$TAG"
             
             echo "✅ 版本号已自动更新"
           fi

@@ -10,6 +10,9 @@ pub struct AutoRegisterParams {
     pub temp_mail_password: String,
     #[serde(default)]
     pub account_password: Option<String>,
+    /// 仿真延迟模式：开启后每个输入/点击环节随机延迟 3~10 秒，并逐字符仿真输入
+    #[serde(default)]
+    pub slow_mode: bool,
 }
 
 /// 检查 Camoufox 是否已安装
@@ -91,6 +94,7 @@ pub async fn auto_register_with_tempmail(
             &params.temp_mail_password,
             proxy_url.as_deref(),
             params.account_password.as_deref(),
+            params.slow_mode,
             Some(&app_handle),
         )
         .await

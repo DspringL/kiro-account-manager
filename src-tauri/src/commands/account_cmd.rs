@@ -18,6 +18,7 @@ use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};
 use std::sync::{Mutex, MutexGuard};
+use tauri::{AppHandle, Emitter};
 use tauri::State;
 
 #[derive(Serialize)]
@@ -657,6 +658,7 @@ pub fn export_accounts(state: State<AppState>, ids: Option<Vec<String>>) -> Stri
 #[tauri::command]
 pub async fn add_account_by_oidc_token(
     state: State<'_, AppState>,
+    app_handle: AppHandle,
     access_token: String,
     refresh_token: String,
     client_id: String,
@@ -722,6 +724,9 @@ pub async fn add_account_by_oidc_token(
 
     save_store(&store)?;
     drop(store);
+
+    // 通知前端账号列表已更新，自动刷新无需手动点击
+    let _ = app_handle.emit("accounts-updated", ());
 
     Ok(AddAccountResult {
         account: account.clone(),

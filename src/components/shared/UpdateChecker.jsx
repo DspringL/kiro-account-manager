@@ -29,7 +29,8 @@ function UpdateChecker() {
   }
 
   useEffect(() => {
-    checkForUpdate()
+    // 已禁用自动检测更新，仅保留手动检测（About 页面）
+    // checkForUpdate()
   }, [])
 
   // 不渲染任何内容，弹窗由 DialogContext 管理

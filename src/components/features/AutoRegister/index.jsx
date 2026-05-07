@@ -22,6 +22,10 @@ export default function AutoRegister() {
   const [accountPassword, setAccountPassword] = useState(
     localStorage.getItem('accountPassword') || ''
   )
+  // 仿真延迟开关
+  const [slowMode, setSlowMode] = useState(
+    localStorage.getItem('slowMode') === 'true'
+  )
 
   // 注册状态
   const [isRegistering, setIsRegistering] = useState(false)
@@ -111,10 +115,11 @@ export default function AutoRegister() {
   const saveConfig = useCallback(() => {
     localStorage.setItem('tempMailApiUrl', tempMailApiUrl)
     localStorage.setItem('tempMailPassword', tempMailPassword)
+    localStorage.setItem('slowMode', slowMode ? 'true' : 'false')
     if (accountPassword) {
       localStorage.setItem('accountPassword', accountPassword)
     }
-  }, [tempMailApiUrl, tempMailPassword, accountPassword])
+  }, [tempMailApiUrl, tempMailPassword, accountPassword, slowMode])
 
   // 开始批量注册
   const startRegistration = async () => {
@@ -157,6 +162,7 @@ export default function AutoRegister() {
             temp_mail_api_url: tempMailApiUrl,
             temp_mail_password: tempMailPassword,
             account_password: accountPassword || null,
+            slow_mode: slowMode,
           },
         })
 
@@ -331,6 +337,31 @@ export default function AutoRegister() {
               className={`w-full px-3 py-2 border rounded-lg ${colors.input} ${colors.inputFocus} ${colors.text}`}
             />
           </div>
+        </div>
+
+        {/* 仿真延迟开关 */}
+        <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${colors.cardBorder} ${colors.cardSecondary}`}>
+          <div>
+            <span className={`text-sm font-medium ${colors.text}`}>仿真延迟模式</span>
+            <p className={`text-xs ${colors.textMuted} mt-0.5`}>
+              开启后每个输入/点击环节随机延迟 3~10 秒，并逐字符仿真输入，更接近人工操作
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSlowMode(v => !v)}
+            disabled={isRegistering}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+              slowMode ? 'bg-blue-500' : `${colors.cardBorder} bg-gray-300 dark:bg-gray-600`
+            }`}
+            aria-pressed={slowMode}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                slowMode ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">

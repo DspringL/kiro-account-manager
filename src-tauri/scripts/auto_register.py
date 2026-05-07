@@ -39,6 +39,25 @@ def success(data: dict):
     print(json.dumps({"type": "result", "data": data}), flush=True)
     sys.exit(0)
 
+# ─── 仿真延迟工具 ────────────────────────────────────────────────────────────
+
+async def human_delay(slow_mode: bool, min_sec: float = 3.0, max_sec: float = 10.0):
+    """仿真人类操作延迟，slow_mode=True 时随机等待 3~10 秒"""
+    if slow_mode:
+        delay = random.uniform(min_sec, max_sec)
+        log(f"  [仿真延迟] 等待 {delay:.1f} 秒...")
+        await asyncio.sleep(delay)
+
+async def human_type(page, selector: str, text: str, slow_mode: bool):
+    """仿真人类输入：slow_mode=True 时逐字符输入并随机间隔，否则直接 fill"""
+    if slow_mode:
+        await page.click(selector)
+        for char in text:
+            await page.keyboard.type(char)
+            await asyncio.sleep(random.uniform(0.05, 0.18))
+    else:
+        await page.fill(selector, text)
+
 FIRST_NAMES = ['James','Robert','John','Michael','David','William','Richard',
                'Maria','Elizabeth','Jennifer','Linda','Barbara','Susan','Jessica',
                'Sarah','Karen','Nancy','Lisa','Betty','Margaret']
@@ -129,13 +148,13 @@ def poll_verification_code(api_url: str, jwt: str, email: str, max_tries: int = 
 # ─── 主注册流程 ──────────────────────────────────────────────────────────────
 
 async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_password: str,
-                       proxy_url: str = None, account_password: str = None):
+                       proxy_url: str = None, account_password: str = None, slow_mode: bool = False):
     if not CAMOUFOX_AVAILABLE:
         fail("Camoufox 未安装，请运行: pip install camoufox && python -m camoufox fetch")
 
     password = account_password if account_password else "Alisi1976230!"
     name = random_name()
-    log(f"使用姓名: {name}，密码: {'自定义' if account_password else '默认'}", email)
+    log(f"使用姓名: {name}，密码: {'自定义' if account_password else '默认'}，仿真模式: {'开启' if slow_mode else '关闭'}", email)
 
     browser_args = {'headless': False}
     if proxy_url:
@@ -167,7 +186,9 @@ async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_pas
                     page.wait_for_selector('input[placeholder="username@example.com"]'),
                     timeout=30
                 )
-                await page.fill('input[placeholder="username@example.com"]', email)
+                await human_delay(slow_mode)
+                await human_type(page, 'input[placeholder="username@example.com"]', email, slow_mode)
+                await human_delay(slow_mode)
                 await page.click('button[data-testid="test-primary-button"]')
                 log("✓ 邮箱已输入，点击继续", email)
             except asyncio.TimeoutError:
@@ -195,7 +216,9 @@ async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_pas
             # ── 步骤5：输入姓名点击继续 ─────────────────────────────────────
             log(f"步骤5: 输入姓名 {name}...", email)
             try:
-                await page.fill(name_selector, name)
+                await human_delay(slow_mode)
+                await human_type(page, name_selector, name, slow_mode)
+                await human_delay(slow_mode)
                 await page.click('button[data-testid="signup-next-button"]')
                 log("✓ 姓名已输入，点击继续", email)
             except Exception as e:
@@ -244,7 +267,9 @@ async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_pas
             # ── 步骤7：输入验证码点击继续 ───────────────────────────────────
             log(f"步骤7: 输入验证码 {code}...", email)
             try:
-                await page.fill(code_selector, code)
+                await human_delay(slow_mode)
+                await human_type(page, code_selector, code, slow_mode)
+                await human_delay(slow_mode)
                 await page.click('button[data-testid="email-verification-verify-button"]')
                 log("✓ 验证码已输入，点击继续", email)
             except Exception as e:
@@ -272,19 +297,23 @@ async def register_aws(email: str, jwt: str, address_id, api_url: str, admin_pas
             # ── 步骤9：输入两次密码，等待SSO Token（30s超时）───────────────
             log(f"步骤9: 输入密码...", email)
             try:
-                await page.fill(pwd_selector, password)
+                await human_delay(slow_mode)
+                await human_type(page, pwd_selector, password, slow_mode)
                 # 确认密码
                 confirm_sel = 'input[placeholder="Re-enter password"]'
                 try:
                     await asyncio.wait_for(page.wait_for_selector(confirm_sel), timeout=5)
-                    await page.fill(confirm_sel, password)
+                    await human_delay(slow_mode)
+                    await human_type(page, confirm_sel, password, slow_mode)
                 except asyncio.TimeoutError:
                     # 尝试第二个 password 输入框
                     inputs = await page.query_selector_all('input[type="password"]')
                     if len(inputs) >= 2:
+                        await human_delay(slow_mode)
                         await inputs[1].fill(password)
                         log("✓ 使用第二个密码框输入确认密码", email)
 
+                await human_delay(slow_mode)
                 await page.click('button[data-testid="test-primary-button"]')
                 log("✓ 密码已输入，点击继续", email)
             except Exception as e:
@@ -336,6 +365,7 @@ async def main():
     admin_password = input_data.get("admin_password", "")
     proxy_url      = input_data.get("proxy_url")
     account_password = input_data.get("account_password")
+    slow_mode      = input_data.get("slow_mode", False)
 
     if not api_url or not admin_password:
         fail("缺少必需参数: api_url 或 admin_password")
@@ -344,7 +374,7 @@ async def main():
     email, jwt, address_id = create_tempmail(api_url, admin_password)
 
     # 步骤2-9：浏览器注册流程
-    await register_aws(email, jwt, address_id, api_url, admin_password, proxy_url, account_password)
+    await register_aws(email, jwt, address_id, api_url, admin_password, proxy_url, account_password, slow_mode)
 
 
 if __name__ == "__main__":

@@ -97,5 +97,99 @@
         "status": "modify"
       }
     ]
+  },
+  {
+    "id": "fix-github-ci-prod-config-2026-05-08",
+    "question": "看一下 github 的构建有没有问题，生产构建需要有独立的 tauri.conf.json",
+    "plan": "1. 创建 src-tauri/tauri.conf.prod.json（生产配置，去掉 -dev 后缀）\n2. 修改 release.yml 和 manual.yml：构建前切换为生产配置并同步版本号\n3. 修复 macos-15-intel 为 macos-13\n4. 修复 RUST_VERSION 1.90.0 为 stable\n5. 修复 version-manager.yml 中 npm install -g jq 错误，改为 sudo apt-get install -y jq\n6. 补全 standard-version 分支对 tauri.conf.json/tauri.conf.prod.json/Cargo.toml 的版本同步",
+    "created_at": "2026-05-08T10:00:00",
+    "completed_at": "2026-05-08T10:20:00",
+    "ref_file_list": [
+      "src-tauri/tauri.conf.json",
+      "src-tauri/tauri.conf.prod.json",
+      ".github/workflows/release.yml",
+      ".github/workflows/manual.yml",
+      ".github/workflows/version-manager.yml"
+    ],
+    "change_list": [
+      {
+        "file": "src-tauri/tauri.conf.prod.json",
+        "change": "新建生产配置文件：productName=KiroAccountManager，version=1.8.3，identifier=com.kiro.account-manager，窗口标题去掉 (Dev)，deep-link scheme 去掉 -dev 后缀",
+        "status": "add"
+      },
+      {
+        "file": ".github/workflows/release.yml",
+        "change": "1. RUST_VERSION 改为 stable\n2. macos-15-intel 改为 macos-13\n3. 三个平台构建前新增 Use production Tauri config 和 Sync version to production config 步骤",
+        "status": "modify"
+      },
+      {
+        "file": ".github/workflows/manual.yml",
+        "change": "1. RUST_VERSION 改为 stable\n2. macos-15-intel 改为 macos-13\n3. 三个平台构建前新增 Use production Tauri config 和 Sync version to production config 步骤",
+        "status": "modify"
+      },
+      {
+        "file": ".github/workflows/version-manager.yml",
+        "change": "1. 修复 jq 安装方式（npm install -g jq → sudo apt-get install -y jq）\n2. custom_version 分支同步更新 tauri.conf.json（-dev 版本）和 tauri.conf.prod.json（正式版本）\n3. standard-version 分支补全对 tauri.conf.json/tauri.conf.prod.json/Cargo.toml 的版本同步及 git tag 创建",
+        "status": "modify"
+      }
+    ]
+  },
+  {
+    "id": "disable-auto-update-checker-2026-05-08",
+    "question": "注释掉程序的自动检测更新只保留手动检测更新",
+    "plan": "在 UpdateChecker.jsx 的 useEffect 中注释掉 checkForUpdate() 调用，保留手动检测逻辑（About 页面的检查更新按钮）不变",
+    "created_at": "2026-05-08T10:30:00",
+    "completed_at": "2026-05-08T10:35:00",
+    "ref_file_list": [
+      "src/components/shared/UpdateChecker.jsx"
+    ],
+    "change_list": [
+      {
+        "file": "src/components/shared/UpdateChecker.jsx",
+        "change": "注释掉 useEffect 中的 checkForUpdate() 调用，禁用启动时自动检测更新；手动检测（About 页面按钮）逻辑保持不变",
+        "status": "modify"
+      }
+    ]
+  },
+  {
+    "id": "auto-register-slow-mode-and-refresh-fix-2026-05-08",
+    "question": "优化：账号注册环节增加随机延时开关（3~10秒+仿真输入）；修复：注册成功后账号管理中没有新账号，需手动刷新",
+    "plan": "1. Rust add_account_by_oidc_token 成功后 emit accounts-updated 事件，触发前端自动刷新\n2. Python 脚本增加 slow_mode 参数，开启时每个输入/点击前随机延迟3~10秒，输入改为逐字符仿真\n3. Rust AutoRegisterParams 增加 slow_mode 字段，传递给 BrowserAutomation::register_full_flow\n4. 前端 AutoRegister 增加仿真延迟开关 UI，状态持久化到 localStorage",
+    "created_at": "2026-05-08T11:00:00",
+    "completed_at": "2026-05-08T11:30:00",
+    "ref_file_list": [
+      "src-tauri/src/commands/account_cmd.rs",
+      "src-tauri/src/commands/auto_register_cmd.rs",
+      "src-tauri/src/services/browser_automation.rs",
+      "src-tauri/scripts/auto_register.py",
+      "src/components/features/AutoRegister/index.jsx"
+    ],
+    "change_list": [
+      {
+        "file": "src-tauri/src/commands/account_cmd.rs",
+        "change": "add_account_by_oidc_token 增加 AppHandle 参数，存储成功后 emit accounts-updated 事件，修复注册后账号列表不自动刷新的问题",
+        "status": "modify"
+      },
+      {
+        "file": "src-tauri/src/commands/auto_register_cmd.rs",
+        "change": "AutoRegisterParams 增加 slow_mode: bool 字段，传递给 register_full_flow",
+        "status": "modify"
+      },
+      {
+        "file": "src-tauri/src/services/browser_automation.rs",
+        "change": "register_full_flow 增加 slow_mode 参数，写入 Python 脚本的 stdin JSON 输入",
+        "status": "modify"
+      },
+      {
+        "file": "src-tauri/scripts/auto_register.py",
+        "change": "新增 human_delay/human_type 工具函数；register_aws 增加 slow_mode 参数；步骤3/5/7/9 的输入和点击前加入仿真延迟和逐字符输入；main() 读取 slow_mode 参数",
+        "status": "modify"
+      },
+      {
+        "file": "src/components/features/AutoRegister/index.jsx",
+        "change": "增加 slowMode 状态（持久化到 localStorage）；配置区域增加仿真延迟开关 Toggle UI；invoke 时传入 slow_mode 参数",
+        "status": "modify"
+      }
+    ]
   }
 ]
