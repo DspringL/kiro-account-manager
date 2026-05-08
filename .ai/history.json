@@ -1,6 +1,113 @@
 [
   {
-    "id": "ui-improvements-2026-04-17",
+    "id": "20260509001",
+    "question": "将 AutoRegister 中临时邮箱配置（API地址、Admin密码、AWS账号密码、步骤超时）从 register 模式条件渲染中移出，两种模式都显示；注册数量仅在 register 模式下显示",
+    "plan": "使用 Python 脚本精确替换 src/components/features/AutoRegister/index.jsx 中的 grid 配置区域：移除外层 registerMode === 'register' 条件包裹，将注册数量字段改为内部条件渲染",
+    "created_at": "2026-05-08 15:39:13",
+    "completed_at": "2026-05-08 15:39:13",
+    "change_list": [
+      {
+        "file": "src/components/features/AutoRegister/index.jsx",
+        "change": "移除 grid 配置区域外层的 registerMode === 'register' 条件包裹，使 API地址/Admin密码/AWS账号密码/步骤超时四个字段在两种模式下都显示；注册数量字段改为内部条件渲染（仅 register 模式显示）",
+        "status": "modify"
+      }
+    ]
+  },
+  {
+    "id": "20260508008",
+    "question": "浏览器变成可选的，支持 Camoufox 和 Playwright，指纹生成内嵌不依赖 kiro-auto-main",
+    "plan": "1. auto_register.py 完全重写：内嵌指纹生成逻辑（移植自 kiro-auto-main），抽 BrowserContext 工厂类统一封装 Camoufox/Playwright，两种模式共用同一套注册流程代码\n2. Rust AutoRegisterParams 加 browser_type 字段，browser_automation.rs register_full_flow 加 browser_type 参数传给 Python\n3. 前端加浏览器选择下拉（Camoufox/Playwright），持久化到 localStorage",
+    "created_at": "2026-05-08 00:00:00",
+    "completed_at": "2026-05-08 00:40:00",
+    "change_list": [
+      { "file": "src-tauri/scripts/auto_register.py", "change": "完全重写：内嵌指纹生成（generate_fingerprint/build_fingerprint_script）、BrowserContext 工厂类、register_aws_authorize/register_aws 统一支持 browser_type 参数", "status": "modify" },
+      { "file": "src-tauri/src/commands/auto_register_cmd.rs", "change": "AutoRegisterParams 加 browser_type 字段（默认 camoufox），两处 register_full_flow 调用加 browser_type 参数", "status": "modify" },
+      { "file": "src-tauri/src/services/browser_automation.rs", "change": "register_full_flow 签名加 browser_type 参数，传入 Python stdin JSON", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.jsx", "change": "加 browserType 状态和浏览器选择下拉（Camoufox/Playwright），持久化 localStorage，invoke 传 browser_type", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508007",
+    "question": "authorize 模式报错 invalid_redirect_uri，AWS 要求 public 客户端必须用 loopback 地址",
+    "plan": "改用随机端口的 http://127.0.0.1:{port}/callback 作为 redirect_uri，Rust 侧用 tiny_http 启动本地 HTTP 服务器监听回调，Python 完成注册点击'允许访问'后 AWS 把 code 发到本地服务器，再换 token",
+    "created_at": "2026-05-08 00:00:00",
+    "completed_at": "2026-05-08 00:25:00",
+    "change_list": [
+      { "file": "src-tauri/src/services/browser_automation.rs", "change": "generate_authorize_url 改用随机端口 loopback 地址作为 redirect_uri，返回四元组 (url, code_verifier, state, port)", "status": "modify" },
+      { "file": "src-tauri/src/commands/auto_register_cmd.rs", "change": "authorize 模式用 tiny_http 在随机端口启动本地 HTTP 服务器，后台线程等待 AWS 回调，Python 注册完成后接收 code 换 token", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508006",
+    "question": "账号被封禁，改用在线登录中的 AWS Builder ID 注册方式（authorize 模式），流程：输入邮箱→验证码→姓名→密码→点击允许访问",
+    "plan": "1. register_aws_authorize 函数完全重写：修正选择器（邮箱/验证码/姓名/密码/允许访问），修复验证码轮询传参错误，步骤顺序与实际页面一致\n2. generate_authorize_url 改用 deep link 作为 redirect_uri，返回 (url, code_verifier, state)\n3. auto_register_cmd.rs authorize 模式：注册前注册 deep link waiter，Python 完成注册点击'允许访问'后等待回调拿 code，再用 Authorization Code Flow 换 token",
+    "created_at": "2026-05-08 00:00:00",
+    "completed_at": "2026-05-08 00:20:00",
+    "change_list": [
+      { "file": "src-tauri/scripts/auto_register.py", "change": "完全重写 register_aws_authorize 函数：修正所有选择器、修复验证码轮询传参、步骤顺序与实际页面一致（邮箱→验证码→姓名→密码→允许访问）", "status": "modify" },
+      { "file": "src-tauri/src/services/browser_automation.rs", "change": "generate_authorize_url 改用 deep link redirect_uri，返回 (url, code_verifier, state) 三元组", "status": "modify" },
+      { "file": "src-tauri/src/commands/auto_register_cmd.rs", "change": "authorize 模式：注册前注册 deep link waiter，Python 完成后等待回调拿 code，用 exchange_social_code_for_token 换 token，直接 return 不走后续 register 流程", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508005",
+    "question": "注册成功后轮询卡住，无法拿到 refresh_token",
+    "plan": "根因：Python 脚本拿到 SSO Token 后直接退出，没有点击 'Confirm and continue' 和 'Allow access' 两个授权确认按钮，导致 deviceCode 在 AWS 侧一直是 authorization_pending 状态。修复：在步骤9之后增加步骤10（Confirm and continue）和步骤11（Allow access），完成设备授权关联后再退出。",
+    "created_at": "2026-05-08 00:00:00",
+    "completed_at": "2026-05-08 00:15:00",
+    "change_list": [
+      { "file": "src-tauri/scripts/auto_register.py", "change": "步骤9密码提交后，新增步骤10点击 'Confirm and continue'、步骤11点击 'Allow access'，完成 deviceCode 与账号的授权关联，再退出脚本", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508004",
+    "question": "改造注册流程：先向 AWS OIDC 申请真实设备码（userCode/deviceCode），再启动浏览器注册，注册完直接轮询拿 token",
+    "plan": "1. sso_token_converter.rs：抽出 request_device_code()（Step1+2）和 poll_token_after_register()（Step7）为独立函数\n2. auto_register_cmd.rs：注册前先调 request_device_code 拿真实 userCode，传给 Python；注册完用 poll_token_after_register 直接轮询，失败时降级走 SSO Token 转换\n3. browser_automation.rs：register_full_flow 增加 user_code 参数，传入 Python stdin JSON\n4. auto_register.py：register_aws 增加 user_code 参数，优先使用传入的真实设备码，无则本地随机生成兜底",
+    "created_at": "2026-05-08 00:00:00",
+    "completed_at": "2026-05-08 00:10:00",
+    "change_list": [
+      { "file": "src-tauri/src/services/sso_token_converter.rs", "change": "新增 DeviceCodeResult 结构体、request_device_code() 函数（Step1+2）、poll_token_after_register() 函数（Step7），保留原有 sso_device_auth 和 convert_sso_token_with_fallback", "status": "modify" },
+      { "file": "src-tauri/src/commands/auto_register_cmd.rs", "change": "注册前先调 request_device_code 申请真实设备码，把 user_code 传给 Python；注册成功后用 poll_token_after_register 直接轮询 token，失败时降级走 SSO Token 转换路径", "status": "modify" },
+      { "file": "src-tauri/src/services/browser_automation.rs", "change": "register_full_flow 增加 user_code: Option<&str> 参数，写入 stdin JSON", "status": "modify" },
+      { "file": "src-tauri/scripts/auto_register.py", "change": "register_aws 增加 user_code 参数，优先使用 Rust 传入的真实 AWS 设备码，无则本地随机生成兜底；main() 从 input_data 读取 user_code 并传入", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508003",
+    "question": "仿真延迟模式支持输入最小值和最大值，缺省值是1-10秒，等待元素出现的超时时间修改为60秒",
+    "plan": "1. Python 脚本：human_delay 参数缺省改为 1~10s，register_aws 增加 slow_min/slow_max 参数，main() 读取并传入；所有 wait_for_selector/wait_for/SSO Token 等待超时从 30s 改为 60s\n2. Rust AutoRegisterParams 增加 slow_min/slow_max 字段（缺省 1.0/10.0），register_full_flow 签名同步更新，stdin JSON 传入新字段\n3. 前端增加 slowMin/slowMax 状态（持久化 localStorage），仿真延迟开关展开后显示最小/最大延迟输入框，invoke 传入新参数",
+    "created_at": "2026-05-08 14:30:00",
+    "completed_at": "2026-05-08 14:40:00",
+    "change_list": [
+      { "file": "src-tauri/scripts/auto_register.py", "change": "human_delay 缺省改为 1~10s；register_aws 增加 slow_min/slow_max 参数，所有 human_delay 调用传入范围；所有 wait_for_selector/goto/SSO Token 超时从 30s 改为 60s；main() 读取 slow_min/slow_max 并传入", "status": "modify" },
+      { "file": "src-tauri/src/commands/auto_register_cmd.rs", "change": "AutoRegisterParams 增加 slow_min/slow_max 字段（serde default 1.0/10.0）；register_full_flow 调用传入新参数", "status": "modify" },
+      { "file": "src-tauri/src/services/browser_automation.rs", "change": "register_full_flow 签名增加 slow_min/slow_max: f64 参数，stdin JSON 写入 slow_min/slow_max", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.jsx", "change": "增加 slowMin/slowMax 状态（localStorage 持久化，缺省 1/10）；saveConfig 持久化新字段；invoke 传入 slow_min/slow_max；仿真延迟开关展开后显示最小/最大延迟输入框", "status": "modify" }
+    ]
+  },
+    "question": "每次注册都更换指纹",
+    "plan": "在 auto_register.py 的 register_aws 函数中，每次启动 AsyncCamoufox 前随机生成 os、window、locale 三个维度的指纹参数，同时开启 humanize 鼠标仿真和 block_webrtc，确保每次注册使用一套全新的浏览器指纹",
+    "created_at": "2026-05-08 14:20:00",
+    "completed_at": "2026-05-08 14:22:00",
+    "change_list": [
+      {
+        "file": "src-tauri/scripts/auto_register.py",
+        "change": "browser_args 增加随机指纹参数：os（随机 windows/macos/linux）、window（6种常见分辨率随机选）、locale（英语系随机选）、humanize=True（鼠标轨迹仿真）、block_webrtc=True（屏蔽 WebRTC 防 IP 泄露）",
+        "status": "modify"
+      }
+    ]
+  },
+    "question": "将客户端 API Key 功能修改为支持多 Keys",
+    "plan": "1. 后端 proxy.rs：修改 verify_client_auth，将 access_token 按换行/逗号分割为多个 key，任意一个匹配即通过鉴权\n2. 前端 GatewayAdvancedTab.jsx：将 TextInput 改为 Textarea（多行），标题改为"客户端 API Keys"，描述更新，按钮改为"追加客户端 Key"\n3. GatewayPage.jsx：handleGenerateApiKey 改为追加模式（新 key 换行追加到已有列表末尾）\n4. gatewayPageUtils.js：buildGatewaySecuritySummary 显示 key 数量；createGatewayFieldErrors 校验至少有一个有效 key",
+    "created_at": "2026-05-08 14:00:00",
+    "completed_at": "2026-05-08 14:10:00",
+    "change_list": [
+      { "file": "src-tauri/src/gateway/proxy.rs", "change": "verify_client_auth 支持多 Keys：将 access_token 按换行/逗号分割，任意一个匹配即通过", "status": "modify" },
+      { "file": "src/components/features/gateway/GatewayAdvancedTab.jsx", "change": "TextInput 改为 Textarea 多行输入，标题改为"客户端 API Keys"，描述更新，按钮改为"追加客户端 Key"，移除未使用的 TextInput 导入", "status": "modify" },
+      { "file": "src/components/features/GatewayPage.jsx", "change": "handleGenerateApiKey 改为追加模式，新 key 换行追加到已有列表末尾", "status": "modify" },
+      { "file": "src/components/features/gatewayPageUtils.js", "change": "buildGatewaySecuritySummary 显示已配置 key 数量；createGatewayFieldErrors 校验至少有一个有效 key", "status": "modify" }
+    ]
+  },
     "question": "完成自动注册功能的前端 UI 改进",
     "plan": "1. 移除代理地址输入框（使用 Kiro IDE 设置中的代理）\n2. 添加 AWS 账号密码输入框（可选，默认使用 Alisi1976230!）\n3. 更新 Camoufox 状态显示，添加一键修复按钮\n4. 更新使用说明文字\n5. 修改后端代码以支持新的参数结构\n6. 修改 Python 脚本以支持自定义密码",
     "created_at": "2026-04-17T10:00:00",

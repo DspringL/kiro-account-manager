@@ -1,5 +1,6 @@
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use serde_json::{json, Value};
 use tauri::Emitter;
 
@@ -40,6 +41,13 @@ impl BrowserAutomation {
         proxy_url: Option<&str>,
         account_password: Option<&str>,
         slow_mode: bool,
+        slow_min: f64,
+        slow_max: f64,
+        step_timeout: u32,
+        register_mode: &str,
+        user_code: Option<&str>,
+        authorize_url: Option<&str>,
+        browser_type: &str,
         app_handle: Option<&tauri::AppHandle>,
     ) -> Result<Value, String> {
         let input = json!({
@@ -47,7 +55,14 @@ impl BrowserAutomation {
             "admin_password": admin_password,
             "proxy_url": proxy_url,
             "account_password": account_password,
-            "slow_mode": slow_mode
+            "slow_mode": slow_mode,
+            "slow_min": slow_min,
+            "slow_max": slow_max,
+            "step_timeout": step_timeout,
+            "register_mode": register_mode,
+            "user_code": user_code,
+            "register_authorize_url": authorize_url,
+            "browser_type": browser_type,
         });
         let input_bytes = input.to_string().into_bytes();
 
@@ -137,5 +152,48 @@ impl BrowserAutomation {
         }
 
         result.ok_or_else(|| "未获取到结果".to_string())
+    }
+
+    pub async fn generate_authorize_url(&self) -> Result<(String, String, String, Arc<tiny_http::Server>), String> {
+        use crate::aws_sso_client::{AWSSSOClient, GRANT_SCOPES};
+        use crate::auth_social::{generate_code_challenge_social, generate_code_verifier_social};
+
+        let sso_client = AWSSSOClient::new("us-east-1");
+        let start_url = "https://view.awsapps.com/start";
+
+        // 启动本地 HTTP 服务器（与 idc.rs 完全一致）
+        let server = Arc::new(
+            tiny_http::Server::http("127.0.0.1:0")
+                .map_err(|e| format!("无法启动本地服务器: {e}"))?
+        );
+        let port = server.server_addr().to_ip().map_or(0, |a| a.port());
+        let redirect_uri = format!("http://127.0.0.1:{port}/oauth/callback");
+
+        // 注册客户端（与 idc.rs 完全一致，grantTypes 用 authorization_code）
+        let client_reg = sso_client
+            .register_client(start_url, &redirect_uri, false)
+            .await
+            .map_err(|e| format!("注册客户端失败: {}", e))?;
+
+        let code_verifier = generate_code_verifier_social();
+        let code_challenge = generate_code_challenge_social(&code_verifier);
+        let state = uuid::Uuid::new_v4().to_string();
+        let scopes = GRANT_SCOPES.join(",");
+
+        let authorize_url = format!(
+            "{}?response_type=code&client_id={}&redirect_uri={}&scopes={}&state={}&code_challenge={}&code_challenge_method=S256",
+            sso_client.get_authorize_url(),
+            client_reg.client_id,
+            urlencoding::encode(&redirect_uri),
+            urlencoding::encode(&scopes),
+            state,
+            code_challenge
+        );
+
+        // 把 client_id/client_secret 编码进 code_verifier 字段一起返回（用 | 分隔）
+        // 格式: "code_verifier|client_id|client_secret|redirect_uri"
+        let packed = format!("{}|{}|{}|{}", code_verifier, client_reg.client_id, client_reg.client_secret, redirect_uri);
+
+        Ok((authorize_url, packed, state, server))
     }
 }

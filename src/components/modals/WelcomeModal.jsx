@@ -10,14 +10,12 @@ function WelcomeModal() {
   const [previewImg, setPreviewImg] = useState(null)
 
   useEffect(() => {
-    // 检查今天是否已显示过
-    const lastShown = localStorage.getItem('welcome_last_shown')
-    const today = new Date().toDateString()
-    
-    if (lastShown !== today) {
-      // 今天还没显示过，显示弹窗
-      setOpen(true)
-    }
+    // 重要提示弹窗已隐藏，如需恢复请取消下方注释
+    // const lastShown = localStorage.getItem('welcome_last_shown')
+    // const today = new Date().toDateString()
+    // if (lastShown !== today) {
+    //   setOpen(true)
+    // }
   }, [])
 
   const handleClose = () => {

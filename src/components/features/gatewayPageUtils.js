@@ -151,8 +151,8 @@ export const createGatewayFieldErrors = (config) => {
     errors.groupId = 'group 模式必须选择分组'
   }
 
-  if (!String(config?.apiKey || '').trim()) {
-    errors.apiKey = '必须填写客户端 API Key'
+  if (!String(config?.apiKey || '').split(/[\n,]+/).map(k => k.trim()).some(k => k.length > 0)) {
+    errors.apiKey = '必须填写至少一个客户端 API Key'
   }
 
   const invalidAllowlistEntry = allowedIps.find(entry => !isValidAllowlistEntry(entry))
@@ -340,11 +340,15 @@ export const buildGatewayActionSummary = ({
 
 export const buildGatewaySecuritySummary = ({ config }) => {
   const allowedIpsCount = parseAllowedIps(config?.allowedIpsText).length
+  const keyCount = String(config?.apiKey || '')
+    .split(/[\n,]+/)
+    .map(k => k.trim())
+    .filter(k => k.length > 0).length
 
   return {
     exposureLabel: config?.localOnly ? '仅本机访问' : '允许远程访问',
     allowedIpsCount,
-    apiKeyState: String(config?.apiKey || '').trim() ? '已配置客户端 Key' : '未配置客户端 Key',
+    apiKeyState: keyCount > 0 ? `已配置 ${keyCount} 个客户端 Key` : '未配置客户端 Key',
     logLevel: config?.logLevel || 'debug',
   }
 }

@@ -1,5 +1,5 @@
 import { Server } from 'lucide-react'
-import { Badge, Button, Card, Group, NumberInput, Select, Stack, Switch, Text, TextInput, Textarea, Tooltip } from '@mantine/core'
+import { Badge, Button, Card, Group, NumberInput, Select, Stack, Switch, Text, Textarea, Tooltip } from '@mantine/core'
 
 function GatewayAdvancedTab({
   colors,
@@ -64,18 +64,20 @@ function GatewayAdvancedTab({
               />
 
               <Stack gap={6}>
-                <TextInput
-                  label="客户端 API Key"
-                  description="客户端连接本地网关时始终使用。Kiro API 的 access token 由网关从本地账号自动读取；这里填写的是网关自己的客户端鉴权 Key，不是 Kiro access token。"
+                <Textarea
+                  label="客户端 API Keys"
+                  description="每行一个客户端 Key，客户端连接本地网关时可使用其中任意一个；Kiro API 的 access token 仍由网关从本地账号自动读取。"
                   placeholder="sk-..."
+                  autosize
+                  minRows={3}
                   value={config.apiKey}
                   onChange={(e) => setField('apiKey', e.currentTarget.value)}
                   error={fieldErrors.apiKey}
                   classNames={inputClassNames}
                 />
                 <Group justify="flex-end">
-                  <Tooltip label="生成一个 sk- 格式的 API Key">
-                    <Button size="xs" variant="light" onClick={handleGenerateApiKey}>生成客户端 Key</Button>
+                  <Tooltip label="生成一个 sk- 格式的 API Key 并追加到列表">
+                    <Button size="xs" variant="light" onClick={handleGenerateApiKey}>追加客户端 Key</Button>
                   </Tooltip>
                 </Group>
               </Stack>

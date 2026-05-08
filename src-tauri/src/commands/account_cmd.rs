@@ -668,7 +668,7 @@ pub async fn add_account_by_oidc_token(
 ) -> Result<AddAccountResult, String> {
     let idp = "BuilderId".to_string();
 
-    // 用 access_token 查配额
+    // 用 access_token 查配额（同时验证账号状态）
     let usage_result = get_usage_by_provider(&idp, &access_token).await?;
 
     if usage_result.is_banned {

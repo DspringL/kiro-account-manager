@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { Play, Square, AlertCircle, Terminal, Mail, Settings, CheckCircle, XCircle, Loader2, Copy } from 'lucide-react'
+import { Play, Square, Terminal, Mail, Settings, CheckCircle, XCircle, Loader2, Copy } from 'lucide-react'
 import { useApp } from '../../../hooks/useApp'
 import { getThemeAccent } from '../KiroConfig/themeAccent'
 import { showSuccess, showError } from '../../../utils/toast'
@@ -22,9 +22,24 @@ export default function AutoRegister() {
   const [accountPassword, setAccountPassword] = useState(
     localStorage.getItem('accountPassword') || ''
   )
-  // 仿真延迟开关
+  // 仿真延迟开关及延迟范围
   const [slowMode, setSlowMode] = useState(
     localStorage.getItem('slowMode') === 'true'
+  )
+  const [slowMin, setSlowMin] = useState(
+    Number(localStorage.getItem('slowMin') || '1')
+  )
+  const [slowMax, setSlowMax] = useState(
+    Number(localStorage.getItem('slowMax') || '10')
+  )
+  const [stepTimeout, setStepTimeout] = useState(
+    Number(localStorage.getItem('stepTimeout') || '60')
+  )
+  const [registerMode, setRegisterMode] = useState(
+    localStorage.getItem('registerMode') || 'register'
+  )
+  const [browserType, setBrowserType] = useState(
+    localStorage.getItem('browserType') || 'camoufox'
   )
 
   // 注册状态
@@ -116,10 +131,14 @@ export default function AutoRegister() {
     localStorage.setItem('tempMailApiUrl', tempMailApiUrl)
     localStorage.setItem('tempMailPassword', tempMailPassword)
     localStorage.setItem('slowMode', slowMode ? 'true' : 'false')
+    localStorage.setItem('slowMin', String(slowMin))
+    localStorage.setItem('slowMax', String(slowMax))
+    localStorage.setItem('stepTimeout', String(stepTimeout))
+    localStorage.setItem('browserType', browserType)
     if (accountPassword) {
       localStorage.setItem('accountPassword', accountPassword)
     }
-  }, [tempMailApiUrl, tempMailPassword, accountPassword, slowMode])
+  }, [tempMailApiUrl, tempMailPassword, accountPassword, slowMode, slowMin, slowMax, stepTimeout, browserType])
 
   // 开始批量注册
   const startRegistration = async () => {
@@ -128,7 +147,7 @@ export default function AutoRegister() {
       return
     }
 
-    if (camoufoxInstalled === false) {
+    if (camoufoxInstalled === false && browserType === 'camoufox') {
       showError('Camoufox 未安装，请先运行安装脚本')
       return
     }
@@ -163,6 +182,11 @@ export default function AutoRegister() {
             temp_mail_password: tempMailPassword,
             account_password: accountPassword || null,
             slow_mode: slowMode,
+            slow_min: slowMin,
+            slow_max: slowMax,
+            step_timeout: stepTimeout,
+            register_mode: registerMode,
+            browser_type: browserType,
           },
         })
 
@@ -219,7 +243,7 @@ export default function AutoRegister() {
   }
 
   return (
-    <div className={`h-full flex flex-col ${colors.main} p-6 space-y-6`}>
+    <div className={`h-full overflow-y-auto flex flex-col ${colors.main} p-6 space-y-6`}>
       {/* 标题 */}
       <div className="flex items-center justify-between">
         <div>
@@ -282,9 +306,37 @@ export default function AutoRegister() {
       <div className={`${colors.card} border ${colors.cardBorder} rounded-xl p-6 space-y-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Mail size={20} className={accent.text} />
-          <h2 className={`text-lg font-semibold ${colors.text}`}>临时邮箱配置</h2>
+          <h2 className={`text-lg font-semibold ${colors.text}`}>注册方式</h2>
+          <select
+            value={registerMode}
+            onChange={(e) => {
+              const mode = e.target.value
+              setRegisterMode(mode)
+              localStorage.setItem('registerMode', mode)
+            }}
+            disabled={isRegistering}
+            className={`ml-4 px-3 py-1 border rounded-lg ${colors.input} ${colors.text}`}
+          >
+            <option value="register">注册（新账号）</option>
+            <option value="authorize">授权（在线登录）</option>
+            <option value="manual_debug">手动调试</option>
+          </select>
+          <select
+            value={browserType}
+            onChange={(e) => {
+              const bt = e.target.value
+              setBrowserType(bt)
+              localStorage.setItem('browserType', bt)
+            }}
+            disabled={isRegistering}
+            className={`ml-2 px-3 py-1 border rounded-lg ${colors.input} ${colors.text}`}
+          >
+            <option value="camoufox">Camoufox</option>
+            <option value="playwright">Playwright</option>
+          </select>
         </div>
 
+        {/* 临时邮箱配置 - 两种模式都需要 */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className={`text-sm font-medium ${colors.text}`}>API 地址</label>
@@ -313,18 +365,35 @@ export default function AutoRegister() {
           <div className="space-y-2">
             <label className={`text-sm font-medium ${colors.text}`}>
               AWS 账号密码 (可选)
-              <span className={`text-xs ${colors.textMuted} ml-2`}>留空使用默认密码</span>
+              <span className={`text-xs ${colors.textMuted} ml-2`}>留空自动生成随机密码</span>
             </label>
             <input
               type="password"
               value={accountPassword}
               onChange={(e) => setAccountPassword(e.target.value)}
-              placeholder="留空使用默认密码 Alisi1976230!"
+              placeholder="留空为每个账号自动生成随机密码"
               disabled={isRegistering}
               className={`w-full px-3 py-2 border rounded-lg ${colors.input} ${colors.inputFocus} ${colors.text}`}
             />
           </div>
 
+          <div className="space-y-2">
+            <label className={`text-sm font-medium ${colors.text}`}>
+              步骤超时（秒）
+              <span className={`text-xs ${colors.textMuted} ml-2`}>等待页面元素出现的超时时间</span>
+            </label>
+            <input
+              type="number"
+              min={10}
+              max={300}
+              value={stepTimeout}
+              onChange={(e) => setStepTimeout(Math.max(10, Math.min(300, Number(e.target.value))))}
+              disabled={isRegistering}
+              className={`w-full px-3 py-2 border rounded-lg ${colors.input} ${colors.inputFocus} ${colors.text}`}
+            />
+          </div>
+
+          {/* 注册数量 - 两种模式都需要 */}
           <div className="space-y-2">
             <label className={`text-sm font-medium ${colors.text}`}>注册数量</label>
             <input
@@ -340,28 +409,67 @@ export default function AutoRegister() {
         </div>
 
         {/* 仿真延迟开关 */}
-        <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${colors.cardBorder} ${colors.cardSecondary}`}>
-          <div>
-            <span className={`text-sm font-medium ${colors.text}`}>仿真延迟模式</span>
-            <p className={`text-xs ${colors.textMuted} mt-0.5`}>
-              开启后每个输入/点击环节随机延迟 3~10 秒，并逐字符仿真输入，更接近人工操作
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSlowMode(v => !v)}
-            disabled={isRegistering}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
-              slowMode ? 'bg-blue-500' : `${colors.cardBorder} bg-gray-300 dark:bg-gray-600`
-            }`}
-            aria-pressed={slowMode}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-                slowMode ? 'translate-x-5' : 'translate-x-0'
+        <div className={`px-4 py-3 rounded-xl border ${colors.cardBorder} ${colors.cardSecondary} space-y-3`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className={`text-sm font-medium ${colors.text}`}>仿真延迟模式</span>
+              <p className={`text-xs ${colors.textMuted} mt-0.5`}>
+                开启后每个输入/点击环节随机延迟，并逐字符仿真输入，更接近人工操作
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSlowMode(v => !v)}
+              disabled={isRegistering}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+                slowMode ? 'bg-blue-500' : `${colors.cardBorder} bg-gray-300 dark:bg-gray-600`
               }`}
-            />
-          </button>
+              aria-pressed={slowMode}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                  slowMode ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+          {/* 延迟范围输入，仅在开启时显示 */}
+          {slowMode && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
+                <label className={`text-xs font-medium ${colors.textMuted}`}>最小延迟（秒）</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={slowMax}
+                  step={0.5}
+                  value={slowMin}
+                  onChange={(e) => {
+                    const v = Math.max(0, Number(e.target.value))
+                    setSlowMin(v)
+                    if (v > slowMax) setSlowMax(v)
+                  }}
+                  disabled={isRegistering}
+                  className={`w-full px-3 py-1.5 border rounded-lg text-sm ${colors.input} ${colors.inputFocus} ${colors.text}`}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className={`text-xs font-medium ${colors.textMuted}`}>最大延迟（秒）</label>
+                <input
+                  type="number"
+                  min={slowMin}
+                  step={0.5}
+                  value={slowMax}
+                  onChange={(e) => {
+                    const v = Math.max(slowMin, Number(e.target.value))
+                    setSlowMax(v)
+                  }}
+                  disabled={isRegistering}
+                  className={`w-full px-3 py-1.5 border rounded-lg text-sm ${colors.input} ${colors.inputFocus} ${colors.text}`}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
@@ -405,7 +513,7 @@ export default function AutoRegister() {
       )}
 
       {/* 日志区域 */}
-      <div className={`flex-1 ${colors.card} border ${colors.cardBorder} rounded-xl p-6 flex flex-col min-h-[300px]`}>
+      <div className={`${colors.card} border ${colors.cardBorder} rounded-xl p-6 flex flex-col`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Terminal size={20} className={accent.text} />
@@ -435,7 +543,7 @@ export default function AutoRegister() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto bg-black/90 rounded-lg p-4 font-mono text-xs space-y-1 min-h-0">
+        <div className="h-64 overflow-y-auto bg-black/90 rounded-lg p-4 font-mono text-xs space-y-1">
           {logs.length === 0 ? (
             <div className="text-gray-500">暂无日志</div>
           ) : (
@@ -461,26 +569,6 @@ export default function AutoRegister() {
           <div ref={logEndRef} />
         </div>
       </div>
-
-      {/* 使用说明（折叠） */}
-      <details className={`${colors.card} border ${colors.cardBorder} rounded-xl`}>
-        <summary className={`flex items-center gap-2 p-4 cursor-pointer select-none`}>
-          <AlertCircle size={18} className={accent.text} />
-          <span className={`text-sm font-semibold ${colors.text}`}>使用说明</span>
-        </summary>
-        <div className={`px-6 pb-5 text-sm ${colors.textMuted} space-y-2`}>
-          <p>1. 填写临时邮箱 API 地址和 Admin 密码（配置后自动保存）</p>
-          <p>2. （可选）设置 AWS 账号密码，留空使用默认密码</p>
-          <p>3. 设置注册数量，点击"开始注册"</p>
-          <p>4. 程序自动完成：创建临时邮箱 → AWS 注册 → 获取验证码 → 导入账号 → 清理邮箱</p>
-          <p>5. 注册成功的账号会自动添加到账号管理器</p>
-          <p>6. 代理设置使用 Kiro IDE 设置中的代理配置</p>
-          <p className="text-yellow-500 flex items-center gap-1 pt-2">
-            <AlertCircle size={16} />
-            首次使用需检查环境，如果环境异常可点击"一键修复"自动安装 Camoufox
-          </p>
-        </div>
-      </details>
     </div>
   )
 }

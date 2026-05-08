@@ -1457,13 +1457,21 @@ fn normalize_request(format: ResponseFormat, payload: &Value) -> Result<Normaliz
 }
 
 fn verify_client_auth(headers: &HeaderMap, config: &GatewayConfig) -> Result<(), String> {
-    let Some(expected) = config
+    // 从 access_token 中解析多个 key（换行或逗号分隔）
+    let raw_token = config
         .access_token
-        .as_ref()
-        .filter(|token| !token.trim().is_empty())
-    else {
+        .as_deref()
+        .unwrap_or("");
+
+    let valid_keys: Vec<&str> = raw_token
+        .split(['\n', ','])
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        .collect();
+
+    if valid_keys.is_empty() {
         return Err("客户端 API Key 未配置".to_string());
-    };
+    }
 
     let authorization = headers
         .get(header::AUTHORIZATION)
@@ -1474,13 +1482,19 @@ fn verify_client_auth(headers: &HeaderMap, config: &GatewayConfig) -> Result<(),
         .filter(|value| !value.is_empty());
     let api_key = headers
         .get("x-api-key")
-        .and_then(|value| value.to_str().ok());
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
 
-    if authorization == Some(expected.as_str()) || api_key == Some(expected.as_str()) {
-        Ok(())
-    } else {
-        Err("客户端 API Key 无效".to_string())
+    // 任意一个 key 匹配即通过
+    let provided = authorization.or(api_key);
+    if let Some(key) = provided {
+        if valid_keys.contains(&key) {
+            return Ok(());
+        }
     }
+
+    Err("客户端 API Key 无效".to_string())
 }
 
 async fn resolve_upstream_credentials(

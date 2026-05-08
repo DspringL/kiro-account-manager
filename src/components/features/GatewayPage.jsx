@@ -412,7 +412,13 @@ function GatewayPage() {
   }
 
   const handleGenerateApiKey = () => {
-    setConfig(prev => ({ ...prev, apiKey: createGeneratedApiKey() }))
+    const newKey = createGeneratedApiKey()
+    setConfig(prev => {
+      const existing = String(prev.apiKey || '').trimEnd()
+      // 追加到已有 keys 列表末尾（换行分隔）
+      const next = existing ? `${existing}\n${newKey}` : newKey
+      return { ...prev, apiKey: next }
+    })
   }
 
   const handleOpenLogDir = async () => {
@@ -449,7 +455,11 @@ function GatewayPage() {
     if (guardInvalidConfig()) return
     setSaving(true)
     try {
-      await saveGatewayConfig(config)
+      const configToSave = {
+        ...config,
+        accessToken: config.apiKey,
+      }
+      await saveGatewayConfig(configToSave)
       setSavedConfigSnapshot(buildGatewayConfigSnapshot(config))
     } catch (e) {
       pushError(e)
@@ -462,7 +472,11 @@ function GatewayPage() {
     if (guardInvalidConfig()) return
     setSaving(true)
     try {
-      const st = await startGateway(config)
+      const configToStart = {
+        ...config,
+        accessToken: config.apiKey,
+      }
+      const st = await startGateway(configToStart)
       const nextStatus = buildGatewayStatusState(st, st, config)
       setStatus(nextStatus)
       setAppliedRuntimeSnapshot(nextStatus.runtimeConfig ? buildGatewayRuntimeSnapshot(nextStatus.runtimeConfig) : buildGatewayRuntimeSnapshot(config))
@@ -481,7 +495,11 @@ function GatewayPage() {
       if (status.running) {
         await stopGateway()
       }
-      const st = await startGateway(config)
+      const configToStart = {
+        ...config,
+        accessToken: config.apiKey,
+      }
+      const st = await startGateway(configToStart)
       const nextStatus = buildGatewayStatusState(st, st, config)
       setStatus(nextStatus)
       setAppliedRuntimeSnapshot(nextStatus.runtimeConfig ? buildGatewayRuntimeSnapshot(nextStatus.runtimeConfig) : buildGatewayRuntimeSnapshot(config))
@@ -871,18 +889,20 @@ function GatewayPage() {
                   />
 
                   <Stack gap={6}>
-                    <TextInput
-                      label="客户端 API Key"
-                      description="客户端连接本地网关时始终使用。Kiro API 的 access token 由网关从本地账号自动读取；这里填写的是网关自己的客户端鉴权 Key，不是 Kiro access token。"
+                    <Textarea
+                      label="客户端 API Keys"
+                      description="每行一个客户端 Key，客户端连接本地网关时可使用其中任意一个；Kiro API 的 access token 仍由网关从本地账号自动读取。"
                       placeholder="sk-..."
+                      autosize
+                      minRows={3}
                       value={config.apiKey}
                       onChange={(e) => setField('apiKey', e.currentTarget.value)}
                       error={fieldErrors.apiKey}
                       classNames={inputClassNames}
                     />
                     <Group justify="flex-end">
-                      <Tooltip label="生成一个 sk- 格式的 API Key">
-                        <Button size="xs" variant="light" onClick={handleGenerateApiKey}>生成客户端 Key</Button>
+                      <Tooltip label="生成一个 sk- 格式的 API Key 并追加到列表">
+                        <Button size="xs" variant="light" onClick={handleGenerateApiKey}>追加客户端 Key</Button>
                       </Tooltip>
                     </Group>
                   </Stack>
