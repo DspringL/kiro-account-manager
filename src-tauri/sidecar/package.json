@@ -1,0 +1,13 @@
+{
+  "name": "register-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AWS Builder ID 账号自动注册 Worker",
+  "main": "register-worker.mjs",
+  "scripts": {
+    "install-browser": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

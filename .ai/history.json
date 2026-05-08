@@ -1,0 +1,31 @@
+[
+  {
+    "id": "20260508002",
+    "question": "在邮箱中支持 tempmail 自建邮箱，提供了 API 文档（POST /admin/new_address、DELETE /admin/delete_address/{id}、GET /api/mails）",
+    "plan": "1. register-worker.mjs 新增 custom 服务，优先级最高，支持 apiUrl + adminKey 配置，注册完成后自动 DELETE 清理邮箱；2. RegisterParams 新增 tempMailApiUrl / tempMailAdminKey 字段；3. 前端新增自建邮箱配置区域",
+    "created_at": "2026-05-08 15:00:00",
+    "completed_at": "2026-05-08 15:15:00",
+    "change_list": [
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "重构临时邮箱模块：新增 custom 服务（POST /admin/new_address 创建、GET /api/mails 轮询、DELETE /admin/delete_address 清理），优先于公共服务；统一 AWS 发件人过滤和验证码提取逻辑", "status": "modify" },
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "RegisterParams 新增 temp_mail_api_url 和 temp_mail_admin_key 两个可选字段", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "新增自建临时邮箱配置区域（API 地址 + Admin 密码），已配置时显示绿色徽章提示优先使用", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508001",
+    "question": "在当前项目中增加账号注册，依照kiro-auto-main实现，但是不要直接引用kiro-auto-main，需要的资源可以拷贝",
+    "plan": "1. 将 kiro-auto-main 的注册核心逻辑内联拷贝为 src-tauri/sidecar/register-worker.mjs；2. 新增 Rust 命令 register_cmd.rs；3. 新增前端页面 AutoRegister/index.tsx；4. 注册路由和翻译 key",
+    "created_at": "2026-05-08 14:00:00",
+    "completed_at": "2026-05-08 14:30:00",
+    "change_list": [
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "新增注册 Worker 脚本", "status": "add" },
+      { "file": "src-tauri/sidecar/package.json", "change": "新增 sidecar npm 配置", "status": "add" },
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "新增注册相关 Tauri 命令", "status": "add" },
+      { "file": "src-tauri/src/commands/mod.rs", "change": "注册 register_cmd 模块", "status": "modify" },
+      { "file": "src-tauri/src/main.rs", "change": "导入并注册 register_cmd 命令", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "新增自动注册前端页面", "status": "add" },
+      { "file": "src/routes.tsx", "change": "新增 autoRegister 路由", "status": "modify" },
+      { "file": "locales/zh-CN.json", "change": "新增 nav.autoRegister 翻译 key", "status": "modify" }
+    ]
+  }
+]

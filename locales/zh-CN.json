@@ -16,6 +16,7 @@
   "nav.kiroConnected": "Kiro IDE 已连接",
   "nav.collapseSidebar": "双击折叠侧边栏",
   "nav.expandSidebar": "双击展开侧边栏",
+  "nav.autoRegister": "自动注册",
 
   "home.title": "Kiro Account Manager",
   "home.subtitle": "管理你的 Kiro IDE 账号，智能切换，配额监控",

@@ -113,6 +113,10 @@ use crate::kiro::ide::{
 use crate::kiro::process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
 
 use commands::update_cmd::check_update;
+use commands::register_cmd::{
+    check_node_available, check_playwright_installed, install_register_deps,
+    start_builder_id_device_login, poll_builder_id_device_auth, run_auto_register,
+};
 
 /// 配置日志插件
 fn setup_log_plugin() -> tauri_plugin_log::Builder {
@@ -411,7 +415,14 @@ fn main() {
             delete_session,
             delete_workspace,
             export_session,
-            search_sessions
+            search_sessions,
+            // 自动注册命令
+            check_node_available,
+            check_playwright_installed,
+            install_register_deps,
+            start_builder_id_device_login,
+            poll_builder_id_device_auth,
+            run_auto_register,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
