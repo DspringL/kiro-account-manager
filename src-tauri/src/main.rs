@@ -116,6 +116,7 @@ use commands::update_cmd::check_update;
 use commands::register_cmd::{
     check_node_available, check_playwright_installed, install_register_deps,
     start_builder_id_device_login, poll_builder_id_device_auth, run_auto_register,
+    stop_auto_register,
 };
 
 /// 配置日志插件
@@ -423,6 +424,7 @@ fn main() {
             start_builder_id_device_login,
             poll_builder_id_device_auth,
             run_auto_register,
+            stop_auto_register,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

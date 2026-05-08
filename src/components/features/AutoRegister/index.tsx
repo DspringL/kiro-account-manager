@@ -23,6 +23,7 @@ interface RegisterParams {
   proxyUrl: string
   useFingerprint: boolean
   incognito: boolean
+  headless: boolean
   region: string
   mailService: MailService
   tempMailApiUrl: string
@@ -76,7 +77,7 @@ export default function AutoRegister() {
   // 参数
   const [params, setParams] = useState<RegisterParams>({
     count: 1, concurrency: 1,
-    proxyUrl: '', useFingerprint: true, incognito: true,
+    proxyUrl: '', useFingerprint: true, incognito: true, headless: true,
     region: 'us-east-1',
     mailService: 'auto',
     tempMailApiUrl: '', tempMailAdminKey: '',
@@ -141,6 +142,14 @@ export default function AutoRegister() {
     }
   }
 
+  async function handleStop() {
+    try {
+      await invoke('stop_auto_register')
+    } catch (e: any) {
+      setLogs(p => [...p, `⚠ 停止失败: ${e}`])
+    }
+  }
+
   async function handleGetDeviceCode() {
     setLoadingDevice(true)
     setDeviceExpired(false)
@@ -170,13 +179,12 @@ export default function AutoRegister() {
         proxyUrl:       params.proxyUrl.trim() || undefined,
         useFingerprint: params.useFingerprint,
         incognito:      params.incognito,
+        headless:       params.headless,
         region:         params.region,
         userCode:       params.userCode,
         verificationUri:params.verificationUri,
-        // 自建邮箱配置（auto 模式下也传，Worker 内部决定是否使用）
         tempMailApiUrl:  isCustom ? (params.tempMailApiUrl.trim() || undefined) : undefined,
         tempMailAdminKey:isCustom ? (params.tempMailAdminKey.trim() || undefined) : undefined,
-        // 强制指定邮箱服务（非 auto 时传给 Worker）
         forcedMailService: params.mailService !== 'auto' ? params.mailService : undefined,
       }
 
@@ -260,6 +268,16 @@ export default function AutoRegister() {
               <Switch checked={params.incognito} disabled={running}
                 onCheckedChange={v => setParams(p => ({ ...p, incognito: v }))} />
             </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">无头模式（后台运行）</span>
+              <Switch checked={params.headless} disabled={running}
+                onCheckedChange={v => setParams(p => ({ ...p, headless: v }))} />
+            </div>
+            {!params.headless && (
+              <p className="text-[11px] text-yellow-500 -mt-1">
+                ⚠ 关闭无头模式后浏览器窗口可见，便于调试
+              </p>
+            )}
           </Section>
 
           {/* 邮箱服务 */}
@@ -362,14 +380,18 @@ export default function AutoRegister() {
             </Section>
           )}
 
-          {/* 开始按钮 */}
-          <Button size="default" onClick={handleStart} disabled={!canStart}
-            className="w-full mt-1">
-            {running
-              ? <><Square size={14} className="mr-2" />注册中...</>
-              : <><Play  size={14} className="mr-2" />开始注册</>
-            }
-          </Button>
+          {/* 开始 / 停止按钮 */}
+          {running ? (
+            <Button size="default" variant="destructive" onClick={handleStop} className="w-full mt-1">
+              <Square size={14} className="mr-2" />
+              停止注册
+            </Button>
+          ) : (
+            <Button size="default" onClick={handleStart} disabled={!canStart} className="w-full mt-1">
+              <Play size={14} className="mr-2" />
+              开始注册
+            </Button>
+          )}
 
         </div>
       </div>
@@ -420,12 +442,22 @@ export default function AutoRegister() {
             <Terminal size={13} className="text-muted-foreground" />
             <span className="text-xs font-medium text-muted-foreground">运行日志</span>
             {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-1" />}
-            {logs.length > 0 && (
-              <button className="ml-auto text-[11px] text-muted-foreground hover:text-foreground"
-                onClick={() => setLogs([])}>
-                清空
-              </button>
-            )}
+            <div className="ml-auto flex items-center gap-2">
+              {running && (
+                <button
+                  onClick={handleStop}
+                  className="text-[11px] text-destructive hover:text-destructive/80 flex items-center gap-1 border border-destructive/40 rounded px-1.5 py-0.5"
+                >
+                  <Square size={9} />停止
+                </button>
+              )}
+              {logs.length > 0 && (
+                <button className="text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => setLogs([])}>
+                  清空
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3 font-mono text-xs leading-5">
             {logs.length === 0 ? (

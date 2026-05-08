@@ -435,7 +435,7 @@ async function tryClick(page, selectors, desc, timeout = 15000) {
 // ===== 核心注册流程 =====
 
 async function registerOne(opts) {
-  const { userCode, verificationUri, proxyUrl, useFingerprint, incognito, customApi, forcedMailService } = opts
+  const { userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless = true, customApi, forcedMailService } = opts
 
   // 1. 申请临时邮箱
   log('申请临时邮箱...')
@@ -457,9 +457,9 @@ async function registerOne(opts) {
   let browser = null
   try {
     // 3. 启动浏览器
-    log('启动浏览器...')
+    log(`启动浏览器 (${headless ? '无头模式' : '有头模式'})...`)
     const launchOpts = {
-      headless: true,
+      headless,
       args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'],
     }
     if (proxyUrl) launchOpts.proxy = { server: proxyUrl }
@@ -688,6 +688,7 @@ async function main() {
     proxyUrl,
     useFingerprint = true,
     incognito = true,
+    headless = true,
     userCode,
     verificationUri,
     region = 'us-east-1',
@@ -709,6 +710,7 @@ async function main() {
   }
 
   log(`开始注册 ${count} 个账号，并发 ${concurrency}`)
+  log(`浏览器模式: ${headless ? '无头（后台）' : '有头（可见窗口）'}`)
 
   const results = []
   const tasks = Array.from({ length: count }, (_, i) => i)
@@ -719,7 +721,7 @@ async function main() {
       const idx = next++
       if (idx >= tasks.length) return
       log(`[${idx+1}/${count}] 开始注册...`)
-      const r = await registerOne({ userCode, verificationUri, proxyUrl, useFingerprint, incognito, customApi, forcedMailService })
+      const r = await registerOne({ userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless, customApi, forcedMailService })
       results[idx] = r
       if (r.success) {
         log(`[${idx+1}/${count}] ✅ 成功: ${r.email}`)
