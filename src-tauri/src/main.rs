@@ -118,7 +118,7 @@ use commands::register_cmd::{
     check_node_available, check_playwright_installed, install_register_deps,
     start_builder_id_device_login, poll_builder_id_device_auth, run_auto_register,
     stop_auto_register, start_authorize_register, run_authorize_register,
-    run_authorize_worker,
+    run_authorize_worker, run_authorize_register_full, reset_register_stop_flag,
 };
 
 /// 配置日志插件
@@ -434,6 +434,8 @@ fn main() {
             start_authorize_register,
             run_authorize_register,
             run_authorize_worker,
+            run_authorize_register_full,
+            reset_register_stop_flag,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

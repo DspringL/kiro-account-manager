@@ -1,5 +1,28 @@
 [
   {
+    "id": "20260509008",
+    "question": "1. 导入数据后自动重启 2. 自动注册中的邮箱信息也要导出导入 3. 账号管理中的导入导出icon反了 4. 授权码模式去掉准备授权步骤，直接由开始注册接管，支持并发",
+    "plan": "1. SettingsGeneral 导入成功后调用 relaunch() 自动重启；2. 导出时附加 localStorage 中的 autoRegister_mailApis/mailSelect，导入时恢复；3. AccountHeader 中交换导入导出 icon；4. 后端新增 run_authorize_register_full 一体化命令（不依赖全局状态，支持并发），前端去掉准备授权 UI，开始注册按 count/concurrency 并发调用新命令",
+    "created_at": "2026-05-09T01:20:00",
+    "completed_at": "2026-05-09T01:45:00",
+    "ref_file_list": [
+      "src/components/features/Settings/SettingsGeneral.tsx",
+      "src/components/features/AccountManager/AccountHeader.tsx",
+      "src/components/features/AutoRegister/index.tsx",
+      "src-tauri/src/commands/register_cmd.rs",
+      "src-tauri/src/main.rs",
+      "locales/zh-CN.json"
+    ],
+    "change_list": [
+      { "file": "src/components/features/Settings/SettingsGeneral.tsx", "change": "导入成功后调用 relaunch() 自动重启；导出时附加邮箱配置，导入时恢复", "status": "modify" },
+      { "file": "src/components/features/AccountManager/AccountHeader.tsx", "change": "交换导入导出 icon（导入用 Download，导出用 Upload）", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "去掉准备授权按钮和 AuthorizeInfo 状态，授权码模式复用 count/concurrency 参数，开始注册直接并发调用 run_authorize_register_full", "status": "modify" },
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "新增 run_authorize_register_full 一体化命令，每次调用独立不依赖全局状态", "status": "modify" },
+      { "file": "src-tauri/src/main.rs", "change": "注册 run_authorize_register_full 命令", "status": "modify" },
+      { "file": "locales/zh-CN.json", "change": "更新 dataManagementTip 提示文案", "status": "modify" }
+    ]
+  },
+  {
     "id": "20260509007",
     "question": "1. 去掉启动软件后的重要提示弹窗 2. 设置中的重置机器码可以无限修改不需要禁用 3. 增加一键导出所有数据，也支持一键导入",
     "plan": "1. App.tsx 移除 WelcomeModal 组件渲染和 import；2. Settings/index.tsx 中 handleResetSystemMachineGuid 使用 finally 恢复按钮状态；3. 后端 app_settings_cmd.rs 新增 export_all_data/import_all_data 命令，main.rs 注册；4. 前端 SettingsGeneral.tsx 新增 DataManagementCard 组件",

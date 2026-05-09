@@ -216,19 +216,19 @@ export const mergeErrorHistory = (history: any, message: any, seenAt: any, limit
 }
 
 export const buildClientSamples = (baseUrl: any, apiKey: any) => {
-  const safeKey = redactGatewayApiKey(getPrimaryClientApiKey(apiKey))
-  const anthropicEnv = `ANTHROPIC_BASE_URL=${baseUrl}\nANTHROPIC_API_KEY=${safeKey}`
-  const openaiEnv = `OPENAI_BASE_URL=${baseUrl}\nOPENAI_API_KEY=${safeKey}`
+  const fullKey = getPrimaryClientApiKey(apiKey) || 'sk-your-gateway-api-key'
+  const anthropicEnv = `ANTHROPIC_BASE_URL=${baseUrl}\nANTHROPIC_API_KEY=${fullKey}`
+  const openaiEnv = `OPENAI_BASE_URL=${baseUrl}\nOPENAI_API_KEY=${fullKey}`
   const openaiResponsesCurl = [
     `curl ${baseUrl}/v1/responses \\`,
     '  -H "Content-Type: application/json" \\',
-    `  -H "Authorization: Bearer ${safeKey}" \\`,
+    `  -H "Authorization: Bearer ${fullKey}" \\`,
     '  -d "{\\"model\\":\\"claude-sonnet-4-5-20250929\\",\\"input\\":[{\\"role\\":\\"user\\",\\"content\\":[{\\"type\\":\\"input_text\\",\\"text\\":\\"hello\\"}]}]}"',
   ].join('\n')
   const openaiChatCurl = [
     `curl ${baseUrl}/v1/chat/completions \\`,
     '  -H "Content-Type: application/json" \\',
-    `  -H "Authorization: Bearer ${safeKey}" \\`,
+    `  -H "Authorization: Bearer ${fullKey}" \\`,
     '  -d "{\\"model\\":\\"claude-sonnet-4-5-20250929\\",\\"messages\\":[{\\"role\\":\\"user\\",\\"content\\":\\"hello\\"}]}"',
   ].join('\n')
 
@@ -366,13 +366,13 @@ export const buildGatewaySecuritySummary = ({ config }: any) => {
 
 export const buildGatewayIntegrationSummary = ({ baseUrl, apiKey, clientApiKeysText, logDir, errorHistory }: any) => {
   const clientApiKeys = parseClientApiKeys(clientApiKeysText || apiKey)
-  const safeKey = redactGatewayApiKey(clientApiKeys[0] || '')
+  const fullKey = clientApiKeys[0] || 'sk-your-gateway-api-key'
   const errorCount = Array.isArray(errorHistory) ? errorHistory.length : 0
   const errorHits = Array.isArray(errorHistory) ? errorHistory.reduce((sum, item) => sum + Number(item.count || 0), 0) : 0
 
   return {
     endpointLabel: baseUrl,
-    authLabel: clientApiKeys.length > 1 ? `Bearer ${safeKey}（共 ${clientApiKeys.length} 个 Key）` : `Bearer ${safeKey}`,
+    authLabel: clientApiKeys.length > 1 ? `Bearer ${fullKey}（共 ${clientApiKeys.length} 个 Key）` : `Bearer ${fullKey}`,
     logDirState: String(logDir || '').trim() ? '日志目录已定位' : '日志目录未获取',
     errorDigest: `${errorCount} 条错误 / ${errorHits} 次命中`}
 }

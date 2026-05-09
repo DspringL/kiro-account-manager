@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { listen, emit } from '@tauri-apps/api/event'
 import {
   UserPlus, Play, Square, Settings, Terminal, CheckCircle,
-  XCircle, AlertCircle, Download, Mail, Plus, Trash2, Copy, RefreshCw, Link,
+  XCircle, AlertCircle, Download, Mail, Plus, Trash2, Copy, RefreshCw,
 } from 'lucide-react'
 import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
@@ -36,17 +36,6 @@ interface RegisterParams {
   tempMailSelect: string
 }
 
-/** start_authorize_register 返回的信息 */
-interface AuthorizeInfo {
-  authorizeUrl: string
-  callbackPort: number
-  clientId: string
-  clientSecret: string
-  codeVerifier: string
-  redirectUri: string
-  state: string
-}
-
 interface RegisterRecord {
   success: boolean
   email?: string
@@ -71,10 +60,6 @@ export default function AutoRegister() {
 
   // 注册模式
   const [registerMode, setRegisterMode] = useState<RegisterMode>('device')
-
-  // 授权码模式状态
-  const [authorizeInfo,    setAuthorizeInfo]    = useState<AuthorizeInfo | null>(null)
-  const [authorizeLoading, setAuthorizeLoading] = useState(false)
 
   // 持久化 key
   const STORAGE_KEY = 'autoRegister_mailApis'
@@ -115,6 +100,7 @@ export default function AutoRegister() {
   const [result,  setResult]  = useState<RegisterResult | null>(null)
   const logsEndRef  = useRef<HTMLDivElement>(null)
   const unlistenRef = useRef<(() => void) | null>(null)
+  const stoppedRef  = useRef(false)
 
   // 自动滚动
   useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [logs])
@@ -210,7 +196,9 @@ export default function AutoRegister() {
   }
 
   async function handleStop() {
+    stoppedRef.current = true
     try { await invoke('stop_auto_register') } catch {}
+    setRunning(false)
   }
 
   // 添加邮箱配置
@@ -247,54 +235,73 @@ export default function AutoRegister() {
       setLogs(['❌ 请先添加至少一个自建邮箱 API 配置'])
       return
     }
-    if (registerMode === 'authorize' && !authorizeInfo) {
-      setLogs(['❌ 请先点击「准备授权」获取授权 URL'])
-      return
-    }
+    stoppedRef.current = false
     setRunning(true); setLogs([]); setResult(null)
     try {
+      // 重置后端停止标志
+      await invoke('reset_register_stop_flag')
       const unlisten = await listen<string>('register-log', e => setLogs(p => [...p, e.payload]))
       unlistenRef.current = unlisten
 
       if (registerMode === 'authorize') {
-        // ── 授权码模式 ──
-        // worker（浏览器注册）和 run_authorize_register（等待回调换 token）并发
-        // worker 完成后把账号信息传给 run_authorize_register
-        let workerRecord: RegisterRecord | null = null
+        // ── 授权码模式：并发调用 run_authorize_register_full ──
+        const total = params.count
+        const concurrency = params.concurrency
+        const results: RegisterRecord[] = []
+        let okCount = 0
+        let failCount = 0
 
-        const [workerRes, _authRes] = await Promise.all([
-          // 1. 启动 worker 完成浏览器注册（专用命令，不走设备码流程）
-          invoke<RegisterResult>('run_authorize_worker', {
-            authorizeUrl:    authorizeInfo!.authorizeUrl,
-            proxyUrl:        params.proxyUrl.trim() || null,
-            useFingerprint:  params.useFingerprint,
-            incognito:       params.incognito,
-            headless:        params.headless,
-            tempMailApis:    params.tempMailApis,
-            tempMailSelect:  params.tempMailSelect,
-          }).then(res => {
-            workerRecord = res.results?.[0] ?? null
-            return res
-          }),
-          // 2. 等待 OAuth 回调并换取 token（与 worker 并发，worker 点 Allow access 后触发）
-          invoke('run_authorize_register', {
-            params: {
-              clientId:     authorizeInfo!.clientId,
-              clientSecret: authorizeInfo!.clientSecret,
-              codeVerifier: authorizeInfo!.codeVerifier,
-              redirectUri:  authorizeInfo!.redirectUri,
-              email:    null,
-              password: null,
-              name:     null,
+        // 并发控制：使用信号量模式
+        const queue = Array.from({ length: total }, (_, i) => i)
+        const runOne = async (idx: number): Promise<void> => {
+          if (stoppedRef.current) return
+          try {
+            setLogs(p => [...p, `[${idx + 1}/${total}] 开始授权码注册...`])
+            const res = await invoke<any>('run_authorize_register_full', {
+              proxyUrl:       params.proxyUrl.trim() || null,
+              useFingerprint: params.useFingerprint,
+              incognito:      params.incognito,
+              headless:       params.headless,
+              tempMailApis:   params.tempMailApis,
+              tempMailSelect: params.tempMailSelect,
+            })
+            if (res.success) {
+              okCount++
+              results.push({ success: true, email: res.email, password: res.password, name: null })
+              if (res.banned) {
+                setLogs(p => [...p, `[${idx + 1}/${total}] ⚠ 注册成功但账号已被封禁: ${res.email}`])
+              } else {
+                setLogs(p => [...p, `[${idx + 1}/${total}] ✅ 注册成功: ${res.email}`])
+              }
+            } else {
+              failCount++
+              results.push({ success: false, error: res.error || '未知错误' })
             }
-          }).catch((e: any) => {
-            setLogs(p => [...p, `⚠ 授权换取 token 失败: ${e}`])
-          }),
-        ])
+          } catch (e: any) {
+            failCount++
+            results.push({ success: false, error: String(e) })
+            if (!stoppedRef.current) {
+              setLogs(p => [...p, `[${idx + 1}/${total}] ❌ 注册失败: ${e}`])
+            }
+          }
+        }
 
-        setResult(workerRes)
-        setLogs(p => [...p, `\n✅ 完成！成功 ${workerRes.ok} 个，失败 ${workerRes.fail} 个`])
-        setAuthorizeInfo(null)
+        // 按并发数分批执行
+        let i = 0
+        while (i < queue.length && !stoppedRef.current) {
+          const batch = queue.slice(i, i + concurrency)
+          await Promise.all(batch.map(idx => runOne(idx)))
+          i += concurrency
+        }
+
+        const finalResult: RegisterResult = { results, ok: okCount, fail: failCount }
+        setResult(finalResult)
+        if (okCount > 0) emit('accounts-updated')
+        if (stoppedRef.current) {
+          setLogs(p => [...p, `\n⚠ 已停止！成功 ${okCount} 个，失败 ${failCount} 个`])
+        } else {
+          setLogs(p => [...p, `\n✅ 完成！成功 ${okCount} 个，失败 ${failCount} 个`])
+        }
 
       } else {
         // ── 设备码模式 ──
@@ -312,44 +319,24 @@ export default function AutoRegister() {
         }
         const res = await invoke<RegisterResult>('run_auto_register', { params: finalParams })
         setResult(res)
+        if (res.ok > 0) emit('accounts-updated')
         setLogs(p => [...p, `\n✅ 完成！成功 ${res.ok} 个，失败 ${res.fail} 个`])
       }
     } catch (e: any) {
-      setLogs(p => [...p, `❌ 注册失败: ${e}`])
+      if (!stoppedRef.current) {
+        setLogs(p => [...p, `❌ 注册失败: ${e}`])
+      }
     } finally {
       setRunning(false)
       unlistenRef.current?.(); unlistenRef.current = null
     }
-  }, [running, params, registerMode, authorizeInfo])
+  }, [running, params, registerMode])
 
   const canStart = nodeOk && playwrightOk && !running
     && (registerMode === 'authorize'
-      ? !!authorizeInfo  // 授权码模式：只需准备好授权信息
+      ? params.tempMailApis.length > 0  // 授权码模式：需要邮箱服务
       : params.tempMailApis.length > 0  // 设备码模式：需要邮箱服务
     )
-
-  // 授权码模式：准备授权 URL 和本地服务器（不订阅日志，避免重复）
-  async function handlePrepareAuthorize() {
-    setAuthorizeLoading(true)
-    setAuthorizeInfo(null)
-    setLogs([])
-    // 清理上一次可能残留的监听器
-    unlistenRef.current?.(); unlistenRef.current = null
-    try {
-      const info = await invoke<AuthorizeInfo>('start_authorize_register')
-      setAuthorizeInfo(info)
-      setLogs([
-        '✓ 授权 URL 已生成，本地回调服务器已启动',
-        `回调端口: ${info.callbackPort}`,
-        `授权 URL: ${info.authorizeUrl.substring(0, 80)}...`,
-        '点击「开始注册」后浏览器将自动打开授权页面完成注册',
-      ])
-    } catch (e: any) {
-      setLogs([`❌ 准备授权失败: ${e}`])
-    } finally {
-      setAuthorizeLoading(false)
-    }
-  }
 
   // ===== 渲染 =====
   return (
@@ -396,7 +383,7 @@ export default function AutoRegister() {
                 <button
                   key={opt.value}
                   disabled={running}
-                  onClick={() => { setRegisterMode(opt.value); setAuthorizeInfo(null) }}
+                  onClick={() => setRegisterMode(opt.value)}
                   className={[
                     'flex flex-col items-start px-3 py-2 rounded-lg border text-left transition-colors',
                     registerMode === opt.value
@@ -410,64 +397,20 @@ export default function AutoRegister() {
                 </button>
               ))}
             </div>
-
-            {/* 授权码模式：准备按钮 + 状态 */}
-            {registerMode === 'authorize' && (
-              <div className="flex flex-col gap-2 pt-2 border-t border-border">
-                <Button
-                  size="sm" variant="outline"
-                  onClick={handlePrepareAuthorize}
-                  disabled={running || authorizeLoading}
-                  className="w-full"
-                >
-                  <Link size={12} className={['mr-1.5', authorizeLoading ? 'animate-pulse' : ''].join(' ')} />
-                  {authorizeLoading ? '准备中...' : '准备授权（生成 URL + 启动回调服务器）'}
-                </Button>
-                {authorizeInfo && (
-                  <div className="flex flex-col gap-1 p-2 rounded-lg border border-green-500/40 bg-green-500/5">
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle size={11} className="text-green-500 flex-shrink-0" />
-                      <span className="text-[11px] text-green-600 font-medium">回调服务器已就绪</span>
-                      <span className="text-[10px] text-muted-foreground ml-auto">:{authorizeInfo.callbackPort}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-muted-foreground truncate flex-1">
-                        {authorizeInfo.authorizeUrl.substring(0, 50)}...
-                      </span>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(authorizeInfo.authorizeUrl)}
-                        className="text-muted-foreground hover:text-foreground flex-shrink-0"
-                        title="复制授权 URL"
-                      >
-                        <Copy size={10} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {!authorizeInfo && !authorizeLoading && (
-                  <p className="text-[11px] text-yellow-500">⚠ 请先点击「准备授权」再开始注册</p>
-                )}
-              </div>
-            )}
           </Section>
 
           {/* 注册参数 */}
           <Section title="注册参数">
-            {registerMode === 'device' && (
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="注册数量">
-                  <Input type="number" min={1} max={50} value={params.count} disabled={running}
-                    onChange={e => setParams(p => ({ ...p, count: Math.max(1, +e.target.value || 1) }))} />
-                </Field>
-                <Field label="并发数">
-                  <Input type="number" min={1} max={5} value={params.concurrency} disabled={running}
-                    onChange={e => setParams(p => ({ ...p, concurrency: Math.max(1, +e.target.value || 1) }))} />
-                </Field>
-              </div>
-            )}
-            {registerMode === 'authorize' && (
-              <p className="text-[11px] text-muted-foreground">授权码模式每次注册 1 个账号</p>
-            )}
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="注册数量">
+                <Input type="number" min={1} max={50} value={params.count} disabled={running}
+                  onChange={e => setParams(p => ({ ...p, count: Math.max(1, +e.target.value || 1) }))} />
+              </Field>
+              <Field label="并发数">
+                <Input type="number" min={1} max={5} value={params.concurrency} disabled={running}
+                  onChange={e => setParams(p => ({ ...p, concurrency: Math.max(1, +e.target.value || 1) }))} />
+              </Field>
+            </div>
             <Field label="代理地址（可选）">
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
