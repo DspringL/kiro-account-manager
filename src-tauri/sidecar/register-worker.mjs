@@ -317,7 +317,192 @@ async function tryClick(page, selectors, desc, timeout = 15000) {
   return false
 }
 
-// ===== 核心注册流程 =====
+// ===== 授权码模式注册 =====
+
+/**
+ * 授权码模式：打开 authorizeUrl，完成注册后点击 "Allow access"
+ * 浏览器跳转到本地回调服务器，Rust 侧收到 code 后换取 token
+ * 与设备码模式的区别：
+ *   - 打开的是 authorizeUrl（含 PKCE 参数），而不是 /device?user_code=...
+ *   - 不需要点 "Confirm and continue"，只点 "Allow access"
+ *   - 点击后浏览器自动跳转到 redirect_uri，Rust 侧处理 token 换取
+ */
+async function registerOneAuthorize(opts) {
+  const { authorizeUrl, proxyUrl, useFingerprint, incognito, headless = true, mailApi } = opts
+
+  // 1. 申请临时邮箱
+  log('[授权模式] 申请临时邮箱...')
+  if (!mailApi) {
+    return { success: false, error: '未配置自建邮箱 API' }
+  }
+  const mail = await createTempMail(mailApi)
+  if (!mail) return { success: false, error: `自建邮箱「${mailApi.name || mailApi.apiUrl}」创建失败` }
+
+  const { email, password } = mail
+  const name = generateRandomName()
+
+  log(`========== 授权码注册账号信息 ==========`)
+  log(`邮箱:   ${email}`)
+  log(`密码:   ${password}`)
+  log(`姓名:   ${name}`)
+  log(`========================================`)
+
+  const fp = useFingerprint ? generateFingerprint() : null
+  if (fp) log(`[指纹] OS=${fp.os} UA=${fp.userAgent.substring(0, 60)}...`)
+
+  let browser = null
+  try {
+    log(`[授权模式] 启动浏览器 (${headless ? '无头' : '有头'})...`)
+    const launchOpts = {
+      headless,
+      args: ['--disable-blink-features=AutomationControlled', '--no-sandbox'],
+    }
+    if (proxyUrl) launchOpts.proxy = { server: proxyUrl }
+
+    browser = await chromium.launch(launchOpts)
+    const ctxOpts = {
+      viewport: { width: 1400, height: 900 },
+      userAgent: fp ? fp.userAgent : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    }
+    if (fp) { ctxOpts.locale = 'en-US'; ctxOpts.timezoneId = fp.timezone.name }
+
+    const ctx = await browser.newContext(ctxOpts)
+    const page = await ctx.newPage()
+    if (fp) { await page.addInitScript(buildInjectionScript(fp)); log('[指纹] 注入完成') }
+
+    // 2. 打开授权 URL（含 PKCE 参数）
+    log(`[授权模式] 打开授权页面...`)
+    await page.goto(authorizeUrl, { waitUntil: 'networkidle', timeout: 60000 })
+    log('✓ 授权页面加载完成')
+    await randomDelay(800, 1500)
+
+    // 3. 输入邮箱
+    if (!await waitAndFill(page, 'input[placeholder="username@example.com"]', email, '邮箱')) {
+      throw new Error('未找到邮箱输入框')
+    }
+    await randomDelay(500, 1000)
+    if (!await tryClick(page, ['button[data-testid="test-primary-button"]'], '继续按钮')) {
+      throw new Error('点击继续按钮失败')
+    }
+    await randomDelay(2000, 3000)
+
+    // 4. 判断新注册 or 已有账号
+    const nameInputSel  = 'input[placeholder="Maria José Silva"]'
+    const verifyInputSel = 'input[placeholder="6-digit"]'
+    let flow = 'register'
+    try {
+      flow = await Promise.race([
+        page.locator(nameInputSel).first().waitFor({ state: 'visible', timeout: 10000 }).then(() => 'register'),
+        page.locator(verifyInputSel).first().waitFor({ state: 'visible', timeout: 10000 }).then(() => 'verify'),
+      ])
+    } catch {}
+    log(`[授权模式] 检测到流程: ${flow}`)
+
+    if (flow === 'verify') {
+      // 已有账号，直接等验证码
+      log('[授权模式] 等待验证码...')
+      const code = await getTempMailCode(mail, 120)
+      if (!code) throw new Error('获取验证码超时')
+      if (!await waitAndFill(page, 'input[placeholder="6-digit"]', code, '验证码')) throw new Error('输入验证码失败')
+      await randomDelay(500, 800)
+      await tryClick(page, ['button[data-testid="test-primary-button"]'], '验证码确认按钮')
+      await randomDelay(3000, 5000)
+    } else {
+      // 新注册流程
+      log('[授权模式] 输入姓名...')
+      if (!await waitAndFill(page, nameInputSel, name, '姓名')) throw new Error('未找到姓名输入框')
+      await randomDelay(500, 800)
+      await tryClick(page, ['button[data-testid="signup-next-button"]'], '姓名继续按钮')
+      await randomDelay(2000, 3000)
+
+      log('[授权模式] 等待验证码...')
+      const code = await getTempMailCode(mail, 120)
+      if (!code) throw new Error('获取验证码超时')
+      if (!await waitAndFill(page, 'input[placeholder="6-digit"]', code, '验证码')) throw new Error('输入验证码失败')
+      await randomDelay(500, 800)
+
+      // 关闭 Cookie 弹窗
+      try {
+        const cb = page.locator('button:has-text("Accept")').first()
+        if (await cb.isVisible({ timeout: 2000 })) { await cb.click(); log('✓ 关闭 Cookie 弹窗') }
+      } catch {}
+
+      const verifyBtn = 'button[data-testid="email-verification-verify-button"]'
+      await tryClick(page, [verifyBtn], 'Continue 按钮', 30000)
+      await randomDelay(3000, 5000)
+
+      // 等待密码输入框
+      let pwVisible = false
+      for (let i = 0; i < 15; i++) {
+        try {
+          if (await page.locator('input[placeholder="Enter password"]').first().isVisible({ timeout: 3000 })) {
+            pwVisible = true; break
+          }
+        } catch {}
+        try {
+          if (await page.locator('input[placeholder="6-digit"]').first().isVisible({ timeout: 1000 })) {
+            log(`⚠ 仍在验证码页面，重试 (${i+1}/15)...`)
+            await tryClick(page, [verifyBtn], 'Continue 按钮（重试）', 5000)
+          }
+        } catch {}
+        await randomDelay(3000, 5000)
+      }
+      if (!pwVisible) throw new Error('验证码提交失败，无法进入密码步骤')
+
+      log('[授权模式] 输入密码...')
+      if (!await waitAndFill(page, 'input[placeholder="Enter password"]', password, '密码')) throw new Error('未找到密码输入框')
+      await randomDelay(300, 500)
+      if (!await waitAndFill(page, 'input[placeholder="Re-enter password"]', password, '确认密码')) {
+        await waitAndFill(page, 'input[placeholder="Confirm password"]', password, '确认密码')
+      }
+      await randomDelay(500, 800)
+      await tryClick(page, ['button[data-testid="test-primary-button"]'], '密码继续按钮')
+      await randomDelay(4000, 6000)
+    }
+
+    // 5. 授权码模式：只点 "Allow access"（不需要 "Confirm and continue"）
+    log('[授权模式] 等待 Allow access 按钮...')
+    const allowClicked = await tryClick(page, [
+      'button:has-text("Allow access")',
+      'button:has-text("允许访问")',
+      'button[data-testid="allow-access-button"]',
+    ], '"Allow access" 按钮', 30000)
+
+    if (!allowClicked) throw new Error('未找到 Allow access 按钮')
+    log('✓ 已点击 Allow access，等待浏览器跳转到回调地址...')
+
+    // 6. 等待浏览器跳转到本地回调（最多 30 秒）
+    // 跳转后 Rust 侧的本地服务器会收到 code，这里只需等待页面跳转
+    let redirected = false
+    for (let i = 0; i < 30; i++) {
+      const currentUrl = page.url()
+      if (currentUrl.includes('127.0.0.1') || currentUrl.includes('localhost') || currentUrl.includes('oauth/callback')) {
+        redirected = true
+        log(`✓ 浏览器已跳转到回调地址: ${currentUrl.substring(0, 60)}...`)
+        break
+      }
+      await randomDelay(1000, 1000)
+    }
+
+    if (!redirected) {
+      log('⚠ 未检测到回调跳转，但 Rust 侧可能已收到 code（继续等待）')
+    }
+
+    await browser.close()
+    browser = null
+    await deleteTempMail(mail)
+
+    log('✅ 授权码注册流程完成！')
+    return { success: true, email, password, name }
+
+  } catch (err) {
+    if (browser) { try { await browser.close() } catch {} }
+    await deleteTempMail(mail)
+    return { success: false, error: err.message || String(err) }
+  }
+}
+
+// ===== 设备码模式注册 =====
 
 async function registerOne(opts) {
   const { userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless = true, mailApi } = opts
@@ -584,8 +769,33 @@ async function main() {
     region = 'us-east-1',
     tempMailApis = [],
     tempMailSelect,
+    // 授权码模式专用
+    registerMode = 'device',   // 'device' | 'authorize'
+    authorizeUrl,
   } = opts
 
+  // ── 授权码模式：单账号，打开 authorizeUrl 完成注册 ──
+  if (registerMode === 'authorize') {
+    if (!authorizeUrl) {
+      emit('result', { success: false, error: '授权模式缺少 authorizeUrl' })
+      process.exit(0)
+    }
+    if (!tempMailApis || tempMailApis.length === 0) {
+      emit('result', { success: false, error: '未配置自建邮箱 API' })
+      process.exit(0)
+    }
+    log('使用授权码模式注册...')
+    const mailApi = pickMailApi(tempMailApis, tempMailSelect)
+    const r = await registerOneAuthorize({ authorizeUrl, proxyUrl, useFingerprint, incognito, headless, mailApi })
+    emit('result', {
+      results: [r],
+      ok: r.success ? 1 : 0,
+      fail: r.success ? 0 : 1,
+    })
+    return
+  }
+
+  // ── 设备码模式（默认）──
   // 校验：必须有至少一个自建邮箱配置
   if (!tempMailApis || tempMailApis.length === 0) {
     emit('result', { success: false, error: '未配置自建邮箱 API，请在设置中添加至少一个邮箱服务' })

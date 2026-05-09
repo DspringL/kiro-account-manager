@@ -116,7 +116,8 @@ use commands::update_cmd::{check_update, get_kiro_proxy};
 use commands::register_cmd::{
     check_node_available, check_playwright_installed, install_register_deps,
     start_builder_id_device_login, poll_builder_id_device_auth, run_auto_register,
-    stop_auto_register,
+    stop_auto_register, start_authorize_register, run_authorize_register,
+    run_authorize_worker,
 };
 
 /// 配置日志插件
@@ -426,6 +427,9 @@ fn main() {
             poll_builder_id_device_auth,
             run_auto_register,
             stop_auto_register,
+            start_authorize_register,
+            run_authorize_register,
+            run_authorize_worker,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

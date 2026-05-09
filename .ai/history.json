@@ -1,5 +1,18 @@
 [
   {
+    "id": "20260509005",
+    "question": "账号注册增加授权码模式，启动后监听回调",
+    "plan": "1. register_cmd.rs 新增 start_authorize_register（注册 OIDC 客户端 authorization_code 类型 + PKCE + 启动本地 HTTP 服务器监听 /oauth/callback）和 run_authorize_register（等待回调 code + 换取 token + 导入账号）；2. register-worker.mjs 新增 registerOneAuthorize 函数；3. 前端新增模式切换（设备码/授权码）",
+    "created_at": "2026-05-09 14:00:00",
+    "completed_at": "2026-05-09 14:30:00",
+    "change_list": [
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "新增 start_authorize_register（OIDC 注册 + PKCE + tiny_http 本地服务器 + oneshot channel）；新增 run_authorize_register（等待回调 + code 换 token + 导入账号）；新增 AuthCallbackRx/AUTHORIZE_CALLBACK_RX 全局存储", "status": "modify" },
+      { "file": "src-tauri/src/main.rs", "change": "导入并注册 start_authorize_register、run_authorize_register", "status": "modify" },
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "新增 registerOneAuthorize（打开 authorizeUrl，完成注册，只点 Allow access，等待跳转回调）；main 新增 registerMode 分支", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "新增模式切换（设备码/授权码）、handlePrepareAuthorize、授权码模式 UI；handleStart 支持两种模式", "status": "modify" }
+    ]
+  },
+  {
     "id": "20260509003",
     "question": "代理地址可以看一下设置中的HTTP代理自动获取",
     "plan": "1. update_cmd.rs 的 get_proxy_from_kiro_settings 改为 pub，新增 get_kiro_proxy Tauri 命令；2. main.rs 注册新命令；3. 前端 AutoRegister 加载时自动调用 get_kiro_proxy（优先）和 detect_system_proxy（降级）填入代理，显示来源标签（Kiro IDE / 系统），并提供手动刷新按钮",

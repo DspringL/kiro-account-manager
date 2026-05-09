@@ -9,6 +9,18 @@ use tauri::{Emitter, State};
 use crate::state::AppState;
 use crate::commands::account_cmd::add_account_by_idc;
 
+// ===== 授权码模式所需常量 =====
+
+const AUTHORIZE_REGION: &str = "us-east-1";
+const AUTHORIZE_ISSUER_URL: &str = "https://view.awsapps.com/start";
+const AUTHORIZE_SCOPES: &[&str] = &[
+    "codewhisperer:completions",
+    "codewhisperer:analysis",
+    "codewhisperer:conversations",
+    "codewhisperer:transformations",
+    "codewhisperer:taskassist",
+];
+
 // ===== 全局子进程 PID（用于停止） =====
 
 static WORKER_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
@@ -541,6 +553,104 @@ pub fn stop_auto_register(app_handle: tauri::AppHandle) -> bool {
     }
 }
 
+/// 授权码模式专用 Worker 启动命令
+/// 只负责启动 Node.js worker 完成浏览器注册，不申请设备码
+/// 与 run_authorize_register 并发执行
+#[tauri::command]
+pub async fn run_authorize_worker(
+    app_handle: tauri::AppHandle,
+    authorize_url: String,
+    proxy_url: Option<String>,
+    use_fingerprint: bool,
+    incognito: bool,
+    headless: bool,
+    temp_mail_apis: Vec<TempMailApi>,
+    temp_mail_select: Option<String>,
+) -> Result<RegisterResult, String> {
+    let sidecar_dir = get_sidecar_dir();
+    let worker_path = sidecar_dir.join("register-worker.mjs");
+    if !worker_path.exists() {
+        return Err(format!("注册脚本不存在: {}", worker_path.display()));
+    }
+
+    // 构造授权码模式参数
+    let worker_params = serde_json::json!({
+        "count": 1,
+        "concurrency": 1,
+        "proxyUrl": proxy_url,
+        "useFingerprint": use_fingerprint,
+        "incognito": incognito,
+        "headless": headless,
+        "tempMailApis": temp_mail_apis,
+        "tempMailSelect": temp_mail_select,
+        "registerMode": "authorize",
+        "authorizeUrl": authorize_url,
+    });
+
+    let input = serde_json::to_string(&worker_params)
+        .map_err(|e| format!("参数序列化失败: {e}"))?;
+
+    emit_log(&app_handle, "[授权码] 启动浏览器注册 Worker...");
+
+    let mut child = Command::new("node")
+        .arg(worker_path.to_str().unwrap())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .current_dir(&sidecar_dir)
+        .spawn()
+        .map_err(|e| format!("启动 Node.js 失败: {e}"))?;
+
+    let pid = child.id();
+    set_worker_pid(Some(pid));
+    emit_log(&app_handle, &format!("[Worker] PID: {pid}"));
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(input.as_bytes())
+            .map_err(|e| format!("写入参数失败: {e}"))?;
+    }
+
+    let stdout = child.stdout.take().ok_or("无法获取 stdout")?;
+    let reader = std::io::BufReader::new(stdout);
+    let mut final_result: Option<RegisterResult> = None;
+
+    use std::io::BufRead;
+    for line in reader.lines() {
+        let line = match line { Ok(l) => l, Err(_) => continue };
+        if line.trim().is_empty() { continue }
+
+        match serde_json::from_str::<WorkerLine>(&line) {
+            Ok(wl) => match wl.kind.as_str() {
+                "log" => {
+                    let msg = wl.data.as_str().unwrap_or(&wl.data.to_string()).to_string();
+                    emit_log(&app_handle, &msg);
+                }
+                "result" => {
+                    if let Ok(r) = serde_json::from_value::<RegisterResult>(wl.data.clone()) {
+                        final_result = Some(r);
+                    } else {
+                        let err = wl.data["error"].as_str().unwrap_or("未知错误").to_string();
+                        final_result = Some(RegisterResult {
+                            results: vec![RegisterRecord {
+                                success: false, email: None, password: None,
+                                name: None, error: Some(err),
+                            }],
+                            ok: 0, fail: 1,
+                        });
+                    }
+                }
+                _ => {}
+            },
+            Err(_) => emit_log(&app_handle, &line),
+        }
+    }
+
+    let _ = child.wait();
+    set_worker_pid(None);
+
+    final_result.ok_or_else(|| "Worker 未返回结果".to_string())
+}
+
 // ===== 辅助函数 =====
 
 fn get_sidecar_dir() -> std::path::PathBuf {
@@ -579,5 +689,322 @@ fn kill_process(pid: u32) -> bool {
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
+    }
+}
+
+// ===== 授权码注册模式 =====
+
+/// 授权码注册的准备信息（返回给前端）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthorizeRegisterInfo {
+    /// 浏览器需要打开的授权 URL
+    pub authorize_url: String,
+    /// 本地回调服务器端口
+    pub callback_port: u16,
+    /// OIDC client_id（用于后续导入）
+    pub client_id: String,
+    /// OIDC client_secret
+    pub client_secret: String,
+    /// PKCE code_verifier（用于换 token）
+    pub code_verifier: String,
+    /// 完整回调 URI
+    pub redirect_uri: String,
+    /// 随机 state（防 CSRF）
+    pub state: String,
+}
+
+/// 生成 PKCE code_verifier 和 code_challenge（S256）
+fn generate_pkce() -> (String, String) {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+    use sha2::{Digest, Sha256};
+
+    // code_verifier: 43-128 个 URL 安全字符
+    let verifier_bytes: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
+    let code_verifier = URL_SAFE_NO_PAD.encode(&verifier_bytes);
+
+    // code_challenge = BASE64URL(SHA256(code_verifier))
+    let mut hasher = Sha256::new();
+    hasher.update(code_verifier.as_bytes());
+    let hash = hasher.finalize();
+    let code_challenge = URL_SAFE_NO_PAD.encode(hash);
+
+    (code_verifier, code_challenge)
+}
+
+/// 启动授权码注册流程：
+/// 1. 注册 OIDC 客户端（authorization_code 类型）
+/// 2. 生成 PKCE
+/// 3. 构建 authorize_url
+/// 4. 启动本地 HTTP 服务器监听回调
+/// 返回 AuthorizeRegisterInfo 给前端，前端把 authorize_url 传给 worker
+#[tauri::command]
+pub async fn start_authorize_register() -> Result<AuthorizeRegisterInfo, String> {
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+
+    let oidc_base = format!("https://oidc.{AUTHORIZE_REGION}.amazonaws.com");
+    let client = reqwest::Client::new();
+
+    // Step 1: 启动本地回调服务器（随机端口）
+    let server = tiny_http::Server::http("127.0.0.1:0")
+        .map_err(|e| format!("启动本地服务器失败: {e}"))?;
+    let port = server
+        .server_addr()
+        .to_ip()
+        .ok_or_else(|| "获取服务器端口失败".to_string())?
+        .port();
+    let redirect_uri = format!("http://127.0.0.1:{port}/oauth/callback");
+
+    // Step 2: 注册 OIDC 客户端（authorization_code 类型）
+    let scopes: Vec<&str> = AUTHORIZE_SCOPES.to_vec();
+    let reg_body = serde_json::json!({
+        "clientName": "Kiro IDE",
+        "clientType": "public",
+        "scopes": scopes,
+        "grantTypes": ["authorization_code", "refresh_token"],
+        "redirectUris": [redirect_uri],
+        "issuerUrl": AUTHORIZE_ISSUER_URL
+    });
+
+    let reg_resp = client
+        .post(format!("{oidc_base}/client/register"))
+        .json(&reg_body)
+        .send().await
+        .map_err(|e| format!("注册 OIDC 客户端失败: {e}"))?;
+
+    if !reg_resp.status().is_success() {
+        return Err(format!("注册 OIDC 客户端失败: {}", reg_resp.text().await.unwrap_or_default()));
+    }
+
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct RegResp { client_id: String, client_secret: String }
+    let reg: RegResp = reg_resp.json().await
+        .map_err(|e| format!("解析注册响应失败: {e}"))?;
+
+    // Step 3: 生成 PKCE 和 state
+    let (code_verifier, code_challenge) = generate_pkce();
+    let state = uuid::Uuid::new_v4().to_string().replace('-', "");
+
+    // Step 4: 构建 authorize_url
+    let authorize_url = format!(
+        "{oidc_base}/authorize?response_type=code&client_id={}&redirect_uri={}&scopes={}&state={}&code_challenge={}&code_challenge_method=S256",
+        urlencoding::encode(&reg.client_id),
+        urlencoding::encode(&redirect_uri),
+        urlencoding::encode(&AUTHORIZE_SCOPES.join(",")),
+        urlencoding::encode(&state),
+        urlencoding::encode(&code_challenge),
+    );
+
+    // Step 5: 后台线程监听回调，通过全局 channel 传递 code
+    let expected_state = state.clone();
+    let (tx, rx) = tokio::sync::oneshot::channel::<Result<String, String>>();
+
+    std::thread::spawn(move || {
+        let timeout = std::time::Duration::from_secs(600); // 10 分钟超时
+        let start = std::time::Instant::now();
+        loop {
+            if start.elapsed() > timeout {
+                let _ = tx.send(Err("等待 OAuth 回调超时（10分钟）".to_string()));
+                break;
+            }
+            match server.try_recv() {
+                Ok(Some(request)) => {
+                    let url = request.url().to_string();
+                    if url.starts_with("/oauth/callback") {
+                        let query = url.split('?').nth(1).unwrap_or("");
+                        let params: std::collections::HashMap<String, String> =
+                            url::form_urlencoded::parse(query.as_bytes())
+                                .into_owned()
+                                .collect();
+
+                        // 回复浏览器
+                        let html = if params.get("state").map(|s| s.as_str()) == Some(&expected_state) {
+                            "<html><body><h1>授权成功</h1><p>注册完成，您可以关闭此窗口</p></body></html>"
+                        } else {
+                            "<html><body><h1>授权失败</h1><p>state 不匹配</p></body></html>"
+                        };
+                        let resp = tiny_http::Response::from_string(html).with_header(
+                            tiny_http::Header::from_bytes(
+                                &b"Content-Type"[..],
+                                &b"text/html; charset=utf-8"[..],
+                            ).unwrap(),
+                        );
+                        let _ = request.respond(resp);
+
+                        // 验证 state
+                        if params.get("state").map(|s| s.as_str()) != Some(&expected_state) {
+                            let _ = tx.send(Err("state 不匹配，可能存在 CSRF 攻击".to_string()));
+                        } else if let Some(error) = params.get("error") {
+                            let _ = tx.send(Err(format!("OAuth 错误: {error}")));
+                        } else if let Some(code) = params.get("code") {
+                            let _ = tx.send(Ok(code.clone()));
+                        } else {
+                            let _ = tx.send(Err("回调中未找到 code 参数".to_string()));
+                        }
+                        break;
+                    }
+                }
+                Ok(None) => {}
+                Err(_) => break,
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    });
+
+    // 把 rx 存到全局，供 run_authorize_register 使用
+    {
+        let mut guard = authorize_callback_store().lock().await;
+        *guard = Some(rx);
+    }
+
+    Ok(AuthorizeRegisterInfo {
+        authorize_url,
+        callback_port: port,
+        client_id: reg.client_id,
+        client_secret: reg.client_secret,
+        code_verifier,
+        redirect_uri,
+        state,
+    })
+}
+
+// 全局存储授权码回调的 oneshot receiver（用 tokio Mutex 保证 Send+Sync）
+type AuthCallbackRx = tokio::sync::Mutex<Option<tokio::sync::oneshot::Receiver<Result<String, String>>>>;
+
+static AUTHORIZE_CALLBACK_RX: OnceLock<AuthCallbackRx> = OnceLock::new();
+
+fn authorize_callback_store() -> &'static AuthCallbackRx {
+    AUTHORIZE_CALLBACK_RX.get_or_init(|| tokio::sync::Mutex::new(None))
+}
+
+/// 授权码注册参数（worker 完成注册后调用）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthorizeRegisterParams {
+    /// 从 start_authorize_register 获取的信息
+    pub client_id: String,
+    pub client_secret: String,
+    pub code_verifier: String,
+    pub redirect_uri: String,
+    /// worker 注册的账号信息
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub name: Option<String>,
+}
+
+/// 等待 OAuth 回调并用 code 换 token，最后导入账号
+/// 在 worker 完成注册（浏览器点击 Allow access）后调用
+#[tauri::command]
+pub async fn run_authorize_register(
+    app_handle: tauri::AppHandle,
+    state: State<'_, AppState>,
+    params: AuthorizeRegisterParams,
+) -> Result<serde_json::Value, String> {
+    emit_log(&app_handle, "等待 OAuth 回调（浏览器点击 Allow access 后自动完成）...");
+
+    // 取出 receiver
+    let rx = {
+        let mut guard = authorize_callback_store().lock().await;
+        guard.take()
+    };
+
+    let rx = rx.ok_or("未找到授权回调通道，请先调用 start_authorize_register")?;
+
+    // 等待回调
+    let code = match rx.await {
+        Ok(Ok(c)) => c,
+        Ok(Err(e)) => {
+            emit_log(&app_handle, &format!("✗ 回调失败: {e}"));
+            return Err(format!("OAuth 回调失败: {e}"));
+        }
+        Err(_) => return Err("授权回调通道已关闭".to_string()),
+    };
+
+    emit_log(&app_handle, "✓ 收到 OAuth 回调，正在用 code 换取 token...");
+
+    // 用 code + code_verifier 换 token
+    let oidc_base = format!("https://oidc.{AUTHORIZE_REGION}.amazonaws.com");
+    let client = reqwest::Client::new();
+
+    let token_body = serde_json::json!({
+        "clientId":     params.client_id,
+        "clientSecret": params.client_secret,
+        "grantType":    "authorization_code",
+        "code":         code,
+        "codeVerifier": params.code_verifier,
+        "redirectUri":  params.redirect_uri,
+    });
+
+    let token_resp = client
+        .post(format!("{oidc_base}/token"))
+        .json(&token_body)
+        .send().await
+        .map_err(|e| format!("换取 token 失败: {e}"))?;
+
+    if !token_resp.status().is_success() {
+        let err = token_resp.text().await.unwrap_or_default();
+        emit_log(&app_handle, &format!("✗ 换取 token 失败: {err}"));
+        return Err(format!("换取 token 失败: {err}"));
+    }
+
+    let token_data: serde_json::Value = token_resp.json().await
+        .map_err(|e| format!("解析 token 响应失败: {e}"))?;
+
+    let access_token  = token_data["accessToken"].as_str().ok_or("缺少 accessToken")?.to_string();
+    let refresh_token = token_data["refreshToken"].as_str().ok_or("缺少 refreshToken")?.to_string();
+
+    let email    = params.email.clone().unwrap_or_default();
+    let password = params.password.clone().unwrap_or_default();
+    let name     = params.name.clone().unwrap_or_default();
+
+    emit_log(&app_handle, "✓ 成功获取 token！");
+    emit_log(&app_handle, &format!("========== 注册账号信息 =========="));
+    emit_log(&app_handle, &format!("邮箱:          {}", email));
+    emit_log(&app_handle, &format!("密码:          {}", password));
+    emit_log(&app_handle, &format!("姓名:          {}", name));
+    emit_log(&app_handle, &format!("access_token:  {}...", &access_token[..access_token.len().min(20)]));
+    emit_log(&app_handle, &format!("refresh_token: {}...", &refresh_token[..refresh_token.len().min(20)]));
+    emit_log(&app_handle, &format!("client_id:     {}", params.client_id));
+    emit_log(&app_handle, &format!("region:        {}", AUTHORIZE_REGION));
+    emit_log(&app_handle, &format!("=================================="));
+
+    // 导入账号
+    emit_log(&app_handle, "正在导入账号到账号列表...");
+    match add_account_by_idc(
+        state,
+        Some("BuilderId".to_string()),
+        refresh_token.clone(),
+        params.client_id.clone(),
+        params.client_secret.clone(),
+        Some(AUTHORIZE_REGION.to_string()),
+        None,
+        Some(access_token.clone()),
+        Some(password.clone()),
+        None,
+        None,
+    ).await {
+        Ok(add_result) => {
+            emit_log(&app_handle, &format!(
+                "✅ 账号已导入！id={} email={} is_new={}",
+                add_result.account.id,
+                add_result.account.email.as_deref().unwrap_or(&email),
+                add_result.is_new
+            ));
+            Ok(serde_json::json!({
+                "success": true,
+                "email": add_result.account.email,
+                "accountId": add_result.account.id,
+                "isNew": add_result.is_new,
+            }))
+        }
+        Err(e) => {
+            emit_log(&app_handle, &format!("⚠ 账号导入失败: {e}（注册已成功，请手动添加）"));
+            Ok(serde_json::json!({
+                "success": true,
+                "email": email,
+                "importError": e,
+            }))
+        }
     }
 }
