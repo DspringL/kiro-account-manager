@@ -423,6 +423,7 @@ function Settings() {
             await showSuccess(t('settings.resetSuccess'), `${t('settings.newMachineGuid')}: ${newGuid}`)
         } catch (err: any) {
             await showError(t('settings.resetFailed'), err.toString())
+        } finally {
             setMachineGuidAction(null)
         }
     }

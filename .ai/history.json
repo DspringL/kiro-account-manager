@@ -1,5 +1,44 @@
 [
   {
+    "id": "20260509007",
+    "question": "1. 去掉启动软件后的重要提示弹窗 2. 设置中的重置机器码可以无限修改不需要禁用 3. 增加一键导出所有数据，也支持一键导入",
+    "plan": "1. App.tsx 移除 WelcomeModal 组件渲染和 import；2. Settings/index.tsx 中 handleResetSystemMachineGuid 使用 finally 恢复按钮状态；3. 后端 app_settings_cmd.rs 新增 export_all_data/import_all_data 命令，main.rs 注册；4. 前端 SettingsGeneral.tsx 新增 DataManagementCard 组件",
+    "created_at": "2026-05-09T01:00:00",
+    "completed_at": "2026-05-09T01:15:00",
+    "ref_file_list": [
+      "src/App.tsx",
+      "src/components/features/Settings/index.tsx",
+      "src/components/features/Settings/SettingsGeneral.tsx",
+      "src-tauri/src/commands/app_settings_cmd.rs",
+      "src-tauri/src/main.rs"
+    ],
+    "change_list": [
+      { "file": "src/App.tsx", "change": "移除 WelcomeModal import 和渲染", "status": "modify" },
+      { "file": "src/components/features/Settings/index.tsx", "change": "handleResetSystemMachineGuid 使用 finally 恢复按钮状态，允许无限重置", "status": "modify" },
+      { "file": "src/components/features/Settings/SettingsGeneral.tsx", "change": "新增 DataManagementCard 组件，支持一键导出/导入所有数据", "status": "modify" },
+      { "file": "src-tauri/src/commands/app_settings_cmd.rs", "change": "新增 export_all_data 和 import_all_data Tauri 命令", "status": "modify" },
+      { "file": "src-tauri/src/main.rs", "change": "注册 export_all_data 和 import_all_data 命令", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260509006",
+    "question": "撤回本地代码所有修改",
+    "plan": "1. git status 查看当前未提交的 8 个文件改动；2. 用户确认后 git checkout -- . 丢弃所有工作区修改；3. git pull 快进到 origin/main 最新提交；4. git status 验证工作区干净。",
+    "created_at": "2026-05-09T00:00:00",
+    "completed_at": "2026-05-09T00:05:00",
+    "ref_file_list": [],
+    "change_list": [
+      { "file": ".ai/history.json", "change": "撤回本地改动并 pull 后，远端版本覆盖了本地版本", "status": "modify" },
+      { "file": "src-tauri/sidecar/package-lock.json", "change": "撤回本地改动", "status": "modify" },
+      { "file": "src-tauri/sidecar/package.json", "change": "撤回本地改动", "status": "modify" },
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "撤回本地改动（随后被 pull 覆盖）", "status": "modify" },
+      { "file": "src-tauri/src/commands/app_settings_cmd.rs", "change": "撤回本地改动", "status": "modify" },
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "撤回本地改动（随后被 pull 覆盖）", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "撤回本地改动（随后被 pull 覆盖）", "status": "modify" },
+      { "file": "src/contexts/AppSettingsContext.tsx", "change": "撤回本地改动", "status": "modify" }
+    ]
+  },
+  {
     "id": "20260509005",
     "question": "账号注册增加授权码模式，启动后监听回调",
     "plan": "1. register_cmd.rs 新增 start_authorize_register（注册 OIDC 客户端 authorization_code 类型 + PKCE + 启动本地 HTTP 服务器监听 /oauth/callback）和 run_authorize_register（等待回调 code + 换取 token + 导入账号）；2. register-worker.mjs 新增 registerOneAuthorize 函数；3. 前端新增模式切换（设备码/授权码）",

@@ -36,6 +36,7 @@ use commands::app_settings_cmd::{
     bind_machine_id_to_account, get_all_bound_machine_ids, get_app_settings, get_bound_machine_id,
     get_usage_history, save_app_settings, save_usage_history_entry, unbind_machine_id_from_account,
     get_custom_kiro_path, set_custom_kiro_path, clear_custom_kiro_path,
+    export_all_data, import_all_data,
 };
 //授权相关
 use commands::auth_cmd::{
@@ -311,6 +312,9 @@ fn main() {
             set_custom_kiro_path,
             get_custom_kiro_path,
             clear_custom_kiro_path,
+            // 数据导入导出命令
+            export_all_data,
+            import_all_data,
             // 进程管理命令
             close_kiro_ide,
             start_kiro_ide,

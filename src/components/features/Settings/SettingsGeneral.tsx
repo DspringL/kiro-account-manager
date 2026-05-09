@@ -1,4 +1,6 @@
-import { Clock, Globe, Search, Shield, Shuffle, AlertTriangle, Eye, EyeOff, Repeat, RefreshCw, Check, Copy, Cpu, X } from 'lucide-react'
+import { useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { Clock, Globe, Search, Shield, Shuffle, AlertTriangle, Eye, EyeOff, Repeat, RefreshCw, Check, Copy, Cpu, X, Download, Upload, Database } from 'lucide-react'
 import { Card, CardContent } from '../../ui/card'
 import { Input } from '../../ui/input'
 import { Switch } from '../../ui/switch'
@@ -405,7 +407,134 @@ function SettingsGeneral({
           )}
         </CardContent>
       </Card>
+
+      {/* 数据管理 */}
+      <DataManagementCard t={t} />
     </>
+  )
+}
+
+// 数据管理卡片（导入/导出）
+function DataManagementCard({ t }: { t: TFunction }) {
+  const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
+
+  const handleExportAllData = async () => {
+    setExporting(true)
+    try {
+      const { save } = await import('@tauri-apps/plugin-dialog')
+      const { writeTextFile } = await import('@tauri-apps/plugin-fs')
+
+      const data = await invoke<string>('export_all_data')
+
+      // 附加前端 localStorage 中的邮箱配置
+      const parsed = JSON.parse(data)
+      try {
+        const mailApis = localStorage.getItem('autoRegister_mailApis')
+        const mailSelect = localStorage.getItem('autoRegister_mailSelect')
+        if (mailApis) parsed.autoRegisterMailApis = JSON.parse(mailApis)
+        if (mailSelect) parsed.autoRegisterMailSelect = mailSelect
+      } catch {}
+      const finalData = JSON.stringify(parsed, null, 2)
+
+      const filePath = await save({
+        defaultPath: `kiro-account-manager-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      })
+
+      if (filePath) {
+        await writeTextFile(filePath, finalData)
+        alert('导出成功！')
+      }
+    } catch (error) {
+      alert('导出失败：' + String(error))
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const handleImportAllData = async () => {
+    setImporting(true)
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const { readTextFile } = await import('@tauri-apps/plugin-fs')
+
+      const filePath = await open({
+        multiple: false,
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      })
+
+      if (filePath) {
+        const content = await readTextFile(filePath as string)
+
+        // 基本校验
+        const parsed = JSON.parse(content)
+        if (!parsed.accounts && !parsed.appSettings) {
+          alert('无效的备份文件格式')
+          return
+        }
+
+        const confirmed = window.confirm('导入将覆盖当前所有数据并重启应用，确定继续吗？')
+        if (!confirmed) return
+
+        // 恢复前端 localStorage 中的邮箱配置
+        try {
+          if (parsed.autoRegisterMailApis) {
+            localStorage.setItem('autoRegister_mailApis', JSON.stringify(parsed.autoRegisterMailApis))
+          }
+          if (parsed.autoRegisterMailSelect) {
+            localStorage.setItem('autoRegister_mailSelect', parsed.autoRegisterMailSelect)
+          }
+        } catch {}
+
+        await invoke<string>('import_all_data', { json: content })
+
+        // 导入成功后自动重启应用
+        const { relaunch } = await import('@tauri-apps/plugin-process')
+        await relaunch()
+      }
+    } catch (error) {
+      alert('导入失败：' + String(error))
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  return (
+    <Card className="card-glow animate-slide-in-left delay-325 mb-6">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Database size={18} className="text-blue-500" />
+          <h2 className="text-lg font-semibold text-foreground">{t('settings.dataManagement') || '数据管理'}</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">
+          {t('settings.dataManagementDesc') || '一键导出或导入所有应用数据（账号、设置、分组标签、使用记录）'}
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={handleExportAllData}
+            disabled={exporting}
+            className="flex-1 px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium border border-border bg-card hover:bg-muted/50 text-foreground disabled:opacity-50 transition-colors"
+          >
+            {exporting ? <RefreshCw size={16} className="animate-spin" /> : <Upload size={16} />}
+            {t('settings.exportAllData') || '导出所有数据'}
+          </button>
+          <button
+            onClick={handleImportAllData}
+            disabled={importing}
+            className="flex-1 px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-medium border border-border bg-card hover:bg-muted/50 text-foreground disabled:opacity-50 transition-colors"
+          >
+            {importing ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
+            {t('settings.importAllData') || '导入所有数据'}
+          </button>
+        </div>
+
+        <p className="text-xs text-muted-foreground mt-3">
+          {t('settings.dataManagementTip') || '提示：导入数据后将自动重启应用'}
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 

@@ -341,4 +341,86 @@ pub async fn clear_custom_kiro_path() -> Result<(), String> {
     }).await
 }
 
+// ============================================================
+// 一键导出/导入所有数据
+// ============================================================
 
+/// 导出所有应用数据（accounts、app-settings、groups-tags、usage-history）
+#[tauri::command]
+pub async fn export_all_data() -> Result<String, String> {
+    run_blocking_io(|| {
+        let data_dir = get_data_dir();
+
+        let accounts = std::fs::read_to_string(data_dir.join("accounts.json"))
+            .unwrap_or_else(|_| "[]".to_string());
+        let app_settings = std::fs::read_to_string(data_dir.join("app-settings.json"))
+            .unwrap_or_else(|_| "{}".to_string());
+        let groups_tags = std::fs::read_to_string(data_dir.join("groups-tags.json"))
+            .unwrap_or_else(|_| "{}".to_string());
+        let usage_history = std::fs::read_to_string(data_dir.join("usage-history.json"))
+            .unwrap_or_else(|_| "{}".to_string());
+
+        // 解析为 serde_json::Value 以确保输出格式正确
+        let accounts_val: serde_json::Value = serde_json::from_str(&accounts).unwrap_or(serde_json::Value::Array(vec![]));
+        let settings_val: serde_json::Value = serde_json::from_str(&app_settings).unwrap_or(serde_json::Value::Object(Default::default()));
+        let groups_val: serde_json::Value = serde_json::from_str(&groups_tags).unwrap_or(serde_json::Value::Object(Default::default()));
+        let history_val: serde_json::Value = serde_json::from_str(&usage_history).unwrap_or(serde_json::Value::Object(Default::default()));
+
+        let export_data = serde_json::json!({
+            "version": "1.0",
+            "exportTime": chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+            "accounts": accounts_val,
+            "appSettings": settings_val,
+            "groupsTags": groups_val,
+            "usageHistory": history_val
+        });
+
+        serde_json::to_string_pretty(&export_data).map_err(|e| format!("序列化失败: {e}"))
+    }).await
+}
+
+/// 导入所有应用数据（覆盖写入）
+#[tauri::command]
+pub async fn import_all_data(json: String) -> Result<String, String> {
+    run_blocking_io(move || {
+        let data: serde_json::Value = serde_json::from_str(&json)
+            .map_err(|e| format!("JSON 解析失败: {e}"))?;
+
+        let data_dir = get_data_dir();
+        ensure_parent_dir(&data_dir.join("placeholder"))?;
+
+        // 写入 accounts.json
+        if let Some(accounts) = data.get("accounts") {
+            let content = serde_json::to_string_pretty(accounts)
+                .map_err(|e| format!("序列化 accounts 失败: {e}"))?;
+            std::fs::write(data_dir.join("accounts.json"), content)
+                .map_err(|e| format!("写入 accounts.json 失败: {e}"))?;
+        }
+
+        // 写入 app-settings.json
+        if let Some(settings) = data.get("appSettings") {
+            let content = serde_json::to_string_pretty(settings)
+                .map_err(|e| format!("序列化 appSettings 失败: {e}"))?;
+            std::fs::write(data_dir.join("app-settings.json"), content)
+                .map_err(|e| format!("写入 app-settings.json 失败: {e}"))?;
+        }
+
+        // 写入 groups-tags.json
+        if let Some(groups) = data.get("groupsTags") {
+            let content = serde_json::to_string_pretty(groups)
+                .map_err(|e| format!("序列化 groupsTags 失败: {e}"))?;
+            std::fs::write(data_dir.join("groups-tags.json"), content)
+                .map_err(|e| format!("写入 groups-tags.json 失败: {e}"))?;
+        }
+
+        // 写入 usage-history.json
+        if let Some(history) = data.get("usageHistory") {
+            let content = serde_json::to_string_pretty(history)
+                .map_err(|e| format!("序列化 usageHistory 失败: {e}"))?;
+            std::fs::write(data_dir.join("usage-history.json"), content)
+                .map_err(|e| format!("写入 usage-history.json 失败: {e}"))?;
+        }
+
+        Ok("导入成功，请重启应用以加载新数据".to_string())
+    }).await
+}

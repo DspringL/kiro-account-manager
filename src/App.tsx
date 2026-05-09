@@ -4,7 +4,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import { Toaster } from 'react-hot-toast'
 import Sidebar from './components/features/Layout'
 import UpdateChecker from './components/shared/UpdateChecker'
-import WelcomeModal from './components/shared/WelcomeModal'
+
 import { dismissBootSplash } from './utils/bootSplash'
 
 import { useApp } from './hooks/useApp'
@@ -197,7 +197,7 @@ function App() {
           </main>
           
           <UpdateChecker />
-          <WelcomeModal />
+
           <Toaster 
             position="top-center"
             toastOptions={{

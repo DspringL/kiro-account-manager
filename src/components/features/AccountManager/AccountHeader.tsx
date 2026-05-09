@@ -302,14 +302,14 @@ function AccountHeader({
               className={`p-3 rounded-xl glass-card border border-border hover:bg-muted/50 ${accent.text} transition-all duration-200 hover:shadow-md cursor-pointer`}
               title={t('accounts.import')}
             >
-              <Upload size={18} />
+              <Download size={18} />
             </button>
             <button
               onClick={onExport}
               className={`p-3 rounded-xl glass-card border border-border hover:bg-muted/50 ${accent.text} transition-all duration-200 hover:shadow-md cursor-pointer`}
               title={t('accounts.export')}
             >
-              <Download size={18} />
+              <Upload size={18} />
             </button>
             <button
               onClick={onRefresh}
