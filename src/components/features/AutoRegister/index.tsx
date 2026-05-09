@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen, emit } from '@tauri-apps/api/event'
 import {
   UserPlus, Play, Square, Settings, Terminal, CheckCircle,
-  XCircle, AlertCircle, Download, Mail, Plus, Trash2, Copy, RefreshCw,
+  XCircle, AlertCircle, Download, Mail, Plus, Trash2, Copy, RefreshCw, Pencil, Check, Zap,
 } from 'lucide-react'
 import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
@@ -20,6 +20,7 @@ interface TempMailApi {
   name: string
   apiUrl: string
   adminKey: string
+  enabled?: boolean
 }
 
 interface RegisterParams {
@@ -88,8 +89,12 @@ export default function AutoRegister() {
   const [proxySource,  setProxySource]  = useState('')  // 'kiro' | 'system' | ''
 
   // 新增邮箱表单（临时状态）
-  const [newApi, setNewApi] = useState<TempMailApi>({ name: '', apiUrl: '', adminKey: '' })
+  const [newApi, setNewApi] = useState<TempMailApi>({ name: '', apiUrl: '', adminKey: '', enabled: true })
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)
+  const [editApi, setEditApi] = useState<TempMailApi>({ name: '', apiUrl: '', adminKey: '', enabled: true })
+  const [testingIdx, setTestingIdx] = useState<number | null>(null)
+  const [testResult, setTestResult] = useState<{ idx: number; ok: boolean; msg: string } | null>(null)
 
   // 结果明细折叠
   const [showDetail, setShowDetail] = useState(false)
@@ -210,10 +215,85 @@ export default function AutoRegister() {
         name: newApi.name.trim() || `邮箱服务 ${p.tempMailApis.length + 1}`,
         apiUrl: newApi.apiUrl.trim(),
         adminKey: newApi.adminKey.trim(),
+        enabled: true,
       }],
     }))
-    setNewApi({ name: '', apiUrl: '', adminKey: '' })
+    setNewApi({ name: '', apiUrl: '', adminKey: '', enabled: true })
     setShowAddForm(false)
+  }
+
+  // 编辑邮箱配置
+  function handleStartEdit(idx: number) {
+    setEditingIdx(idx)
+    setEditApi({ ...params.tempMailApis[idx] })
+  }
+
+  function handleSaveEdit() {
+    if (editingIdx === null) return
+    if (!editApi.apiUrl.trim() || !editApi.adminKey.trim()) return
+    setParams(p => {
+      const apis = [...p.tempMailApis]
+      apis[editingIdx] = {
+        name: editApi.name.trim() || `邮箱服务 ${editingIdx + 1}`,
+        apiUrl: editApi.apiUrl.trim(),
+        adminKey: editApi.adminKey.trim(),
+        enabled: editApi.enabled !== false,
+      }
+      return { ...p, tempMailApis: apis }
+    })
+    setEditingIdx(null)
+  }
+
+  // 切换启用/禁用
+  function handleToggleApi(idx: number) {
+    setParams(p => {
+      const apis = [...p.tempMailApis]
+      apis[idx] = { ...apis[idx], enabled: apis[idx].enabled === false ? true : false }
+      return { ...p, tempMailApis: apis }
+    })
+  }
+
+  // 测试邮箱接口
+  async function handleTestApi(idx: number) {
+    const api = params.tempMailApis[idx]
+    if (!api) return
+    setTestingIdx(idx)
+    setTestResult(null)
+    try {
+      const result = await invoke<string>('test_temp_mail_api', {
+        apiUrl: api.apiUrl,
+        adminKey: api.adminKey,
+        proxyUrl: params.proxyUrl.trim() || null,
+      })
+      setTestResult({ idx, ok: true, msg: result })
+    } catch (e: any) {
+      setTestResult({ idx, ok: false, msg: String(e) })
+    } finally {
+      setTestingIdx(null)
+    }
+  }
+
+  // 清理单个邮箱服务中的所有邮箱
+  const [cleaningIdx, setCleaningIdx] = useState<number | null>(null)
+
+  async function handleCleanupApi(idx: number) {
+    const api = params.tempMailApis[idx]
+    if (!api) return
+    if (!window.confirm(`确定要删除「${api.name || api.apiUrl}」中的全部邮箱和邮件吗？此操作不可恢复。`)) return
+    setCleaningIdx(idx)
+    setTestResult(null)
+    try {
+      const result = await invoke<string>('cleanup_temp_mail_api', {
+        apiUrl: api.apiUrl,
+        adminKey: api.adminKey,
+        proxyUrl: params.proxyUrl.trim() || null,
+      })
+      setTestResult({ idx, ok: true, msg: result })
+    } catch (e: any) {
+      setTestResult({ idx, ok: false, msg: String(e) })
+    } finally {
+      setCleaningIdx(null)
+    }
   }
 
   // 删除邮箱配置
@@ -230,9 +310,10 @@ export default function AutoRegister() {
 
   const handleStart = useCallback(async () => {
     if (running) return
-    // 设备码模式才强制要求邮箱服务
-    if (registerMode === 'device' && params.tempMailApis.length === 0) {
-      setLogs(['❌ 请先添加至少一个自建邮箱 API 配置'])
+    // 检查是否有启用的邮箱服务
+    const activeApis = params.tempMailApis.filter(a => a.enabled !== false)
+    if (activeApis.length === 0) {
+      setLogs(['❌ 请先添加并启用至少一个自建邮箱 API 配置'])
       return
     }
     stoppedRef.current = false
@@ -262,7 +343,7 @@ export default function AutoRegister() {
               useFingerprint: params.useFingerprint,
               incognito:      params.incognito,
               headless:       params.headless,
-              tempMailApis:   params.tempMailApis,
+              tempMailApis:   activeApis,
               tempMailSelect: params.tempMailSelect,
             })
             if (res.success) {
@@ -313,7 +394,7 @@ export default function AutoRegister() {
           incognito:      params.incognito,
           headless:       params.headless,
           region:         params.region,
-          tempMailApis:   params.tempMailApis,
+          tempMailApis:   activeApis,
           tempMailSelect: params.tempMailSelect,
           registerMode:   'device',
         }
@@ -332,10 +413,12 @@ export default function AutoRegister() {
     }
   }, [running, params, registerMode])
 
+  const enabledApis = params.tempMailApis.filter(a => a.enabled !== false)
+
   const canStart = nodeOk && playwrightOk && !running
     && (registerMode === 'authorize'
-      ? params.tempMailApis.length > 0  // 授权码模式：需要邮箱服务
-      : params.tempMailApis.length > 0  // 设备码模式：需要邮箱服务
+      ? enabledApis.length > 0  // 授权码模式：需要启用的邮箱服务
+      : enabledApis.length > 0  // 设备码模式：需要启用的邮箱服务
     )
 
   // ===== 渲染 =====
@@ -478,8 +561,8 @@ export default function AutoRegister() {
                   >
                     <option value="random">随机选择</option>
                     {params.tempMailApis.map((api, i) => (
-                      <option key={i} value={String(i)}>
-                        指定：{api.name || api.apiUrl}
+                      <option key={i} value={String(i)} disabled={api.enabled === false}>
+                        {api.enabled === false ? '(已禁用) ' : '指定：'}{api.name || api.apiUrl}
                       </option>
                     ))}
                   </select>
@@ -487,25 +570,112 @@ export default function AutoRegister() {
 
                 {/* 邮箱列表 */}
                 {params.tempMailApis.map((api, i) => (
-                  <div key={i} className={[
-                    'flex items-center gap-2 px-2.5 py-2 rounded-lg border',
-                    params.tempMailSelect === String(i)
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border bg-muted/20',
-                  ].join(' ')}>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">{api.name || `服务 ${i + 1}`}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{api.apiUrl}</div>
+                  editingIdx === i ? (
+                    // 编辑模式
+                    <div key={i} className="flex flex-col gap-1.5 px-2.5 py-2 rounded-lg border border-primary bg-primary/5">
+                      <Input placeholder="名称" value={editApi.name} className="h-7 text-xs"
+                        onChange={e => setEditApi(p => ({ ...p, name: e.target.value }))} />
+                      <Input placeholder="API 地址" value={editApi.apiUrl} className="h-7 text-xs"
+                        onChange={e => setEditApi(p => ({ ...p, apiUrl: e.target.value }))} />
+                      <Input type="password" placeholder="Admin 密码" value={editApi.adminKey} className="h-7 text-xs"
+                        onChange={e => setEditApi(p => ({ ...p, adminKey: e.target.value }))} />
+                      <div className="flex gap-1.5">
+                        <Button size="sm" onClick={handleSaveEdit} className="flex-1 h-6 text-[11px]"
+                          disabled={!editApi.apiUrl.trim() || !editApi.adminKey.trim()}>
+                          <Check size={10} className="mr-1" />保存
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingIdx(null)} className="flex-1 h-6 text-[11px]">
+                          取消
+                        </Button>
+                      </div>
                     </div>
-                    <button
-                      disabled={running}
-                      onClick={() => handleRemoveApi(i)}
-                      className="text-muted-foreground hover:text-destructive flex-shrink-0 disabled:opacity-40"
-                      title="删除"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
+                  ) : (
+                    // 显示模式
+                    <div key={i} className={[
+                      'rounded-lg border px-2.5 py-2',
+                      api.enabled === false
+                        ? 'border-border bg-muted/10 opacity-50'
+                        : params.tempMailSelect === String(i)
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-muted/20',
+                    ].join(' ')}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <div className="text-xs font-medium truncate">{api.name || `服务 ${i + 1}`}</div>
+                            {api.enabled === false && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground">已禁用</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">{api.apiUrl}</div>
+                        </div>
+                        <button
+                          disabled={running}
+                          onClick={() => handleToggleApi(i)}
+                          className={[
+                            'flex-shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors',
+                            api.enabled === false
+                              ? 'text-muted-foreground hover:text-green-500'
+                              : 'text-green-500 hover:text-muted-foreground',
+                            'disabled:opacity-40',
+                          ].join(' ')}
+                          title={api.enabled === false ? '启用' : '禁用'}
+                        >
+                          <div className={[
+                            'w-3 h-3 rounded-full border-2',
+                            api.enabled === false ? 'border-muted-foreground' : 'border-green-500 bg-green-500',
+                          ].join(' ')} />
+                        </button>
+                        <button
+                          disabled={running}
+                          onClick={() => handleStartEdit(i)}
+                          className="text-muted-foreground hover:text-foreground flex-shrink-0 disabled:opacity-40"
+                          title="编辑"
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        <button
+                          disabled={running || testingIdx !== null}
+                          onClick={() => handleTestApi(i)}
+                          className={[
+                            'flex-shrink-0 disabled:opacity-40',
+                            testResult?.idx === i && cleaningIdx !== i
+                              ? testResult.ok ? 'text-green-500' : 'text-red-500'
+                              : 'text-muted-foreground hover:text-blue-500',
+                          ].join(' ')}
+                          title="测试接口"
+                        >
+                          {testingIdx === i ? <RefreshCw size={11} className="animate-spin" /> : <Zap size={11} />}
+                        </button>
+                        <button
+                          disabled={running || cleaningIdx !== null}
+                          onClick={() => handleCleanupApi(i)}
+                          className={[
+                            'flex-shrink-0 disabled:opacity-40',
+                            cleaningIdx === i
+                              ? 'text-orange-500'
+                              : 'text-muted-foreground hover:text-orange-500',
+                          ].join(' ')}
+                          title="清空所有邮箱"
+                        >
+                          {cleaningIdx === i ? <RefreshCw size={11} className="animate-spin" /> : <XCircle size={11} />}
+                        </button>
+                        <button
+                          disabled={running}
+                          onClick={() => handleRemoveApi(i)}
+                          className="text-muted-foreground hover:text-destructive flex-shrink-0 disabled:opacity-40"
+                          title="删除配置"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      {testResult?.idx === i && (
+                        <div className={`text-[10px] mt-1 ${testResult.ok ? 'text-green-500' : 'text-red-500'}`}>
+                          {testResult.ok ? '✓' : '✗'} {testResult.msg}
+                        </div>
+                      )}
+                    </div>
+                  )
                 ))}
               </div>
             )}
@@ -545,8 +715,8 @@ export default function AutoRegister() {
               </Button>
             )}
 
-            {params.tempMailApis.length === 0 && !showAddForm && registerMode === 'device' && (
-              <p className="text-[11px] text-destructive">⚠ 设备码模式必须添加至少一个邮箱服务</p>
+            {params.tempMailApis.filter(a => a.enabled !== false).length === 0 && !showAddForm && (
+              <p className="text-[11px] text-destructive">⚠ 必须添加并启用至少一个邮箱服务</p>
             )}
           </Section>
 

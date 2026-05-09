@@ -1381,3 +1381,159 @@ pub async fn run_authorize_register_full(
         }
     }
 }
+
+// ===== 邮箱 API 测试与清理 =====
+
+/// 构建带可选代理的 HTTP 客户端
+fn build_client_with_proxy(proxy_url: Option<&str>) -> Result<reqwest::Client, String> {
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .connect_timeout(std::time::Duration::from_secs(10));
+
+    // 优先使用传入的代理，否则从 Kiro 设置获取
+    if let Some(url) = proxy_url.filter(|u| !u.is_empty()) {
+        if let Ok(proxy) = reqwest::Proxy::all(url) {
+            builder = builder.proxy(proxy);
+        }
+    } else {
+        // 使用 Kiro IDE 配置的代理
+        if let Ok(client) = crate::clients::http_client::build_http_client() {
+            return Ok(client);
+        }
+    }
+
+    builder.build().map_err(|e| format!("创建 HTTP 客户端失败: {e}"))
+}
+
+/// 测试邮箱 API 接口是否正常（创建测试邮箱后立即删除）
+#[tauri::command]
+pub async fn test_temp_mail_api(
+    api_url: String,
+    admin_key: String,
+    proxy_url: Option<String>,
+) -> Result<String, String> {
+    let client = build_client_with_proxy(proxy_url.as_deref())?;
+    let base = api_url.trim_end_matches('/');
+
+    // 创建测试邮箱
+    let create_body = serde_json::json!({
+        "enablePrefix": false,
+        "name": format!("test{}", uuid::Uuid::new_v4().to_string().replace('-', "")[..12].to_lowercase())
+    });
+
+    let resp = client
+        .post(format!("{base}/admin/new_address"))
+        .header("x-admin-auth", &admin_key)
+        .header("Content-Type", "application/json")
+        .json(&create_body)
+        .send()
+        .await
+        .map_err(|e| format!("连接失败: {e}"))?;
+
+    if resp.status().as_u16() == 401 || resp.status().as_u16() == 403 {
+        return Err("Admin 密码错误".to_string());
+    }
+
+    if !resp.status().is_success() {
+        let status = resp.status().as_u16();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("HTTP {status}: {body}"));
+    }
+
+    let data: serde_json::Value = resp.json().await
+        .map_err(|e| format!("响应解析失败: {e}"))?;
+
+    let address = data["address"].as_str().unwrap_or("").to_string();
+    let address_id = data["address_id"].as_u64();
+    let domain = address.split('@').nth(1).unwrap_or("未知").to_string();
+
+    // 清理测试邮箱
+    if let Some(id) = address_id {
+        let _ = client
+            .delete(format!("{base}/admin/delete_address/{id}"))
+            .header("x-admin-auth", &admin_key)
+            .send()
+            .await;
+    }
+
+    Ok(format!("接口正常，域名: {domain}"))
+}
+
+/// 一键删除邮箱 API 中的所有邮箱和邮件
+#[tauri::command]
+pub async fn cleanup_temp_mail_api(
+    app_handle: tauri::AppHandle,
+    api_url: String,
+    admin_key: String,
+    proxy_url: Option<String>,
+) -> Result<String, String> {
+    let client = build_client_with_proxy(proxy_url.as_deref())?;
+    let base = api_url.trim_end_matches('/');
+
+    emit_log(&app_handle, &format!("[清理] 正在获取所有邮箱列表: {base}"));
+
+    // 获取所有邮箱（尝试 /admin/address_list 接口）
+    let resp = client
+        .get(format!("{base}/admin/address_list"))
+        .header("x-admin-auth", &admin_key)
+        .send()
+        .await
+        .map_err(|e| format!("连接失败: {e}"))?;
+
+    if resp.status().as_u16() == 401 || resp.status().as_u16() == 403 {
+        return Err("Admin 密码错误".to_string());
+    }
+
+    if !resp.status().is_success() {
+        let status = resp.status().as_u16();
+        let body = resp.text().await.unwrap_or_default();
+        return Err(format!("获取邮箱列表失败 HTTP {status}: {body}"));
+    }
+
+    let data: serde_json::Value = resp.json().await
+        .map_err(|e| format!("响应解析失败: {e}"))?;
+
+    // 尝试解析邮箱列表（兼容不同格式）
+    let addresses: Vec<u64> = if let Some(arr) = data.as_array() {
+        arr.iter().filter_map(|item| item["id"].as_u64().or(item["address_id"].as_u64())).collect()
+    } else if let Some(arr) = data["results"].as_array() {
+        arr.iter().filter_map(|item| item["id"].as_u64().or(item["address_id"].as_u64())).collect()
+    } else {
+        Vec::new()
+    };
+
+    if addresses.is_empty() {
+        emit_log(&app_handle, "[清理] 没有找到需要删除的邮箱");
+        return Ok("没有需要清理的邮箱".to_string());
+    }
+
+    emit_log(&app_handle, &format!("[清理] 找到 {} 个邮箱，开始删除...", addresses.len()));
+
+    let mut deleted = 0u32;
+    let mut failed = 0u32;
+
+    for id in &addresses {
+        match client
+            .delete(format!("{base}/admin/delete_address/{id}"))
+            .header("x-admin-auth", &admin_key)
+            .send()
+            .await
+        {
+            Ok(r) if r.status().is_success() => {
+                deleted += 1;
+            }
+            Ok(r) => {
+                failed += 1;
+                emit_log(&app_handle, &format!("[清理] 删除邮箱 {id} 失败: HTTP {}", r.status()));
+            }
+            Err(e) => {
+                failed += 1;
+                emit_log(&app_handle, &format!("[清理] 删除邮箱 {id} 失败: {e}"));
+            }
+        }
+    }
+
+    let msg = format!("清理完成：成功删除 {deleted} 个，失败 {failed} 个");
+    emit_log(&app_handle, &format!("[清理] {msg}"));
+    Ok(msg)
+}

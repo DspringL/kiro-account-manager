@@ -119,6 +119,7 @@ use commands::register_cmd::{
     start_builder_id_device_login, poll_builder_id_device_auth, run_auto_register,
     stop_auto_register, start_authorize_register, run_authorize_register,
     run_authorize_worker, run_authorize_register_full, reset_register_stop_flag,
+    test_temp_mail_api, cleanup_temp_mail_api,
 };
 
 /// 配置日志插件
@@ -436,6 +437,8 @@ fn main() {
             run_authorize_worker,
             run_authorize_register_full,
             reset_register_stop_flag,
+            test_temp_mail_api,
+            cleanup_temp_mail_api,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
