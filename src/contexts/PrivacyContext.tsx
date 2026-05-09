@@ -30,29 +30,10 @@ export function PrivacyProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 邮箱脱敏: user12345@example.com -> us***45@***.com
+  // 邮箱始终明文展示，不脱敏
   const maskEmail = useCallback((email: string) => {
-    if (!privacyMode || !email) return email
-    const [local, domain] = email.split('@')
-    if (!domain) return email
-
-    // 本地部分脱敏
-    let maskedLocal
-    if (local.length <= 2) {
-      maskedLocal = '*'.repeat(local.length)
-    } else if (local.length <= 4) {
-      maskedLocal = local[0] + '***'
-    } else {
-      maskedLocal = local.slice(0, 2) + '***' + local.slice(-2)
-    }
-
-    // 域名部分脱敏
-    const domainParts = domain.split('.')
-    const tld = domainParts[domainParts.length - 1]
-    const maskedDomain = '***.' + tld
-
-    return `${maskedLocal}@${maskedDomain}`
-  }, [privacyMode])
+    return email || ''
+  }, [])
 
   // 昵称/标签脱敏: MyNickname -> My***me
   const maskNickname = useCallback((name: string) => {

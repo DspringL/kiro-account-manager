@@ -3,19 +3,22 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import {
   UserPlus, Play, Square, Settings, Terminal, CheckCircle,
-  XCircle, AlertCircle, Download, Mail, ChevronDown, ChevronUp,
-  Copy, RefreshCw,
+  XCircle, AlertCircle, Download, Mail, Plus, Trash2, Copy, RefreshCw,
 } from 'lucide-react'
 import { Button } from '../../ui/button'
 import { Input } from '../../ui/input'
 import { Label } from '../../ui/label'
 import { Switch } from '../../ui/switch'
 import { Badge } from '../../ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card'
 
 // ===== 类型 =====
 
-type MailService = 'auto' | 'custom' | 'tempmail.lol' | '1secmail' | 'mail.tm'
+/** 单个自建邮箱 API 配置 */
+interface TempMailApi {
+  name: string
+  apiUrl: string
+  adminKey: string
+}
 
 interface RegisterParams {
   count: number
@@ -25,11 +28,10 @@ interface RegisterParams {
   incognito: boolean
   headless: boolean
   region: string
-  mailService: MailService
-  tempMailApiUrl: string
-  tempMailAdminKey: string
-  userCode?: string
-  verificationUri?: string
+  /** 多个自建邮箱 API 配置 */
+  tempMailApis: TempMailApi[]
+  /** 选择策略："random" 或数字索引字符串 */
+  tempMailSelect: string
 }
 
 interface RegisterRecord {
@@ -46,26 +48,6 @@ interface RegisterResult {
   fail: number
 }
 
-interface DeviceLoginInfo {
-  userCode: string
-  verificationUri: string
-  deviceCode: string
-  clientId: string
-  clientSecret: string
-  region: string
-  interval: number
-  expiresIn: number
-  expiresAt: number
-}
-
-const MAIL_SERVICE_OPTIONS: { value: MailService; label: string; desc: string }[] = [
-  { value: 'auto',        label: '自动（推荐）',    desc: '优先自建，依次降级到公共服务' },
-  { value: 'custom',      label: '自建 TempMail',  desc: '使用自建 API，需填写地址和密码' },
-  { value: 'tempmail.lol',label: 'tempmail.lol',   desc: '公共临时邮箱服务' },
-  { value: '1secmail',    label: '1secmail.com',   desc: '公共临时邮箱服务' },
-  { value: 'mail.tm',     label: 'mail.tm',        desc: '公共临时邮箱服务' },
-]
-
 // ===== 主组件 =====
 
 export default function AutoRegister() {
@@ -79,18 +61,20 @@ export default function AutoRegister() {
     count: 1, concurrency: 1,
     proxyUrl: '', useFingerprint: true, incognito: true, headless: true,
     region: 'us-east-1',
-    mailService: 'auto',
-    tempMailApiUrl: '', tempMailAdminKey: '',
+    tempMailApis: [],
+    tempMailSelect: 'random',
   })
 
-  // 折叠状态
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [showDevice,   setShowDevice]   = useState(false)
+  // 代理自动获取
+  const [proxyLoading, setProxyLoading] = useState(false)
+  const [proxySource,  setProxySource]  = useState('')  // 'kiro' | 'system' | ''
 
-  // 设备码
-  const [deviceInfo,    setDeviceInfo]    = useState<DeviceLoginInfo | null>(null)
-  const [loadingDevice, setLoadingDevice] = useState(false)
-  const [deviceExpired, setDeviceExpired] = useState(false)
+  // 新增邮箱表单（临时状态）
+  const [newApi, setNewApi] = useState<TempMailApi>({ name: '', apiUrl: '', adminKey: '' })
+  const [showAddForm, setShowAddForm] = useState(false)
+
+  // 结果明细折叠
+  const [showDetail, setShowDetail] = useState(false)
 
   // 运行
   const [running, setRunning] = useState(false)
@@ -101,18 +85,8 @@ export default function AutoRegister() {
 
   // 自动滚动
   useEffect(() => { logsEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [logs])
-
-  useEffect(() => { checkEnv() }, [])
+  useEffect(() => { checkEnv(); autoFillProxy() }, [])
   useEffect(() => () => { unlistenRef.current?.() }, [])
-
-  // 设备码倒计时
-  useEffect(() => {
-    if (!deviceInfo) return
-    const id = setInterval(() => {
-      if (Date.now() >= deviceInfo.expiresAt) { setDeviceExpired(true); clearInterval(id) }
-    }, 10000)
-    return () => clearInterval(id)
-  }, [deviceInfo])
 
   async function checkEnv() {
     try {
@@ -123,6 +97,58 @@ export default function AutoRegister() {
         setPlaywrightOk(pw)
       }
     } catch { setNodeOk(false) }
+  }
+
+  // 页面加载时自动从 Kiro IDE 设置获取代理
+  async function autoFillProxy() {
+    try {
+      const proxy = await invoke<string | null>('get_kiro_proxy')
+      if (proxy) {
+        // 补全协议前缀
+        const url = proxy.startsWith('http') ? proxy : `http://${proxy}`
+        setParams(p => ({ ...p, proxyUrl: url }))
+        setProxySource('kiro')
+        return
+      }
+    } catch {}
+    // Kiro 没有配置，尝试系统代理
+    try {
+      const info = await invoke<{ enabled: boolean; httpProxy: string | null }>('detect_system_proxy')
+      if (info.enabled && info.httpProxy) {
+        const url = info.httpProxy.startsWith('http') ? info.httpProxy : `http://${info.httpProxy}`
+        setParams(p => ({ ...p, proxyUrl: url }))
+        setProxySource('system')
+      }
+    } catch {}
+  }
+
+  // 手动点击"自动获取"按钮
+  async function handleAutoProxy() {
+    setProxyLoading(true)
+    setProxySource('')
+    try {
+      const proxy = await invoke<string | null>('get_kiro_proxy')
+      if (proxy) {
+        const url = proxy.startsWith('http') ? proxy : `http://${proxy}`
+        setParams(p => ({ ...p, proxyUrl: url }))
+        setProxySource('kiro')
+        return
+      }
+    } catch {}
+    try {
+      const info = await invoke<{ enabled: boolean; httpProxy: string | null }>('detect_system_proxy')
+      if (info.enabled && info.httpProxy) {
+        const url = info.httpProxy.startsWith('http') ? info.httpProxy : `http://${info.httpProxy}`
+        setParams(p => ({ ...p, proxyUrl: url }))
+        setProxySource('system')
+      } else {
+        setParams(p => ({ ...p, proxyUrl: '' }))
+        setProxySource('')
+      }
+    } catch {
+      setParams(p => ({ ...p, proxyUrl: '' }))
+    }
+    setProxyLoading(false)
   }
 
   async function handleInstallDeps() {
@@ -143,36 +169,47 @@ export default function AutoRegister() {
   }
 
   async function handleStop() {
-    try {
-      await invoke('stop_auto_register')
-    } catch (e: any) {
-      setLogs(p => [...p, `⚠ 停止失败: ${e}`])
-    }
+    try { await invoke('stop_auto_register') } catch {}
   }
 
-  async function handleGetDeviceCode() {
-    setLoadingDevice(true)
-    setDeviceExpired(false)
-    try {
-      const info = await invoke<DeviceLoginInfo>('start_builder_id_device_login', {
-        region: params.region || 'us-east-1',
-      })
-      setDeviceInfo(info)
-      setParams(p => ({ ...p, userCode: info.userCode, verificationUri: info.verificationUri }))
-    } catch (e: any) {
-      setLogs(p => [...p, `❌ 获取设备码失败: ${e}`])
-    } finally { setLoadingDevice(false) }
+  // 添加邮箱配置
+  function handleAddApi() {
+    if (!newApi.apiUrl.trim() || !newApi.adminKey.trim()) return
+    setParams(p => ({
+      ...p,
+      tempMailApis: [...p.tempMailApis, {
+        name: newApi.name.trim() || `邮箱服务 ${p.tempMailApis.length + 1}`,
+        apiUrl: newApi.apiUrl.trim(),
+        adminKey: newApi.adminKey.trim(),
+      }],
+    }))
+    setNewApi({ name: '', apiUrl: '', adminKey: '' })
+    setShowAddForm(false)
+  }
+
+  // 删除邮箱配置
+  function handleRemoveApi(idx: number) {
+    setParams(p => {
+      const apis = p.tempMailApis.filter((_, i) => i !== idx)
+      // 如果当前选中的是被删除的那个，重置为 random
+      const sel = p.tempMailSelect
+      const selIdx = parseInt(sel, 10)
+      const newSel = (!isNaN(selIdx) && selIdx === idx) ? 'random' : sel
+      return { ...p, tempMailApis: apis, tempMailSelect: newSel }
+    })
   }
 
   const handleStart = useCallback(async () => {
     if (running) return
+    if (params.tempMailApis.length === 0) {
+      setLogs(['❌ 请先添加至少一个自建邮箱 API 配置'])
+      return
+    }
     setRunning(true); setLogs([]); setResult(null)
     try {
       const unlisten = await listen<string>('register-log', e => setLogs(p => [...p, e.payload]))
       unlistenRef.current = unlisten
 
-      // 根据邮箱服务选择决定传哪些参数
-      const isCustom = params.mailService === 'custom' || params.mailService === 'auto'
       const finalParams = {
         count:          params.count,
         concurrency:    params.concurrency,
@@ -181,11 +218,8 @@ export default function AutoRegister() {
         incognito:      params.incognito,
         headless:       params.headless,
         region:         params.region,
-        userCode:       params.userCode,
-        verificationUri:params.verificationUri,
-        tempMailApiUrl:  isCustom ? (params.tempMailApiUrl.trim() || undefined) : undefined,
-        tempMailAdminKey:isCustom ? (params.tempMailAdminKey.trim() || undefined) : undefined,
-        forcedMailService: params.mailService !== 'auto' ? params.mailService : undefined,
+        tempMailApis:   params.tempMailApis,
+        tempMailSelect: params.tempMailSelect,
       }
 
       const res = await invoke<RegisterResult>('run_auto_register', { params: finalParams })
@@ -199,9 +233,7 @@ export default function AutoRegister() {
     }
   }, [running, params])
 
-  const canStart = nodeOk && playwrightOk && !running
-  const needCustomConfig = (params.mailService === 'custom' || params.mailService === 'auto')
-    && params.tempMailApiUrl && !params.tempMailAdminKey
+  const canStart = nodeOk && playwrightOk && !running && params.tempMailApis.length > 0
 
   // ===== 渲染 =====
   return (
@@ -220,7 +252,7 @@ export default function AutoRegister() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 p-4">
+        <div className="flex flex-col gap-4 p-4">
 
           {/* 环境检查 */}
           <Section title="环境检查" icon={<Settings size={13} />}>
@@ -238,7 +270,7 @@ export default function AutoRegister() {
             )}
           </Section>
 
-          {/* 基础参数 */}
+          {/* 注册参数 */}
           <Section title="注册参数">
             <div className="grid grid-cols-2 gap-2">
               <Field label="注册数量">
@@ -251,145 +283,152 @@ export default function AutoRegister() {
               </Field>
             </div>
             <Field label="代理地址（可选）">
-              <Input placeholder="http://127.0.0.1:7890" value={params.proxyUrl} disabled={running}
-                onChange={e => setParams(p => ({ ...p, proxyUrl: e.target.value }))} />
+              <div className="flex gap-1.5">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="http://127.0.0.1:7890"
+                    value={params.proxyUrl}
+                    disabled={running}
+                    onChange={e => { setParams(p => ({ ...p, proxyUrl: e.target.value })); setProxySource('') }}
+                  />
+                  {proxySource && (
+                    <span className={[
+                      'absolute right-2 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded',
+                      proxySource === 'kiro'
+                        ? 'bg-blue-500/15 text-blue-500'
+                        : 'bg-muted text-muted-foreground',
+                    ].join(' ')}>
+                      {proxySource === 'kiro' ? 'Kiro IDE' : '系统'}
+                    </span>
+                  )}
+                </div>
+                <button
+                  disabled={running || proxyLoading}
+                  onClick={handleAutoProxy}
+                  title="从 Kiro IDE 设置或系统代理自动获取"
+                  className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded border border-border hover:border-primary/60 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                >
+                  <RefreshCw size={12} className={proxyLoading ? 'animate-spin' : ''} />
+                </button>
+              </div>
+              <p className="text-[10px] text-muted-foreground -mt-0.5">
+                点击 <RefreshCw size={9} className="inline" /> 自动从 Kiro IDE 设置获取
+              </p>
             </Field>
             <Field label="AWS 区域">
               <Input placeholder="us-east-1" value={params.region} disabled={running}
                 onChange={e => setParams(p => ({ ...p, region: e.target.value }))} />
             </Field>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-muted-foreground">指纹伪装</span>
-              <Switch checked={params.useFingerprint} disabled={running}
-                onCheckedChange={v => setParams(p => ({ ...p, useFingerprint: v }))} />
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-muted-foreground">无痕模式</span>
-              <Switch checked={params.incognito} disabled={running}
-                onCheckedChange={v => setParams(p => ({ ...p, incognito: v }))} />
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <span className="text-xs text-muted-foreground">无头模式（后台运行）</span>
-              <Switch checked={params.headless} disabled={running}
-                onCheckedChange={v => setParams(p => ({ ...p, headless: v }))} />
-            </div>
+            <ToggleRow label="指纹伪装" checked={params.useFingerprint} disabled={running}
+              onChange={v => setParams(p => ({ ...p, useFingerprint: v }))} />
+            <ToggleRow label="无痕模式" checked={params.incognito} disabled={running}
+              onChange={v => setParams(p => ({ ...p, incognito: v }))} />
+            <ToggleRow label="无头模式（后台运行）" checked={params.headless} disabled={running}
+              onChange={v => setParams(p => ({ ...p, headless: v }))} />
             {!params.headless && (
-              <p className="text-[11px] text-yellow-500 -mt-1">
-                ⚠ 关闭无头模式后浏览器窗口可见，便于调试
-              </p>
+              <p className="text-[11px] text-yellow-500 -mt-1">⚠ 关闭无头模式后浏览器窗口可见，便于调试</p>
             )}
           </Section>
 
-          {/* 邮箱服务 */}
-          <Section title="临时邮箱服务" icon={<Mail size={13} />}>
-            {/* 服务选择 */}
-            <div className="flex flex-col gap-1.5">
-              {MAIL_SERVICE_OPTIONS.map(opt => (
-                <button
-                  key={opt.value}
-                  disabled={running}
-                  onClick={() => setParams(p => ({ ...p, mailService: opt.value }))}
-                  className={[
-                    'flex items-start gap-2 px-3 py-2 rounded-lg border text-left transition-colors',
-                    params.mailService === opt.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50 hover:bg-muted/50',
-                    running ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
-                  ].join(' ')}
-                >
-                  <div className={[
-                    'w-3.5 h-3.5 rounded-full border-2 mt-0.5 flex-shrink-0 transition-colors',
-                    params.mailService === opt.value ? 'border-primary bg-primary' : 'border-muted-foreground',
-                  ].join(' ')} />
-                  <div>
-                    <div className="text-xs font-medium">{opt.label}</div>
-                    <div className="text-[11px] text-muted-foreground">{opt.desc}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
+          {/* 自建邮箱配置 */}
+          <Section title="自建邮箱服务" icon={<Mail size={13} />}>
 
-            {/* 自建邮箱配置（custom 或 auto 时显示） */}
-            {(params.mailService === 'custom' || params.mailService === 'auto') && (
-              <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">自建 API 配置</span>
-                  {params.tempMailApiUrl && params.tempMailAdminKey && (
-                    <Badge variant="outline" className="text-[10px] text-green-600 border-green-500 h-4 px-1.5">
-                      <CheckCircle size={8} className="mr-1" />已配置
-                    </Badge>
-                  )}
+            {/* 已添加的邮箱列表 */}
+            {params.tempMailApis.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">尚未添加邮箱服务，请点击下方添加</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {/* 选择策略 */}
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] text-muted-foreground flex-shrink-0">使用策略</span>
+                  <select
+                    disabled={running}
+                    value={params.tempMailSelect}
+                    onChange={e => setParams(p => ({ ...p, tempMailSelect: e.target.value }))}
+                    className="flex-1 text-[11px] bg-background border border-border rounded px-2 py-1 text-foreground disabled:opacity-50"
+                  >
+                    <option value="random">随机选择</option>
+                    {params.tempMailApis.map((api, i) => (
+                      <option key={i} value={String(i)}>
+                        指定：{api.name || api.apiUrl}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <Field label="API 地址">
-                  <Input placeholder="https://your-tempmail-api.example.com"
-                    value={params.tempMailApiUrl} disabled={running}
-                    onChange={e => setParams(p => ({ ...p, tempMailApiUrl: e.target.value }))} />
-                </Field>
-                <Field label="Admin 密码">
-                  <Input type="password" placeholder="YOUR_ADMIN_PASSWORD"
-                    value={params.tempMailAdminKey} disabled={running}
-                    onChange={e => setParams(p => ({ ...p, tempMailAdminKey: e.target.value }))} />
-                </Field>
-                {needCustomConfig && (
-                  <p className="text-[11px] text-yellow-500">⚠ 已填 API 地址，请同时填写 Admin 密码</p>
-                )}
-                {params.mailService === 'auto' && (
-                  <p className="text-[11px] text-muted-foreground">
-                    auto 模式：有配置则优先自建，否则自动降级到公共服务
-                  </p>
-                )}
+
+                {/* 邮箱列表 */}
+                {params.tempMailApis.map((api, i) => (
+                  <div key={i} className={[
+                    'flex items-center gap-2 px-2.5 py-2 rounded-lg border',
+                    params.tempMailSelect === String(i)
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-muted/20',
+                  ].join(' ')}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium truncate">{api.name || `服务 ${i + 1}`}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{api.apiUrl}</div>
+                    </div>
+                    <button
+                      disabled={running}
+                      onClick={() => handleRemoveApi(i)}
+                      className="text-muted-foreground hover:text-destructive flex-shrink-0 disabled:opacity-40"
+                      title="删除"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
-          </Section>
 
-          {/* 高级设置（折叠） */}
-          <button
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            onClick={() => setShowAdvanced(v => !v)}
-          >
-            {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            高级设置（AWS 设备码）
-          </button>
-
-          {showAdvanced && (
-            <Section title="AWS 设备码（可选）">
-              <p className="text-[11px] text-muted-foreground">
-                获取设备码后注册完成可自动拿到 refreshToken，不获取也能正常注册。
-              </p>
-              <Button size="sm" variant="outline" onClick={handleGetDeviceCode}
-                disabled={running || loadingDevice} className="w-full">
-                <RefreshCw size={12} className={['mr-1.5', loadingDevice ? 'animate-spin' : ''].join(' ')} />
-                {loadingDevice ? '获取中...' : '获取设备码'}
-              </Button>
-              {deviceInfo && (
-                <div className={['flex flex-col gap-1.5 p-2 rounded-lg border', deviceExpired ? 'border-destructive/50 bg-destructive/5' : 'border-border bg-muted/30'].join(' ')}>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-bold tracking-widest">{deviceInfo.userCode}</span>
-                    <button onClick={() => navigator.clipboard.writeText(deviceInfo.userCode)}
-                      className="text-muted-foreground hover:text-foreground">
-                      <Copy size={11} />
-                    </button>
-                    {deviceExpired
-                      ? <Badge variant="destructive" className="text-[10px] h-4 px-1.5 ml-auto">已过期</Badge>
-                      : <Badge variant="outline" className="text-[10px] h-4 px-1.5 ml-auto text-green-600 border-green-500">有效</Badge>
-                    }
-                  </div>
-                  <p className="text-[10px] text-muted-foreground break-all">{deviceInfo.verificationUri}</p>
+            {/* 添加表单 */}
+            {showAddForm ? (
+              <div className="flex flex-col gap-2 pt-2 border-t border-border mt-1">
+                <Field label="名称（可选）">
+                  <Input placeholder="我的邮箱服务" value={newApi.name} disabled={running}
+                    onChange={e => setNewApi(p => ({ ...p, name: e.target.value }))} />
+                </Field>
+                <Field label="API 地址 *">
+                  <Input placeholder="https://mail.example.com" value={newApi.apiUrl} disabled={running}
+                    onChange={e => setNewApi(p => ({ ...p, apiUrl: e.target.value }))} />
+                </Field>
+                <Field label="Admin 密码 *">
+                  <Input type="password" placeholder="YOUR_ADMIN_PASSWORD" value={newApi.adminKey} disabled={running}
+                    onChange={e => setNewApi(p => ({ ...p, adminKey: e.target.value }))} />
+                </Field>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleAddApi}
+                    disabled={!newApi.apiUrl.trim() || !newApi.adminKey.trim() || running}
+                    className="flex-1">
+                    确认添加
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { setShowAddForm(false); setNewApi({ name: '', apiUrl: '', adminKey: '' }) }}
+                    disabled={running} className="flex-1">
+                    取消
+                  </Button>
                 </div>
-              )}
-            </Section>
-          )}
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setShowAddForm(true)}
+                disabled={running} className="w-full mt-1">
+                <Plus size={12} className="mr-1.5" />
+                添加邮箱服务
+              </Button>
+            )}
+
+            {params.tempMailApis.length === 0 && !showAddForm && (
+              <p className="text-[11px] text-destructive">⚠ 必须添加至少一个邮箱服务才能开始注册</p>
+            )}
+          </Section>
 
           {/* 开始 / 停止按钮 */}
           {running ? (
-            <Button size="default" variant="destructive" onClick={handleStop} className="w-full mt-1">
-              <Square size={14} className="mr-2" />
-              停止注册
+            <Button size="default" variant="destructive" onClick={handleStop} className="w-full">
+              <Square size={14} className="mr-2" />停止注册
             </Button>
           ) : (
-            <Button size="default" onClick={handleStart} disabled={!canStart} className="w-full mt-1">
-              <Play size={14} className="mr-2" />
-              开始注册
+            <Button size="default" onClick={handleStart} disabled={!canStart} className="w-full">
+              <Play size={14} className="mr-2" />开始注册
             </Button>
           )}
 
@@ -399,21 +438,21 @@ export default function AutoRegister() {
       {/* ── 右侧：日志 + 结果 ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-        {/* 结果条（有结果时显示） */}
+        {/* 结果条 */}
         {result && (
           <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-muted/30 flex-shrink-0">
             <span className="text-sm font-medium">注册完成</span>
             <Badge className="bg-green-500 hover:bg-green-500">成功 {result.ok}</Badge>
             <Badge variant="destructive">失败 {result.fail}</Badge>
             <button className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setShowDevice(v => !v)}>
-              {showDevice ? '收起明细' : '展开明细'}
+              onClick={() => setShowDetail(v => !v)}>
+              {showDetail ? '收起明细' : '展开明细'}
             </button>
           </div>
         )}
 
-        {/* 结果明细（可折叠） */}
-        {result && showDevice && (
+        {/* 结果明细 */}
+        {result && showDetail && (
           <div className="border-b border-border bg-muted/20 max-h-48 overflow-y-auto flex-shrink-0">
             {result.results.map((r, i) => (
               <div key={i} className="flex items-center gap-2 px-4 py-1.5 text-xs border-b border-border/40 last:border-0">
@@ -444,27 +483,22 @@ export default function AutoRegister() {
             {running && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-1" />}
             <div className="ml-auto flex items-center gap-2">
               {running && (
-                <button
-                  onClick={handleStop}
-                  className="text-[11px] text-destructive hover:text-destructive/80 flex items-center gap-1 border border-destructive/40 rounded px-1.5 py-0.5"
-                >
+                <button onClick={handleStop}
+                  className="text-[11px] text-destructive hover:text-destructive/80 flex items-center gap-1 border border-destructive/40 rounded px-1.5 py-0.5">
                   <Square size={9} />停止
                 </button>
               )}
               {logs.length > 0 && (
                 <button className="text-[11px] text-muted-foreground hover:text-foreground"
-                  onClick={() => setLogs([])}>
-                  清空
-                </button>
+                  onClick={() => setLogs([])}>清空</button>
               )}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-4 py-3 font-mono text-xs leading-5">
-            {logs.length === 0 ? (
-              <p className="text-muted-foreground">等待开始...</p>
-            ) : (
-              logs.map((line, i) => <LogLine key={i} text={line} />)
-            )}
+            {logs.length === 0
+              ? <p className="text-muted-foreground">等待开始...</p>
+              : logs.map((line, i) => <LogLine key={i} text={line} />)
+            }
             <div ref={logsEndRef} />
           </div>
         </div>
@@ -480,12 +514,9 @@ function Section({ title, icon, children }: { title: string; icon?: React.ReactN
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground/70">
-        {icon}
-        {title}
+        {icon}{title}
       </div>
-      <div className="flex flex-col gap-2 pl-0.5">
-        {children}
-      </div>
+      <div className="flex flex-col gap-2 pl-0.5">{children}</div>
     </div>
   )
 }
@@ -499,21 +530,27 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function ToggleRow({ label, checked, disabled, onChange }: {
+  label: string; checked: boolean; disabled: boolean; onChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between py-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
+    </div>
+  )
+}
+
 function EnvItem({ label, ok }: { label: string; ok: boolean | null }) {
   return (
     <div className="flex items-center justify-between py-0.5">
       <span className="text-xs">{label}</span>
-      {ok === null ? (
-        <span className="text-[11px] text-muted-foreground">检查中...</span>
-      ) : ok ? (
-        <span className="text-[11px] text-green-600 flex items-center gap-1">
-          <CheckCircle size={10} />已就绪
-        </span>
-      ) : (
-        <span className="text-[11px] text-destructive flex items-center gap-1">
-          <AlertCircle size={10} />未安装
-        </span>
-      )}
+      {ok === null
+        ? <span className="text-[11px] text-muted-foreground">检查中...</span>
+        : ok
+          ? <span className="text-[11px] text-green-600 flex items-center gap-1"><CheckCircle size={10} />已就绪</span>
+          : <span className="text-[11px] text-destructive flex items-center gap-1"><AlertCircle size={10} />未安装</span>
+      }
     </div>
   )
 }

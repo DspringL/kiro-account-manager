@@ -3,6 +3,8 @@
  * 账号自动注册 Worker
  * 通过 stdout 输出 JSON 行格式的日志和结果，供 Tauri 后端读取
  * 格式：{"type":"log"|"result","data":...}
+ *
+ * 邮箱服务：仅支持自建 TempMail API，支持多个配置，可随机或指定使用
  */
 
 import { chromium } from 'playwright'
@@ -115,7 +117,7 @@ function buildInjectionScript(fp) {
 `
 }
 
-// ===== 临时邮箱 =====
+// ===== 临时邮箱（仅自建 API） =====
 
 // AWS 发件人白名单
 const AWS_SENDERS = [
@@ -162,219 +164,102 @@ function randomMailName() {
 }
 
 /**
- * 创建临时邮箱
- * @param {object|null} customApi - 自建 API 配置 { apiUrl, adminKey }，优先使用
- * @param {string} [forcedService] - 强制使用指定服务（'tempmail.lol'|'1secmail'|'mail.tm'|'custom'）
+ * 根据选择策略从多个自建 API 中选一个
+ * @param {Array<{name,apiUrl,adminKey}>} apis
+ * @param {string} select - "random" 或数字索引字符串
  */
-async function createTempMail(customApi, forcedService) {
-  const password = Math.random().toString(36).slice(-8) + 'A1!'
+function pickMailApi(apis, select) {
+  if (!apis || apis.length === 0) return null
+  if (select === 'random' || select == null) {
+    return apis[Math.floor(Math.random() * apis.length)]
+  }
+  const idx = parseInt(select, 10)
+  if (!isNaN(idx) && idx >= 0 && idx < apis.length) return apis[idx]
+  return apis[0]
+}
 
-  // ── 强制指定公共服务 ──
-  if (forcedService === 'tempmail.lol') {
-    return await _createTemplMailLol(password)
+/**
+ * 创建临时邮箱（仅自建 API）
+ * @param {{name,apiUrl,adminKey}} api - 选定的自建邮箱配置
+ */
+async function createTempMail(api) {
+  if (!api || !api.apiUrl || !api.adminKey) {
+    return null
   }
-  if (forcedService === '1secmail') {
-    return await _create1SecMail(password)
-  }
-  if (forcedService === 'mail.tm') {
-    return await _createMailTm(password)
-  }
-
-  // ── 优先：自建 tempmail API ──
-  if (customApi?.apiUrl && customApi?.adminKey) {
-    const base = customApi.apiUrl.replace(/\/$/, '')
-    const name = randomMailName()
-    log(`[自建邮箱] 创建邮箱: ${name}@... (${base})`)
-    try {
-      const r = await fetch(`${base}/admin/new_address`, {
-        method: 'POST',
-        headers: {
-          'x-admin-auth': customApi.adminKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ enablePrefix: false, name }),
-      })
-      if (r.ok) {
-        const d = await r.json()
-        if (d.address && d.jwt) {
-          log(`✓ 自建临时邮箱: ${d.address}`)
-          return {
-            email: d.address,
-            token: d.jwt,
-            password,
-            service: 'custom',
-            addressId: d.address_id,
-            customApi,
-          }
+  const base = api.apiUrl.replace(/\/$/, '')
+  const name = randomMailName()
+  log(`[邮箱] 使用自建服务「${api.name || base}」创建邮箱: ${name}@...`)
+  try {
+    const r = await fetch(`${base}/admin/new_address`, {
+      method: 'POST',
+      headers: {
+        'x-admin-auth': api.adminKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ enablePrefix: false, name }),
+    })
+    if (r.ok) {
+      const d = await r.json()
+      if (d.address && d.jwt) {
+        log(`✓ 临时邮箱创建成功: ${d.address}`)
+        return {
+          email: d.address,
+          token: d.jwt,
+          password: Math.random().toString(36).slice(-8) + 'A1!',
+          service: 'custom',
+          addressId: d.address_id,
+          api,
         }
-        log(`[自建邮箱] 响应格式异常: ${JSON.stringify(d)}`)
-      } else {
-        log(`[自建邮箱] 创建失败 HTTP ${r.status}，降级到公共服务`)
       }
-    } catch (e) {
-      log(`[自建邮箱] 请求异常: ${e.message}，降级到公共服务`)
+      log(`[邮箱] 响应格式异常: ${JSON.stringify(d)}`)
+    } else {
+      const errText = await r.text().catch(() => '')
+      log(`[邮箱] 创建失败 HTTP ${r.status}: ${errText}`)
     }
+  } catch (e) {
+    log(`[邮箱] 请求异常: ${e.message}`)
   }
-
-  // ── 降级：依次尝试公共服务 ──
-  const r1 = await _createTemplMailLol(password)
-  if (r1) return r1
-  const r2 = await _create1SecMail(password)
-  if (r2) return r2
-  const r3 = await _createMailTm(password)
-  if (r3) return r3
-
-  return null
-}
-
-// ── 公共服务独立实现 ──
-
-async function _createTemplMailLol(password) {
-  try {
-    const r = await fetch('https://api.tempmail.lol/v2/inbox/create', {
-      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
-    })
-    if (r.ok) {
-      const d = await r.json()
-      if (d.address && d.token) {
-        log(`✓ 临时邮箱 (tempmail.lol): ${d.address}`)
-        return { email: d.address, token: d.token, password, service: 'tempmail.lol' }
-      }
-    }
-  } catch {}
-  return null
-}
-
-async function _create1SecMail(password) {
-  try {
-    const r = await fetch('https://www.1secmail.com/api/v1/?action=genRandomMailbox&count=1', {
-      headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
-    })
-    if (r.ok) {
-      const d = await r.json()
-      if (d?.[0]) {
-        log(`✓ 临时邮箱 (1secmail): ${d[0]}`)
-        return { email: d[0], token: d[0], password, service: '1secmail' }
-      }
-    }
-  } catch {}
-  return null
-}
-
-async function _createMailTm(password) {
-  try {
-    const dr = await fetch('https://api.mail.tm/domains', { headers: { Accept: 'application/json' } })
-    if (!dr.ok) return null
-    const dd = await dr.json()
-    const domains = dd['hydra:member'] || []
-    if (domains.length === 0) return null
-    const user = 'user' + Math.random().toString(36).slice(-8)
-    const email = `${user}@${domains[0].domain}`
-    const cr = await fetch('https://api.mail.tm/accounts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ address: email, password }),
-    })
-    if (!cr.ok) return null
-    const lr = await fetch('https://api.mail.tm/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ address: email, password }),
-    })
-    if (lr.ok) {
-      const ld = await lr.json()
-      if (ld.token) {
-        log(`✓ 临时邮箱 (mail.tm): ${email}`)
-        return { email, token: ld.token, password, service: 'mail.tm' }
-      }
-    }
-  } catch {}
   return null
 }
 
 /**
- * 轮询收件箱，提取 AWS 验证码
+ * 轮询收件箱，提取 AWS 验证码（仅自建 API）
  */
 async function getTempMailCode(mailInfo, timeoutSec = 120) {
-  const { token, email, service, customApi } = mailInfo
-  log(`等待验证码 (邮箱: ${email}, 服务: ${service})...`)
+  const { token, email, api } = mailInfo
+  log(`等待验证码 (邮箱: ${email})...`)
 
+  const base = api.apiUrl.replace(/\/$/, '')
   const start = Date.now()
-  const interval = service === 'custom' ? 5000 : 4000
   const seen = new Set()
 
   while (Date.now() - start < timeoutSec * 1000) {
     try {
-      let messages = []
-
-      if (service === 'custom') {
-        // ── 自建 API：GET /api/mails?limit=20&offset=0 ──
-        const base = customApi.apiUrl.replace(/\/$/, '')
-        const r = await fetch(`${base}/api/mails?limit=20&offset=0`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        })
-        if (r.ok) {
-          const d = await r.json()
-          for (const item of d.results || []) {
-            // raw 字段包含完整邮件（含 Headers），source 是发件人
-            if (!isAwsSender(item.source)) continue
-            const raw = item.raw || ''
-            // 从 raw 中分离 body（Headers 和 Body 之间有空行）
-            const bodyStart = raw.indexOf('\r\n\r\n')
-            const body = bodyStart >= 0 ? raw.slice(bodyStart + 4) : raw
-            messages.push({ from: item.source, subject: '', body, html: body })
+      const r = await fetch(`${base}/api/mails?limit=20&offset=0`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      })
+      if (r.ok) {
+        const d = await r.json()
+        for (const item of d.results || []) {
+          if (!isAwsSender(item.source)) continue
+          const raw = item.raw || ''
+          const bodyStart = raw.indexOf('\r\n\r\n')
+          const body = bodyStart >= 0 ? raw.slice(bodyStart + 4) : raw
+          const key = `${item.source}_${body.length}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          const text = htmlToText(body)
+          const code = extractCode(text) || extractCode(body)
+          if (code) {
+            log(`✓ 找到验证码: ${code}`)
+            return code
           }
-        }
-      } else if (service === 'tempmail.lol') {
-        const r = await fetch(`https://api.tempmail.lol/v2/inbox?token=${token}`, {
-          headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' },
-        })
-        if (r.ok) {
-          const d = await r.json()
-          messages = (d.emails || []).filter(m => isAwsSender(m.from))
-        }
-      } else if (service === '1secmail') {
-        const [login, domain] = email.split('@')
-        const r = await fetch(`https://www.1secmail.com/api/v1/?action=getMessages&login=${login}&domain=${domain}`)
-        if (r.ok) {
-          const list = await r.json()
-          for (const msg of list || []) {
-            if (!isAwsSender(msg.from)) continue
-            const dr = await fetch(`https://www.1secmail.com/api/v1/?action=readMessage&login=${login}&domain=${domain}&id=${msg.id}`)
-            if (dr.ok) {
-              const detail = await dr.json()
-              messages.push({ from: msg.from, subject: msg.subject, body: detail.textBody || detail.body, html: detail.htmlBody })
-            }
-          }
-        }
-      } else if (service === 'mail.tm') {
-        const r = await fetch('https://api.mail.tm/messages', {
-          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        })
-        if (r.ok) {
-          const d = await r.json()
-          messages = (d['hydra:member'] || [])
-            .filter(m => isAwsSender(m.from?.address))
-            .map(m => ({ from: m.from?.address, subject: m.subject, body: m.intro }))
-        }
-      }
-
-      for (const msg of messages) {
-        const key = `${msg.subject}_${(msg.body || '').length}`
-        if (seen.has(key)) continue
-        seen.add(key)
-
-        const text = htmlToText(msg.html || '') || msg.body || ''
-        const code = extractCode(text) || extractCode(msg.subject) || extractCode(msg.body)
-        if (code) {
-          log(`✓ 找到验证码: ${code}`)
-          return code
         }
       }
     } catch (e) {
       // 忽略轮询错误，继续重试
     }
-    await new Promise(r => setTimeout(r, interval))
+    await new Promise(r => setTimeout(r, 5000))
   }
 
   log('✗ 获取验证码超时')
@@ -385,15 +270,15 @@ async function getTempMailCode(mailInfo, timeoutSec = 120) {
  * 注册完成后清理自建邮箱
  */
 async function deleteTempMail(mailInfo) {
-  if (mailInfo?.service !== 'custom' || !mailInfo?.addressId || !mailInfo?.customApi) return
-  const { apiUrl, adminKey } = mailInfo.customApi
+  if (!mailInfo?.addressId || !mailInfo?.api) return
+  const { apiUrl, adminKey } = mailInfo.api
   const base = apiUrl.replace(/\/$/, '')
   try {
     await fetch(`${base}/admin/delete_address/${mailInfo.addressId}`, {
       method: 'DELETE',
       headers: { 'x-admin-auth': adminKey },
     })
-    log(`[自建邮箱] 已清理邮箱 ID: ${mailInfo.addressId}`)
+    log(`[邮箱] 已清理邮箱 ID: ${mailInfo.addressId}`)
   } catch {}
 }
 
@@ -435,20 +320,25 @@ async function tryClick(page, selectors, desc, timeout = 15000) {
 // ===== 核心注册流程 =====
 
 async function registerOne(opts) {
-  const { userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless = true, customApi, forcedMailService } = opts
+  const { userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless = true, mailApi } = opts
 
-  // 1. 申请临时邮箱
+  // 1. 申请临时邮箱（仅自建 API）
   log('申请临时邮箱...')
-  // forcedMailService 非 auto/custom 时，传 null 给 createTempMail 让它只用指定服务
-  const mailApi = (forcedMailService && forcedMailService !== 'auto' && forcedMailService !== 'custom')
-    ? null   // 公共服务，不传 customApi
-    : customApi
-  const mail = await createTempMail(mailApi, forcedMailService)
-  if (!mail) return { success: false, error: '所有临时邮箱服务均不可用' }
+  if (!mailApi) {
+    return { success: false, error: '未配置自建邮箱 API，请在设置中添加至少一个邮箱服务' }
+  }
+  const mail = await createTempMail(mailApi)
+  if (!mail) return { success: false, error: `自建邮箱「${mailApi.name || mailApi.apiUrl}」创建失败` }
 
   const { email, password } = mail
   const name = generateRandomName()
-  log(`邮箱: ${email}  姓名: ${name}`)
+  // 注册开始时明文打印账号信息，方便查看和记录
+  log(`========== 账号注册信息 ==========`)
+  log(`邮箱:   ${email}`)
+  log(`密码:   ${password}`)
+  log(`姓名:   ${name}`)
+  log(`user_code: ${userCode || '（未提供，将无法自动获取 token）'}`)
+  log(`==================================`)
 
   // 2. 生成指纹
   const fp = useFingerprint ? generateFingerprint() : null
@@ -692,22 +582,18 @@ async function main() {
     userCode,
     verificationUri,
     region = 'us-east-1',
-    tempMailApiUrl,
-    tempMailAdminKey,
-    forcedMailService,
+    tempMailApis = [],
+    tempMailSelect,
   } = opts
 
-  // 自建邮箱配置（两个字段都有才启用）
-  const customApi = (tempMailApiUrl && tempMailAdminKey)
-    ? { apiUrl: tempMailApiUrl, adminKey: tempMailAdminKey }
-    : null
+  // 校验：必须有至少一个自建邮箱配置
+  if (!tempMailApis || tempMailApis.length === 0) {
+    emit('result', { success: false, error: '未配置自建邮箱 API，请在设置中添加至少一个邮箱服务' })
+    process.exit(0)
+  }
 
-  if (customApi) {
-    log(`[自建邮箱] 已配置，优先使用: ${customApi.apiUrl}`)
-  }
-  if (forcedMailService && forcedMailService !== 'auto') {
-    log(`[邮箱服务] 强制使用: ${forcedMailService}`)
-  }
+  log(`已加载 ${tempMailApis.length} 个自建邮箱配置，选择策略: ${tempMailSelect || 'random'}`)
+  tempMailApis.forEach((api, i) => log(`  [${i}] ${api.name || api.apiUrl}`))
 
   log(`开始注册 ${count} 个账号，并发 ${concurrency}`)
   log(`浏览器模式: ${headless ? '无头（后台）' : '有头（可见窗口）'}`)
@@ -720,8 +606,12 @@ async function main() {
     while (true) {
       const idx = next++
       if (idx >= tasks.length) return
-      log(`[${idx+1}/${count}] 开始注册...`)
-      const r = await registerOne({ userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless, customApi, forcedMailService })
+
+      // 每个任务独立选择邮箱 API（random 时每次重新随机）
+      const mailApi = pickMailApi(tempMailApis, tempMailSelect)
+      log(`[${idx+1}/${count}] 开始注册，使用邮箱服务: ${mailApi?.name || mailApi?.apiUrl || '未知'}`)
+
+      const r = await registerOne({ userCode, verificationUri, proxyUrl, useFingerprint, incognito, headless, mailApi })
       results[idx] = r
       if (r.success) {
         log(`[${idx+1}/${count}] ✅ 成功: ${r.email}`)

@@ -7,6 +7,7 @@ use std::sync::{Mutex, OnceLock};
 use tauri::{Emitter, State};
 
 use crate::state::AppState;
+use crate::commands::account_cmd::add_account_by_idc;
 
 // ===== 全局子进程 PID（用于停止） =====
 
@@ -28,6 +29,15 @@ fn get_worker_pid() -> Option<u32> {
 
 // ===== 数据结构 =====
 
+/// 单个自建邮箱 API 配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TempMailApi {
+    pub name: String,
+    pub api_url: String,
+    pub admin_key: String,
+}
+
 /// 注册任务参数
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,9 +52,12 @@ pub struct RegisterParams {
     pub user_code: Option<String>,
     pub verification_uri: Option<String>,
     pub region: Option<String>,
-    pub temp_mail_api_url: Option<String>,
-    pub temp_mail_admin_key: Option<String>,
-    pub forced_mail_service: Option<String>,
+    /// 多个自建邮箱 API 配置列表
+    #[serde(default)]
+    pub temp_mail_apis: Vec<TempMailApi>,
+    /// 邮箱选择策略："random"（随机）或数字索引字符串（如 "0"、"1"）
+    #[serde(default)]
+    pub temp_mail_select: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,11 +228,124 @@ pub async fn poll_builder_id_device_auth(
     Err(format!("未知响应状态: {status}"))
 }
 
+/// 设备码信息（申请后传给 worker，注册完成后用于轮询 token）
+#[derive(Debug, Clone)]
+struct DeviceCodeInfo {
+    client_id: String,
+    client_secret: String,
+    device_code: String,
+    user_code: String,
+    poll_interval: u64,
+    region: String,
+}
+
+/// 向 AWS OIDC 申请设备码（注册前调用）
+async fn request_device_code_internal(region: &str) -> Result<DeviceCodeInfo, String> {
+    let oidc_base = format!("https://oidc.{region}.amazonaws.com");
+    let start_url = "https://view.awsapps.com/start";
+    let client = reqwest::Client::new();
+
+    // Step 1: 注册 OIDC 客户端
+    let reg_res = client
+        .post(format!("{oidc_base}/client/register"))
+        .json(&serde_json::json!({
+            "clientName": "Kiro Account Manager",
+            "clientType": "public",
+            "scopes": [
+                "codewhisperer:completions","codewhisperer:analysis",
+                "codewhisperer:conversations","codewhisperer:transformations",
+                "codewhisperer:taskassist"
+            ],
+            "grantTypes": ["urn:ietf:params:oauth:grant-type:device_code","refresh_token"],
+            "issuerUrl": start_url
+        }))
+        .send().await
+        .map_err(|e| format!("注册 OIDC 客户端失败: {e}"))?;
+
+    if !reg_res.status().is_success() {
+        return Err(format!("注册 OIDC 客户端失败: {}", reg_res.text().await.unwrap_or_default()));
+    }
+    let reg: serde_json::Value = reg_res.json().await.map_err(|e| format!("解析注册响应失败: {e}"))?;
+    let client_id     = reg["clientId"].as_str().ok_or("缺少 clientId")?.to_string();
+    let client_secret = reg["clientSecret"].as_str().ok_or("缺少 clientSecret")?.to_string();
+
+    // Step 2: 发起设备授权，获取 user_code / device_code
+    let auth_res = client
+        .post(format!("{oidc_base}/device_authorization"))
+        .json(&serde_json::json!({
+            "clientId": client_id,
+            "clientSecret": client_secret,
+            "startUrl": start_url
+        }))
+        .send().await
+        .map_err(|e| format!("申请设备码失败: {e}"))?;
+
+    if !auth_res.status().is_success() {
+        return Err(format!("申请设备码失败: {}", auth_res.text().await.unwrap_or_default()));
+    }
+    let auth: serde_json::Value = auth_res.json().await.map_err(|e| format!("解析设备授权响应失败: {e}"))?;
+
+    let device_code   = auth["deviceCode"].as_str().ok_or("缺少 deviceCode")?.to_string();
+    let user_code     = auth["userCode"].as_str().ok_or("缺少 userCode")?.to_string();
+    let poll_interval = auth["interval"].as_u64().unwrap_or(5);
+
+    Ok(DeviceCodeInfo { client_id, client_secret, device_code, user_code, poll_interval, region: region.to_string() })
+}
+
+/// 注册完成后轮询 /token 接口拿 refresh_token（最多等待 timeout_secs 秒）
+async fn poll_token_after_register(
+    device: &DeviceCodeInfo,
+    timeout_secs: u64,
+) -> Result<(String, String), String> {
+    let oidc_base = format!("https://oidc.{}.amazonaws.com", device.region);
+    let client = reqwest::Client::new();
+
+    let token_body = serde_json::json!({
+        "clientId": device.client_id,
+        "clientSecret": device.client_secret,
+        "grantType": "urn:ietf:params:oauth:grant-type:device_code",
+        "deviceCode": device.device_code
+    });
+
+    let start = std::time::Instant::now();
+    let timeout = std::time::Duration::from_secs(timeout_secs);
+
+    loop {
+        if start.elapsed() > timeout {
+            return Err(format!("轮询 Token 超时（{}s）", timeout_secs));
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(device.poll_interval)).await;
+
+        let resp = client
+            .post(format!("{oidc_base}/token"))
+            .json(&token_body)
+            .send().await
+            .map_err(|e| format!("Token 请求失败: {e}"))?;
+
+        if resp.status().is_success() {
+            let data: serde_json::Value = resp.json().await
+                .map_err(|e| format!("解析 Token 响应失败: {e}"))?;
+            let access_token  = data["accessToken"].as_str().ok_or("缺少 accessToken")?.to_string();
+            let refresh_token = data["refreshToken"].as_str().ok_or("缺少 refreshToken")?.to_string();
+            return Ok((access_token, refresh_token));
+        }
+
+        let status = resp.status().as_u16();
+        let body = resp.text().await.unwrap_or_default();
+        if body.contains("authorization_pending") || body.contains("AuthorizationPending") {
+            continue; // 继续等待
+        }
+        return Err(format!("Token 轮询失败 ({status}): {body}"));
+    }
+}
+
 /// 执行批量注册（通过 Node.js sidecar）
+/// 流程：申请设备码 → 传 user_code 给 worker → worker 完成注册 → 轮询 token → 导入账号表
 #[tauri::command]
 pub async fn run_auto_register(
     app_handle: tauri::AppHandle,
-    _state: State<'_, AppState>,
+    state: State<'_, AppState>,
     params: RegisterParams,
 ) -> Result<RegisterResult, String> {
     let sidecar_dir = get_sidecar_dir();
@@ -228,7 +354,35 @@ pub async fn run_auto_register(
         return Err(format!("注册脚本不存在: {}", worker_path.display()));
     }
 
-    let input = serde_json::to_string(&params).map_err(|e| format!("参数序列化失败: {e}"))?;
+    let region = params.region.clone().unwrap_or_else(|| "us-east-1".to_string());
+
+    // ── Step 1: 申请设备码（每次注册前统一申请一个，worker 内多账号共用同一 user_code）──
+    // 注意：设备码是一次性的，注册完成后只能轮询一次 token。
+    // 如果 count > 1，每个账号需要独立的设备码；此处为简化，count=1 时直接申请，
+    // count>1 时 worker 内部各自注册，Rust 侧只为第一个账号申请设备码并轮询。
+    // 前端应控制 count=1 以保证每个账号都能拿到 token。
+    emit_log(&app_handle, &format!("正在向 AWS OIDC 申请设备码（region: {}）...", region));
+    let device_info = match request_device_code_internal(&region).await {
+        Ok(info) => {
+            emit_log(&app_handle, &format!("✓ 设备码申请成功，user_code: {}", info.user_code));
+            info
+        }
+        Err(e) => {
+            emit_log(&app_handle, &format!("✗ 申请设备码失败: {e}"));
+            return Err(format!("申请设备码失败: {e}"));
+        }
+    };
+
+    // ── Step 2: 把 user_code 注入到 params 中传给 worker ──
+    let mut worker_params = params.clone();
+    worker_params.user_code = Some(device_info.user_code.clone());
+    // verificationUri 带上 user_code，方便 worker 直接打开
+    worker_params.verification_uri = Some(format!(
+        "https://view.awsapps.com/start/#/device?user_code={}",
+        device_info.user_code
+    ));
+
+    let input = serde_json::to_string(&worker_params).map_err(|e| format!("参数序列化失败: {e}"))?;
     emit_log(&app_handle, &format!("启动注册 Worker，共 {} 个账号...", params.count));
 
     let mut child = Command::new("node")
@@ -240,7 +394,6 @@ pub async fn run_auto_register(
         .spawn()
         .map_err(|e| format!("启动 Node.js 失败: {e}，请确保已安装 Node.js"))?;
 
-    // 记录 PID，供 stop 命令使用
     let pid = child.id();
     set_worker_pid(Some(pid));
     emit_log(&app_handle, &format!("[Worker] PID: {pid}"));
@@ -270,7 +423,10 @@ pub async fn run_auto_register(
                     } else {
                         let err = wl.data["error"].as_str().unwrap_or("未知错误").to_string();
                         final_result = Some(RegisterResult {
-                            results: vec![RegisterRecord { success: false, email: None, password: None, name: None, error: Some(err) }],
+                            results: vec![RegisterRecord {
+                                success: false, email: None, password: None,
+                                name: None, error: Some(err),
+                            }],
                             ok: 0, fail: 1,
                         });
                     }
@@ -282,9 +438,8 @@ pub async fn run_auto_register(
     }
 
     let exit_status = child.wait();
-    set_worker_pid(None); // 清除 PID
+    set_worker_pid(None);
 
-    // 如果是被强制终止（停止按钮），返回已有结果或空结果
     match exit_status {
         Ok(s) if !s.success() => {
             emit_log(&app_handle, "⚠ 注册 Worker 已停止");
@@ -293,7 +448,81 @@ pub async fn run_auto_register(
         _ => {}
     }
 
-    final_result.ok_or_else(|| "注册 Worker 未返回结果".to_string())
+    let mut result = final_result.ok_or_else(|| "注册 Worker 未返回结果".to_string())?;
+
+    // ── Step 3: 对每个成功的账号，轮询 token 并导入账号表 ──
+    // 注意：设备码只能换一次 token，所以只处理第一个成功的账号
+    let mut imported_count = 0u32;
+    for record in result.results.iter_mut() {
+        if !record.success { continue }
+
+        let email    = record.email.clone().unwrap_or_default();
+        let password = record.password.clone().unwrap_or_default();
+        let name     = record.name.clone().unwrap_or_default();
+
+        emit_log(&app_handle, &format!("========== 注册账号信息 =========="));
+        emit_log(&app_handle, &format!("邮箱:   {}", email));
+        emit_log(&app_handle, &format!("密码:   {}", password));
+        emit_log(&app_handle, &format!("姓名:   {}", name));
+        emit_log(&app_handle, &format!("user_code: {}", device_info.user_code));
+        emit_log(&app_handle, &format!("=================================="));
+
+        // 只有第一个成功账号能用这个设备码换 token
+        if imported_count > 0 {
+            emit_log(&app_handle, &format!("⚠ 账号 {} 注册成功但无法获取 token（设备码已用完），请手动导入", email));
+            continue;
+        }
+
+        emit_log(&app_handle, &format!("正在轮询 token（账号: {}）...", email));
+        let poll_timeout = 120u64; // 2 分钟
+        match poll_token_after_register(&device_info, poll_timeout).await {
+            Ok((access_token, refresh_token)) => {
+                emit_log(&app_handle, "✓ 成功获取 refresh_token！");
+                emit_log(&app_handle, &format!("access_token:  {}...", &access_token[..access_token.len().min(20)]));
+                emit_log(&app_handle, &format!("refresh_token: {}...", &refresh_token[..refresh_token.len().min(20)]));
+                emit_log(&app_handle, &format!("client_id:     {}", device_info.client_id));
+                emit_log(&app_handle, &format!("region:        {}", device_info.region));
+
+                // 导入到账号表
+                emit_log(&app_handle, "正在导入账号到账号列表...");
+                match add_account_by_idc(
+                    state.clone(),
+                    Some("BuilderId".to_string()),
+                    refresh_token.clone(),
+                    device_info.client_id.clone(),
+                    device_info.client_secret.clone(),
+                    Some(device_info.region.clone()),
+                    None,                          // machine_id 自动生成
+                    Some(access_token.clone()),
+                    Some(password.clone()),        // 记录密码
+                    None,                          // start_url
+                    None,                          // client_id_hash
+                ).await {
+                    Ok(add_result) => {
+                        emit_log(&app_handle, &format!(
+                            "✅ 账号已导入！id={} email={} is_new={}",
+                            add_result.account.id,
+                            add_result.account.email.as_deref().unwrap_or(&email),
+                            add_result.is_new
+                        ));
+                        imported_count += 1;
+                    }
+                    Err(e) => {
+                        emit_log(&app_handle, &format!("⚠ 账号导入失败: {e}（注册已成功，请手动添加）"));
+                    }
+                }
+            }
+            Err(e) => {
+                emit_log(&app_handle, &format!("⚠ 获取 token 失败: {e}（注册已成功，请手动添加账号）"));
+            }
+        }
+    }
+
+    if imported_count > 0 {
+        emit_log(&app_handle, &format!("✅ 共导入 {} 个账号到账号列表", imported_count));
+    }
+
+    Ok(result)
 }
 
 /// 停止正在运行的注册任务

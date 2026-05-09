@@ -77,8 +77,8 @@ fn extract_http_proxy_from_json(json: &serde_json::Value) -> Option<String> {
         .map(std::string::ToString::to_string)
 }
 
-/// 获取 Kiro IDE 设置中的代理
-fn get_proxy_from_kiro_settings() -> Option<String> {
+/// 获取 Kiro IDE 设置中的代理（供其他模块复用）
+pub fn get_proxy_from_kiro_settings() -> Option<String> {
     #[cfg(target_os = "windows")]
     let path = std::env::var("APPDATA").ok().map(|appdata| {
         std::path::PathBuf::from(appdata)
@@ -234,6 +234,14 @@ fn compare_versions(current: &str, latest: &str) -> bool {
         }
     }
     false
+}
+
+/// 获取 Kiro IDE 配置的 HTTP 代理地址（供前端展示/自动填入）
+#[tauri::command]
+pub async fn get_kiro_proxy() -> Option<String> {
+    tokio::task::spawn_blocking(get_proxy_from_kiro_settings)
+        .await
+        .unwrap_or(None)
 }
 
 #[cfg(test)]

@@ -112,7 +112,7 @@ use crate::kiro::ide::{
 //Kiro进程
 use crate::kiro::process::{close_kiro_ide, is_kiro_ide_running, start_kiro_ide};
 
-use commands::update_cmd::check_update;
+use commands::update_cmd::{check_update, get_kiro_proxy};
 use commands::register_cmd::{
     check_node_available, check_playwright_installed, install_register_deps,
     start_builder_id_device_login, poll_builder_id_device_auth, run_auto_register,
@@ -373,6 +373,7 @@ fn main() {
             detect_system_proxy,
             // 更新检查命令
             check_update,
+            get_kiro_proxy,
             // Steering 管理命令
             get_steering_files,
             get_steering_file,

@@ -1,6 +1,69 @@
 [
   {
+    "id": "20260509003",
+    "question": "代理地址可以看一下设置中的HTTP代理自动获取",
+    "plan": "1. update_cmd.rs 的 get_proxy_from_kiro_settings 改为 pub，新增 get_kiro_proxy Tauri 命令；2. main.rs 注册新命令；3. 前端 AutoRegister 加载时自动调用 get_kiro_proxy（优先）和 detect_system_proxy（降级）填入代理，显示来源标签（Kiro IDE / 系统），并提供手动刷新按钮",
+    "created_at": "2026-05-09 12:00:00",
+    "completed_at": "2026-05-09 12:10:00",
+    "change_list": [
+      { "file": "src-tauri/src/commands/update_cmd.rs", "change": "get_proxy_from_kiro_settings 改为 pub；新增 get_kiro_proxy Tauri 命令（异步包装，返回 Option<String>）", "status": "modify" },
+      { "file": "src-tauri/src/main.rs", "change": "导入并注册 get_kiro_proxy 命令", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "新增 proxyLoading/proxySource 状态；新增 autoFillProxy（页面加载自动填入）和 handleAutoProxy（手动刷新）函数；代理输入框右侧加来源标签（Kiro IDE/系统）和刷新按钮", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260509002",
+    "question": "邮箱只保留自建邮箱，其它都删除，自建邮箱可以添加多个，可以指定某一个或者随机",
+    "plan": "1. RegisterParams 删除旧的 temp_mail_api_url/key/forced_mail_service，新增 temp_mail_apis（数组）和 temp_mail_select（random 或索引）；2. register-worker.mjs 删除所有公共邮箱服务（tempmail.lol/1secmail/mail.tm），只保留自建 API 逻辑，新增 pickMailApi 按策略选择；3. 前端重写邮箱配置区，支持添加/删除多个自建邮箱，下拉选择随机或指定某一个",
+    "created_at": "2026-05-09 11:00:00",
+    "completed_at": "2026-05-09 11:20:00",
+    "change_list": [
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "新增 TempMailApi 结构体；RegisterParams 删除 temp_mail_api_url/temp_mail_admin_key/forced_mail_service，改为 temp_mail_apis: Vec<TempMailApi> 和 temp_mail_select: Option<String>", "status": "modify" },
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "删除所有公共邮箱服务实现（tempmail.lol/_create1SecMail/_createMailTm）；重写临时邮箱模块，新增 pickMailApi 按策略选择；createTempMail/getTempMailCode/deleteTempMail 统一使用 api 参数；main 函数读取 tempMailApis/tempMailSelect 参数", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "删除邮箱服务选择单选组和公共服务相关 UI；新增多邮箱配置列表（添加/删除）、选择策略下拉（随机/指定索引）；RegisterParams 类型同步更新", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260509001",
+    "question": "注册流程缺少获取设备码（user_code），注册成功需要导入到用户列表，需要获取令牌，注册开始后账号相关信息都明文打印出来",
+    "plan": "1. register_cmd.rs 的 run_auto_register 在调用 worker 前自动申请设备码，将 user_code 注入 worker 参数；2. worker 返回成功结果后轮询 /token 接口获取 access_token + refresh_token；3. 调用 add_account_by_idc 将账号导入账号表并记录密码；4. register-worker.mjs 注册开始时明文打印邮箱、密码、姓名、user_code",
+    "created_at": "2026-05-09 10:00:00",
+    "completed_at": "2026-05-09 10:20:00",
+    "change_list": [
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "新增 DeviceCodeInfo 结构体、request_device_code_internal 函数（申请 OIDC 客户端 + 设备授权）、poll_token_after_register 函数（轮询 /token）；重写 run_auto_register：申请设备码 → 注入 user_code 给 worker → 轮询 token → 调用 add_account_by_idc 导入账号表并记录密码；导入 add_account_by_idc", "status": "modify" },
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "注册开始时明文打印邮箱、密码、姓名、user_code 到日志", "status": "modify" }
+    ]
+  },
+  {
     "id": "20260508002",
+    "question": "在邮箱中支持 tempmail 自建邮箱，提供了 API 文档（POST /admin/new_address、DELETE /admin/delete_address/{id}、GET /api/mails）",
+    "plan": "1. register-worker.mjs 新增 custom 服务，优先级最高，支持 apiUrl + adminKey 配置，注册完成后自动 DELETE 清理邮箱；2. RegisterParams 新增 tempMailApiUrl / tempMailAdminKey 字段；3. 前端新增自建邮箱配置区域",
+    "created_at": "2026-05-08 15:00:00",
+    "completed_at": "2026-05-08 15:15:00",
+    "change_list": [
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "重构临时邮箱模块：新增 custom 服务（POST /admin/new_address 创建、GET /api/mails 轮询、DELETE /admin/delete_address 清理），优先于公共服务；统一 AWS 发件人过滤和验证码提取逻辑", "status": "modify" },
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "RegisterParams 新增 temp_mail_api_url 和 temp_mail_admin_key 两个可选字段", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "新增自建临时邮箱配置区域（API 地址 + Admin 密码），已配置时显示绿色徽章提示优先使用", "status": "modify" }
+    ]
+  },
+  {
+    "id": "20260508001",
+    "question": "在当前项目中增加账号注册，依照kiro-auto-main实现，但是不要直接引用kiro-auto-main，需要的资源可以拷贝",
+    "plan": "1. 将 kiro-auto-main 的注册核心逻辑内联拷贝为 src-tauri/sidecar/register-worker.mjs；2. 新增 Rust 命令 register_cmd.rs；3. 新增前端页面 AutoRegister/index.tsx；4. 注册路由和翻译 key",
+    "created_at": "2026-05-08 14:00:00",
+    "completed_at": "2026-05-08 14:30:00",
+    "change_list": [
+      { "file": "src-tauri/sidecar/register-worker.mjs", "change": "新增注册 Worker 脚本", "status": "add" },
+      { "file": "src-tauri/sidecar/package.json", "change": "新增 sidecar npm 配置", "status": "add" },
+      { "file": "src-tauri/src/commands/register_cmd.rs", "change": "新增注册相关 Tauri 命令", "status": "add" },
+      { "file": "src-tauri/src/commands/mod.rs", "change": "注册 register_cmd 模块", "status": "modify" },
+      { "file": "src-tauri/src/main.rs", "change": "导入并注册 register_cmd 命令", "status": "modify" },
+      { "file": "src/components/features/AutoRegister/index.tsx", "change": "新增自动注册前端页面", "status": "add" },
+      { "file": "src/routes.tsx", "change": "新增 autoRegister 路由", "status": "modify" },
+      { "file": "locales/zh-CN.json", "change": "新增 nav.autoRegister 翻译 key", "status": "modify" }
+    ]
+  }
+]
     "question": "在邮箱中支持 tempmail 自建邮箱，提供了 API 文档（POST /admin/new_address、DELETE /admin/delete_address/{id}、GET /api/mails）",
     "plan": "1. register-worker.mjs 新增 custom 服务，优先级最高，支持 apiUrl + adminKey 配置，注册完成后自动 DELETE 清理邮箱；2. RegisterParams 新增 tempMailApiUrl / tempMailAdminKey 字段；3. 前端新增自建邮箱配置区域",
     "created_at": "2026-05-08 15:00:00",
